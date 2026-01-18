@@ -2,17 +2,25 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Grandmaster Pro | Ultimate Chess Manager</title>
+    
+    <!-- PWA / Mobile App Capability -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1b1d24">
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Grandmaster Pro","short_name":"Grandmaster","start_url":".","display":"standalone","background_color":"#1b1d24","theme_color":"#d4af37","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/3002/3002626.png","sizes":"512x512","type":"image/png"}]}' />
+
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Confetti Efekti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- HTML2Canvas (Resim İndirme İçin) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <style>
         /* --- TEMA MOTORU --- */
         :root {
-            /* Varsayılan (Dark) */
             --bg-body: #0f1014;
             --bg-panel: #1b1d24;
             --primary: #d4af37;
@@ -30,7 +38,6 @@
             --rank1-bg: rgba(255,215,0,0.1);
         }
 
-        /* TEMA: LIGHT (AYDINLIK) */
         [data-theme="light"] {
             --bg-body: #f0f2f5;
             --bg-panel: #ffffff;
@@ -48,17 +55,14 @@
             --rank1-bg: rgba(184, 134, 11, 0.1);
         }
 
-        /* Diğer Temalar */
         [data-theme="wood"] { --bg-body:#4e342e; --bg-panel:#3e2723; --primary:#ffb74d; --accent:#8d6e63; --card-bg:#4e342e; --border:#5d4037; }
         [data-theme="cyber"] { --bg-body:#000; --bg-panel:#09090b; --primary:#f0f; --accent:#0f9; --card-bg:#111; --border:#333; }
-        [data-theme="forest"] { --bg-body:#1b5e20; --bg-panel:#2e7d32; --primary:#a5d6a7; --accent:#ffeb3b; --card-bg:#388e3c; --border:#1b5e20; }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font); transition: background 0.2s, color 0.2s, border-color 0.2s; }
-        body { background-color: var(--bg-body); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        body { background-color: var(--bg-body); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; overscroll-behavior: none; }
         
         .app-container { width: 100%; max-width: 1000px; background: var(--bg-panel); border-radius: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); padding: 30px; position: relative; overflow: hidden; min-height: 600px; display: flex; flex-direction: column; }
 
-        /* UI ELEMENTS */
         h1, h2, h3 { color: var(--primary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; }
         
         button { background: var(--primary); color: #121212; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: transform 0.1s, background 0.2s; text-transform: uppercase; font-size: 0.85rem; }
@@ -77,80 +81,49 @@
         input, select, textarea { width: 100%; padding: 12px; background: rgba(0,0,0,0.05); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; margin-bottom: 10px; font-size: 1rem; }
         input:focus, select:focus { outline: none; border-color: var(--primary); background: rgba(0,0,0,0.1); }
 
-        /* AVATAR */
         .avatar-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; justify-items: center; margin-bottom: 20px; }
         .avatar-option { width: 45px; height: 45px; border-radius: 50%; background: rgba(0,0,0,0.2); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; color: var(--text-muted); transition: 0.2s; }
         .avatar-option.selected { background: var(--primary); color: #000; border-color: var(--primary); box-shadow: 0 0 15px var(--primary); transform: scale(1.1); }
 
-        /* VIEWS */
         .view { display: none; animation: fadeIn 0.3s ease; flex: 1; }
         .view.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* DASHBOARD */
         .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
         .dash-card { background: var(--card-bg); padding: 25px; border-radius: 12px; border: 1px solid var(--border); text-align: center; }
         
-        /* SLOT GRID */
         .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
         .slot-item { background: var(--card-bg); padding: 15px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; border-bottom: 3px solid var(--border); position: relative; }
         .slot-item.taken { border-bottom-color: var(--success); }
         .slot-item.me { border-bottom-color: var(--accent); background: rgba(0, 242, 255, 0.05); }
         .kick-btn { position: absolute; top: 5px; right: 5px; background: transparent; color: var(--danger); border: none; font-size: 1rem; cursor: pointer; padding: 5px; }
-        .kick-btn:hover { transform: scale(1.2); }
+        
+        /* Leave Seat Button inside slot */
+        .leave-seat-btn { margin-top: 5px; font-size: 0.7rem; padding: 4px 8px; border: 1px solid var(--danger); color: var(--danger); background: transparent; border-radius: 4px; cursor: pointer; }
+        .leave-seat-btn:hover { background: var(--danger); color: white; }
 
-        /* HISTORY LIST */
         .history-list { display: grid; gap: 10px; margin-top: 20px; max-height: 200px; overflow-y: auto; }
         .history-item { background: var(--card-bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .history-item:hover { border-color: var(--primary); }
 
-        /* MATCH CARD */
         .match-card { background: var(--card-bg); padding: 12px; margin-bottom: 8px; border-radius: 6px; display: flex; align-items: center; border: 1px solid var(--border); position: relative; flex-wrap: wrap; }
         .match-player { flex: 1; font-weight: 500; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; }
         .match-player.right { justify-content: flex-end; text-align: right; }
         .match-player.me { color: var(--accent); }
         
-        /* --- SKOR SELECT FIX (GÜNCELLENDİ) --- */
-        .score-select { 
-            /* Görünüm sıfırlama */
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            /* Boyutlandırma */
-            width: 80px; 
-            height: 40px; 
-            padding: 5px;
-            margin: 0 5px; 
-            /* Stil */
-            font-weight: bold; 
-            font-size: 1rem;
-            text-align: center; 
-            text-align-last: center; 
-            border-radius: 6px;
-            cursor: pointer;
-            /* Renkler (Her zaman koyu arkaplan, altın yazı) */
-            background-color: #1a1a1a !important; 
-            color: #d4af37 !important; 
-            border: 1px solid var(--border);
-            display: inline-block;
-        }
-        /* Optionlar için de renk zorlama */
+        .score-select { width: 80px; height: 40px; padding: 5px; margin: 0 5px; font-weight: bold; font-size: 1rem; text-align: center; text-align-last: center; border-radius: 6px; cursor: pointer; background-color: #1a1a1a !important; color: #d4af37 !important; border: 1px solid var(--border); display: inline-block; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
         .score-select option { background-color: #1a1a1a; color: #d4af37; }
-        
         .score-select:disabled { opacity: 0.5; cursor: not-allowed; border-color: transparent; }
 
         .link-area { width: 100%; margin-top: 8px; display: flex; align-items: center; gap: 5px; font-size: 0.8rem; background: rgba(0,0,0,0.05); padding: 5px; border-radius: 4px; }
         .link-input { border: none; background: transparent; padding: 4px; margin: 0; color: var(--accent); width: 100%; font-size: 0.8rem; }
         .watch-btn { background: #333; color: var(--primary); border: 1px solid var(--primary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; text-decoration: none; display: inline-block; margin-left: 5px; }
 
-        /* TABLE & RANKS */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { padding: 12px; text-align: center; border-bottom: 1px solid var(--border); }
         th { color: var(--primary); font-size: 0.8rem; }
         .player-name-cell { cursor: pointer; transition: 0.2s; }
         .player-name-cell:hover { color: var(--accent); text-decoration: underline; }
 
-        /* RGB ANIMATIONS */
         @keyframes rainbow { 
             0% { border-color: red; box-shadow: 0 0 10px red; color: #ff5555; }
             20% { border-color: yellow; box-shadow: 0 0 10px yellow; color: #ffff55; }
@@ -159,29 +132,34 @@
             80% { border-color: magenta; box-shadow: 0 0 10px magenta; color: #ff55ff; }
             100% { border-color: red; box-shadow: 0 0 10px red; color: #ff5555; }
         }
-        /* Light Theme için Rainbow Rengi biraz daha koyu olsun */
         [data-theme="light"] .rank-1 { color: #d63384; box-shadow: 0 0 10px rgba(0,0,0,0.2); }
-        
         .rank-1 { animation: rainbow 2s linear infinite; border: 2px solid transparent; font-weight: bold; background: var(--rank1-bg); }
         .rank-2 { border: 1px solid silver; box-shadow: 0 0 8px silver; background: rgba(192,192,192,0.1); color: var(--text-main); }
         .rank-3 { border: 1px solid #cd7f32; box-shadow: 0 0 8px #cd7f32; background: rgba(205,127,50,0.1); color: var(--text-main); }
 
-        /* STATS MODAL */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; animation: fadeIn 0.3s; }
-        .modal-content { background: var(--bg-panel); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; border: 1px solid var(--primary); box-shadow: 0 0 30px rgba(212, 175, 55, 0.2); position: relative; }
+        .modal-content { background: var(--bg-panel); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; border: 1px solid var(--primary); box-shadow: 0 0 30px rgba(212, 175, 55, 0.2); position: relative; max-height: 80vh; overflow-y: auto; }
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
         .stat-box { background: var(--card-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--border); }
         .stat-val { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
         .stat-label { font-size: 0.8rem; color: var(--text-muted); }
         .close-modal { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
 
-        /* CHAT */
-        #chatWidget { position: fixed; bottom: 20px; right: 20px; width: 320px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; z-index: 1000; display: none; flex-direction: column; max-height: 400px; }
-        #chatMessages { flex: 1; padding: 10px; overflow-y: auto; height: 300px; background: var(--chat-bg); font-size: 0.9rem; }
-        .chat-toggle-btn { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: var(--primary); color: black; display: none; align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer; z-index: 999; }
+        /* CHAT & FLOATING BUTTONS */
+        .floating-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+        
+        .float-btn { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: transform 0.2s; border: none; }
+        .float-btn:hover { transform: scale(1.1); }
+
+        .chat-btn { background: var(--primary); color: black; }
+        .rules-btn { background: var(--accent); color: black; font-size: 1.2rem; }
+        .chess-btn { background: #7fa650; color: white; font-size: 1.2rem; } /* Chess.com green */
+
         .chat-badge { position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-body); display: none; }
 
-        /* Top Bar & Switch */
+        #chatWidget { position: fixed; bottom: 90px; right: 20px; width: 320px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; z-index: 1000; display: none; flex-direction: column; max-height: 400px; box-shadow: var(--shadow); }
+        #chatMessages { flex: 1; padding: 10px; overflow-y: auto; height: 300px; background: var(--chat-bg); font-size: 0.9rem; }
+        
         .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
         .theme-btn { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid #fff; margin-right: 5px; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
         
@@ -193,8 +171,9 @@
 
         @media (max-width: 600px) {
             .dashboard-grid { grid-template-columns: 1fr; }
-            #chatWidget { width: 90%; right: 5%; bottom: 80px; }
+            #chatWidget { width: 90%; right: 5%; bottom: 100px; }
             .avatar-grid { grid-template-columns: repeat(4, 1fr); }
+            .app-container { padding: 15px; }
         }
     </style>
 </head>
@@ -249,15 +228,17 @@
                 <h3>Turnuva Kur</h3>
                 <input type="text" id="newTournamentName" placeholder="Turnuva Adı">
                 <select id="playerCount" style="width:auto; margin:0 auto 15px auto;">
-                    <option value="4">4 Kişi (Çift Devre)</option>
-                    <option value="6">6 Kişi (Çift Devre)</option>
-                    <option value="8">8 Kişi (Çift Devre)</option>
+                    <option value="4">4 Kişi</option>
+                    <option value="5">5 Kişi</option>
+                    <option value="6">6 Kişi</option>
+                    <option value="7">7 Kişi</option>
+                    <option value="8">8 Kişi</option>
                 </select>
                 <button id="btnCreateTournament">OLUŞTUR</button>
             </div>
             <div class="dash-card">
                 <h3>Katıl</h3>
-                <input type="text" id="joinCodeInput" placeholder="Turnuva ID">
+                <input type="text" id="joinCodeInput" placeholder="6 Haneli Kod">
                 <button id="btnJoinTournament" class="secondary">GİT</button>
             </div>
         </div>
@@ -278,7 +259,6 @@
                 <span>Oyun Sesleri</span>
                 <label class="switch"><input type="checkbox" id="muteSoundToggle"><span class="slider"></span></label>
             </div>
-            <!-- KAYDET ve GERİ Butonları -->
             <button id="btnSaveSettings" onclick="saveSettings()" style="width:100%; margin-top:20px;">KAYDET</button>
             <button id="btnBackSettings" class="secondary" onclick="switchView('view-dashboard')" style="width:100%; margin-top:10px;">GERİ</button>
         </div>
@@ -291,7 +271,7 @@
             <button class="secondary" onclick="leaveTournament()"><i class="fas fa-arrow-left"></i></button>
         </div>
         <div id="adminControls" style="background:rgba(100,100,100,0.1); padding:15px; margin-bottom:20px; display:none; border-radius:8px; border:1px solid var(--border);">
-            <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:10px;">ID: <span id="shareCode" style="color:var(--text-main);"></span> <button class="copy-btn" onclick="copyCode()">Kopyala</button></div>
+            <div style="font-size:1.2rem; color:var(--text-muted); margin-bottom:10px; text-align:center; font-family:monospace; letter-spacing:2px;">KOD: <span id="shareCode" style="color:var(--primary); font-weight:bold;"></span> <button class="copy-btn" onclick="copyCode()">KOPYALA</button></div>
             <button id="btnStartTournament" style="width:100%;">BAŞLAT</button>
         </div>
         <div id="lobbySlots" class="slot-grid"></div>
@@ -312,15 +292,30 @@
         </div>
         <div id="tab-fixtures"><div id="fixturesList"></div></div>
         <div id="tab-standings" style="display:none;">
-            <table>
-                <thead>
-                    <tr><th>#</th><th style="text-align:left;">Oyuncu</th><th>P</th><th>SB</th><th>O</th><th>G</th><th>B</th><th>M</th></tr>
-                </thead>
-                <tbody id="standingsBody"></tbody>
-            </table>
+            <div id="standingsContainer" style="background:var(--bg-panel); padding:10px; border-radius:8px;">
+                <h3 style="text-align:center; font-size:1rem; margin-bottom:5px;">Puan Durumu</h3>
+                <table>
+                    <thead>
+                        <tr><th>#</th><th style="text-align:left;">Oyuncu</th><th>P</th><th>SB</th><th>O</th><th>G</th><th>B</th><th>M</th></tr>
+                    </thead>
+                    <tbody id="standingsBody"></tbody>
+                </table>
+            </div>
+            <button class="secondary" onclick="downloadStandings()" style="width:100%; margin-top:10px;"><i class="fas fa-download"></i> Resim Olarak İndir</button>
         </div>
     </div>
 
+</div>
+
+<!-- RULES MODAL -->
+<div id="rulesModal" class="modal-overlay">
+    <div class="modal-content" style="text-align:left;">
+        <span class="close-modal" onclick="closeRules()">×</span>
+        <h3>Turnuva Kuralları</h3>
+        <textarea id="rulesText" style="height:150px; resize:none;" placeholder="Kuralları buraya yazın (örn: Süre 10+0, touch-move geçerli...)"></textarea>
+        <div id="rulesReadOnly" style="white-space:pre-wrap; color:var(--text-main); line-height:1.5;"></div>
+        <button id="btnSaveRules" style="width:100%; margin-top:10px; display:none;" onclick="saveRules()">KURALLARI GÜNCELLE</button>
+    </div>
 </div>
 
 <!-- STATS MODAL -->
@@ -339,15 +334,28 @@
     </div>
 </div>
 
-<!-- CHAT -->
-<div class="chat-toggle-btn" id="chatToggleBtn"><i class="fas fa-comment-dots"></i><div class="chat-badge" id="chatBadge">!</div></div>
+<!-- FLOATING BUTTONS (Chat, Rules, Chess.com) -->
+<div class="floating-container">
+    <a href="https://www.chess.com/play/online" target="_blank" class="float-btn chess-btn" title="Chess.com'da Oyna">
+        <i class="fas fa-chess-board"></i>
+    </a>
+    <div class="float-btn rules-btn" id="rulesBtn" onclick="openRules()" style="display:none;" title="Kurallar">
+        <i class="fas fa-scroll"></i>
+    </div>
+    <div class="float-btn chat-btn" id="chatToggleBtn" title="Sohbet">
+        <i class="fas fa-comment-dots"></i>
+        <div class="chat-badge" id="chatBadge">!</div>
+    </div>
+</div>
+
+<!-- CHAT WIDGET -->
 <div id="chatWidget">
-    <div style="padding:10px; background:var(--bg-panel); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; color:var(--text-main);">
+    <div style="padding:10px; background:var(--bg-panel); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; color:var(--text-main); border-radius:12px 12px 0 0;">
         <span>Sohbet</span><i class="fas fa-times" onclick="hideChat()" style="cursor:pointer;"></i>
     </div>
     <div id="chatMessages"></div>
-    <form id="chatInputArea" style="display:flex; padding:10px; border-top:1px solid var(--border); background:var(--bg-panel);">
-        <input type="text" id="chatInput" placeholder="Yaz..." style="margin:0; border-right:none; border-radius:4px 0 0 4px;">
+    <form id="chatInputArea" style="display:flex; padding:10px; border-top:1px solid var(--border); background:var(--bg-panel); border-radius:0 0 12px 12px;">
+        <input type="text" id="chatInput" placeholder="Yaz..." style="margin:0; border-right:none; border-radius:4px 0 0 4px;" autocomplete="off">
         <button type="submit" style="width:auto; margin:0; border-radius:0 4px 4px 0;"><i class="fas fa-paper-plane"></i></button>
     </form>
 </div>
@@ -357,7 +365,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, doc, onSnapshot, updateDoc, query, orderBy, serverTimestamp, deleteDoc, where, arrayUnion, arrayRemove } 
+    import { getFirestore, collection, addDoc, setDoc, doc, onSnapshot, updateDoc, query, orderBy, serverTimestamp, deleteDoc, where, arrayUnion, arrayRemove } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -401,6 +409,14 @@
     }
     renderAvatars('authAvatarGrid','selectedAvatar');
 
+    // HELPER: Make Short ID
+    function makeId(length) {
+        let result = '';
+        const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, 1, O, 0 for clarity
+        for (let i = 0; i < length; i++) result += characters.charAt(Math.floor(Math.random() * characters.length));
+        return result;
+    }
+
     // AUTH
     let isReg = false;
     document.getElementById('btnSwitchLogin').onclick=()=>{isReg=false; toggleAuth();};
@@ -424,7 +440,7 @@
         else { currentUser=null; document.getElementById('userInfoSection').style.display='none'; document.getElementById('btnLogout').style.display='none'; switchView('view-auth'); }
     });
 
-    // DASHBOARD & LISTS
+    // DASHBOARD
     function loadMyTournaments(){
         if(!currentUser) return;
         const q = query(collection(db,"tournaments"), where("participantIds","array-contains",currentUser.uid));
@@ -434,7 +450,6 @@
             snap.forEach(d=>{
                 const t=d.data();
                 const isFin = t.status==='finished';
-                
                 let actionBtn = '';
                 if(isFin) {
                     actionBtn += `<button class="secondary" style="margin-right:5px; font-size:0.7rem;" onclick="enterTournament('${d.id}')">Görüntüle</button>`;
@@ -442,12 +457,11 @@
                 } else {
                     actionBtn = `<button class="icon-btn secondary" style="border:none" onclick="enterTournament('${d.id}')"><i class="fas fa-chevron-right"></i></button>`;
                 }
-                
                 l.innerHTML += `
                     <div class="history-item">
                         <div>
                             <div style="font-weight:bold; ${isFin?'color:var(--text-muted); text-decoration:line-through;':''}">${t.name}</div>
-                            <div style="font-size:0.8rem; color:var(--text-muted);">${isFin?'Tamamlandı':(t.status==='active'?'Oynanıyor':'Lobi')}</div>
+                            <div style="font-size:0.8rem; color:var(--text-muted);">${isFin?'Tamamlandı':(t.status==='active'?'Oynanıyor':'Lobi')} #${d.id}</div>
                         </div>
                         <div>${actionBtn}</div>
                     </div>`;
@@ -463,25 +477,31 @@
     document.getElementById('btnCreateTournament').onclick=async()=>{
         const n=document.getElementById('newTournamentName').value, c=parseInt(document.getElementById('playerCount').value);
         if(!n) return alert("İsim giriniz");
+        
+        const shortId = makeId(6); // 6-digit ID
         const slots=[]; for(let i=0;i<c;i++) slots.push({index:i, name:`Masa ${i+1}`, ownerId:null, avatar:'fa-chess-pawn', status:'open'});
-        const ref=await addDoc(collection(db,"tournaments"),{ name:n, creatorId:currentUser.uid, status:'lobby', slots, matches:[], participantIds:[currentUser.uid], createdAt:new Date() });
-        enterTournament(ref.id);
+        
+        // Use setDoc with shortId
+        await setDoc(doc(db,"tournaments",shortId),{ 
+            name:n, creatorId:currentUser.uid, status:'lobby', slots, matches:[], 
+            participantIds:[currentUser.uid], rules:"", createdAt:new Date() 
+        });
+        enterTournament(shortId);
     };
-    document.getElementById('btnJoinTournament').onclick=()=>{ const id=document.getElementById('joinCodeInput').value; if(id) enterTournament(id); };
+    document.getElementById('btnJoinTournament').onclick=()=>{ const id=document.getElementById('joinCodeInput').value.trim().toUpperCase(); if(id) enterTournament(id); };
 
     // TOURNAMENT LOGIC
     window.enterTournament = (id) => {
         currentTournamentId = id;
         unsubscribeTournament = onSnapshot(doc(db,"tournaments",id), snap=>{
-            if(!snap.exists()) { alert("Turnuva silinmiş."); leaveTournament(); return; }
+            if(!snap.exists()) { alert("Turnuva bulunamadı."); leaveTournament(); return; }
             const d=snap.data(); currentTournamentData=d; d.id=snap.id;
             
-            if(d.status==='finished' && previousMatchesStr!=='finished') { 
-                confetti({particleCount:150, spread:70, origin:{y:0.6}}); 
-            } else if(d.status==='finished' && previousMatchesStr === "") {
-                 confetti({particleCount:100, spread:60, origin:{y:0.6}}); 
-            }
+            // Rules button visible in both Lobby and Game now
+            document.getElementById('rulesBtn').style.display = 'flex';
 
+            if(d.status==='finished' && previousMatchesStr!=='finished') { confetti({particleCount:150, spread:70, origin:{y:0.6}}); } 
+            
             const mStr=JSON.stringify(d.matches);
             if(previousMatchesStr && previousMatchesStr!==mStr && d.status==='active' && soundEnabled) realSound.play().catch(()=>{});
             previousMatchesStr = (d.status==='finished') ? 'finished' : mStr;
@@ -511,6 +531,8 @@
             } else {
                 h += `<span style="color:${isMe?'var(--accent)':'var(--success)'}; font-weight:bold;">${isMe?'SEN':'HAZIR'}</span>`;
                 if(isAdmin && !isMe) h += `<button class="kick-btn" onclick="kickPlayer(${i})"><i class="fas fa-times"></i></button>`;
+                if(isMe && !isAdmin) h += `<button class="leave-seat-btn" onclick="leaveSlot(${i})">KALK</button>`;
+                if(isMe && isAdmin) h += `<button class="leave-seat-btn" onclick="leaveSlot(${i})">KALK</button>`;
             }
             const div=document.createElement('div'); div.className=`slot-item ${s.status==='taken'?'taken':''} ${isMe?'me':''}`; div.innerHTML=h;
             c.appendChild(div);
@@ -523,6 +545,13 @@
         await updateDoc(doc(db,"tournaments",currentTournamentId), { slots:s, participantIds:arrayUnion(currentUser.uid) });
     };
 
+    window.leaveSlot = async(i) => {
+        if(!confirm("Koltuktan kalkmak istiyor musun?")) return;
+        const s=[...currentTournamentData.slots];
+        s[i]={ index:i, name:`Masa ${i+1}`, ownerId:null, avatar:'fa-chess-pawn', status:'open' };
+        await updateDoc(doc(db,"tournaments",currentTournamentId), { slots:s }); 
+    };
+
     window.kickPlayer = async(i) => {
         if(!confirm("Oyuncuyu atmak istiyor musun?")) return;
         const s=[...currentTournamentData.slots];
@@ -533,10 +562,53 @@
 
     document.getElementById('btnStartTournament').onclick=async()=>{
         if(!confirm("Başlatılsın mı?")) return;
-        const s=currentTournamentData.slots; s.forEach((x,i)=>{ if(x.status==='open'){ x.name=`CPU ${i+1}`; x.status='cpu'; } });
-        const m=[], n=s.length, p=s.map((_,i)=>i); let id=1;
-        for(let r=1;r<n;r++){ for(let i=0;i<n/2;i++) m.push({id:id++, r, p1:p[i], p2:p[n-1-i], res:null, link:''}); p.splice(1,0,p.pop()); }
-        [...m].forEach(x=>m.push({id:id++, r:x.r+n-1, p1:x.p2, p2:x.p1, res:null, link:''}));
+        let s=[...currentTournamentData.slots];
+        
+        // Fill empty slots with CPU
+        s.forEach((x,i)=>{ if(x.status==='open'){ x.name=`CPU ${i+1}`; x.status='cpu'; } });
+        
+        let players = s.map((_,i)=>i);
+        const hasOddPlayers = (players.length % 2 !== 0);
+        
+        // BYE SYSTEM: If odd, add a dummy player index (-1)
+        if(hasOddPlayers) {
+            players.push(-1); 
+        }
+
+        const m=[]; 
+        const n=players.length; 
+        const rounds = n-1;
+        let id=1;
+
+        // Round Robin Algorithm
+        for(let r=1; r<=rounds; r++){ 
+            for(let i=0; i<n/2; i++){
+                const p1 = players[i];
+                const p2 = players[n-1-i];
+                
+                // If one player is dummy (-1), it's a BYE
+                if(p1 === -1 || p2 === -1) {
+                    const realPlayer = (p1 === -1) ? p2 : p1;
+                    // Auto win for real player against Ghost
+                    m.push({id:id++, r, p1:realPlayer, p2:-1, res:1, link:'', isBye:true});
+                } else {
+                    // Normal Match
+                    m.push({id:id++, r, p1:p1, p2:p2, res:null, link:'', isBye:false});
+                }
+            }
+            players.splice(1, 0, players.pop()); // Rotate
+        }
+
+        // 2nd Leg (Çift Devre - Varsayılan)
+        const firstHalfMatches = [...m];
+        firstHalfMatches.forEach(x => {
+             if(x.isBye) {
+                 m.push({id:id++, r:x.r+rounds, p1:x.p1, p2:-1, res:1, link:'', isBye:true});
+             } else {
+                 m.push({id:id++, r:x.r+rounds, p1:x.p2, p2:x.p1, res:null, link:'', isBye:false});
+             }
+        });
+
         await updateDoc(doc(db,"tournaments",currentTournamentId), { status:'active', slots:s, matches:m });
     };
 
@@ -549,8 +621,10 @@
         document.getElementById('activeTournamentTitle').innerText = d.name + (d.status==='finished'?' (Bitti)':'');
         const isAdmin = (d.creatorId===currentUser.uid);
         const isFin = d.status==='finished';
-        const finishBtn = document.getElementById('btnFinishTournament');
-        finishBtn.style.display = (isAdmin && !isFin) ? 'block' : 'none';
+        document.getElementById('btnFinishTournament').style.display = (isAdmin && !isFin) ? 'block' : 'none';
+        
+        // RULES BUTTON VISIBLE IN GAME
+        document.getElementById('rulesBtn').style.display = 'flex'; 
 
         const c=document.getElementById('fixturesList'); c.innerHTML='';
         const gr={}; d.matches.forEach(m=>{ if(!gr[m.r]) gr[m.r]=[]; gr[m.r].push(m); });
@@ -559,6 +633,17 @@
             const div=document.createElement('div');
             div.innerHTML=`<div style="background:var(--card-bg); padding:8px; margin-bottom:5px; border-left:4px solid var(--primary); font-weight:bold; color:var(--text-main);">TUR ${r}</div>`;
             gr[r].forEach(m=>{
+                if(m.isBye) {
+                     const p1=d.slots[m.p1];
+                     div.innerHTML += `
+                     <div class="match-card" style="opacity:0.7">
+                        <div class="match-player"><i class="fas ${p1.avatar}"></i> ${p1.name}</div>
+                        <span style="font-weight:bold; color:var(--success); margin:0 10px;">BAY</span>
+                        <div class="match-player right" style="color:var(--text-muted)">-</div>
+                     </div>`;
+                     return;
+                }
+
                 const p1=d.slots[m.p1], p2=d.slots[m.p2];
                 const isP1=(p1.ownerId===currentUser.uid);
                 const canEdit = isAdmin && !isFin; 
@@ -591,19 +676,26 @@
         const stats = d.slots.map((s,i)=>({ ...s, idx:i, p:0, w:0, d:0, l:0, pts:0, sb:0 }));
         d.matches.forEach(m=>{
             if(m.res !== null){
-                stats[m.p1].p++; stats[m.p2].p++;
-                if(m.res===1) { stats[m.p1].w++; stats[m.p1].pts+=1; stats[m.p2].l++; }
-                else if(m.res===2) { stats[m.p2].w++; stats[m.p2].pts+=1; stats[m.p1].l++; }
-                else { stats[m.p1].d++; stats[m.p1].pts+=0.5; stats[m.p2].d++; stats[m.p2].pts+=0.5; }
+                if(m.isBye) {
+                    // Bye logic: Automatic win for p1
+                    stats[m.p1].p++; stats[m.p1].w++; stats[m.p1].pts+=1;
+                } else {
+                    stats[m.p1].p++; stats[m.p2].p++;
+                    if(m.res===1) { stats[m.p1].w++; stats[m.p1].pts+=1; stats[m.p2].l++; }
+                    else if(m.res===2) { stats[m.p2].w++; stats[m.p2].pts+=1; stats[m.p1].l++; }
+                    else { stats[m.p1].d++; stats[m.p1].pts+=0.5; stats[m.p2].d++; stats[m.p2].pts+=0.5; }
+                }
             }
         });
+        // Sonneborn-Berger Calculation
         d.matches.forEach(m=>{
-            if(m.res !== null){
+            if(m.res !== null && !m.isBye){
                 if(m.res===1) stats[m.p1].sb += stats[m.p2].pts; 
                 else if(m.res===2) stats[m.p2].sb += stats[m.p1].pts; 
                 else { stats[m.p1].sb += 0.5 * stats[m.p2].pts; stats[m.p2].sb += 0.5 * stats[m.p1].pts; }
             }
         });
+        
         stats.sort((a,b)=> b.pts - a.pts || b.sb - a.sb || b.w - a.w);
         const b=document.getElementById('standingsBody'); b.innerHTML='';
         const isFin = d.status==='finished';
@@ -631,6 +723,44 @@
         });
     }
 
+    // SCREENSHOT LOGIC
+    window.downloadStandings = () => {
+        const element = document.getElementById("standingsContainer");
+        const originalBg = element.style.background;
+        const originalColor = element.style.color;
+        element.style.background = "#fff";
+        element.style.color = "#000";
+        
+        html2canvas(element, { scale: 2 }).then(canvas => {
+            const link = document.createElement("a");
+            link.download = `puan_durumu_${currentTournamentId}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            element.style.background = originalBg;
+            element.style.color = originalColor;
+        });
+    };
+
+    // RULES LOGIC
+    window.openRules = () => {
+        const isAdmin = currentTournamentData.creatorId === currentUser.uid;
+        document.getElementById('rulesText').value = currentTournamentData.rules || "";
+        document.getElementById('rulesReadOnly').innerText = currentTournamentData.rules || "Henüz kural eklenmedi.";
+        
+        document.getElementById('rulesText').style.display = isAdmin ? 'block' : 'none';
+        document.getElementById('btnSaveRules').style.display = isAdmin ? 'block' : 'none';
+        document.getElementById('rulesReadOnly').style.display = isAdmin ? 'none' : 'block';
+        
+        document.getElementById('rulesModal').style.display = 'flex';
+    };
+    window.closeRules = () => document.getElementById('rulesModal').style.display = 'none';
+    window.saveRules = async() => {
+        const txt = document.getElementById('rulesText').value;
+        await updateDoc(doc(db,"tournaments",currentTournamentId), { rules: txt });
+        closeRules();
+    };
+
+    // MODAL STATS
     window.showStats = (s) => {
         document.getElementById('modalAvatar').innerHTML = `<i class="fas ${s.avatar}"></i>`;
         document.getElementById('modalName').innerText = s.name;
@@ -644,30 +774,38 @@
         document.getElementById('statsModal').style.display = 'flex';
     };
     window.closeStats = () => document.getElementById('statsModal').style.display='none';
-    window.onclick = (e) => { if(e.target == document.getElementById('statsModal')) closeStats(); }
+    window.onclick = (e) => { 
+        if(e.target == document.getElementById('statsModal')) closeStats();
+        if(e.target == document.getElementById('rulesModal')) closeRules();
+    }
 
-    window.copyCode = () => { navigator.clipboard.writeText(document.getElementById('shareCode').innerText).then(()=>alert("Kopyalandı")); };
-    window.leaveTournament = () => { if(unsubscribeTournament) unsubscribeTournament(); if(unsubscribeChat) unsubscribeChat(); currentTournamentId=null; hideChat(); switchView('view-dashboard'); };
+    window.copyCode = () => { navigator.clipboard.writeText(document.getElementById('shareCode').innerText).then(()=>alert("Kod kopyalandı!")); };
+    
+    // Hide rules and chat buttons when leaving
+    window.leaveTournament = () => { 
+        if(unsubscribeTournament) unsubscribeTournament(); 
+        if(unsubscribeChat) unsubscribeChat(); 
+        currentTournamentId=null; 
+        hideChat(); 
+        document.getElementById('rulesBtn').style.display='none'; // Hide Rules
+        switchView('view-dashboard'); 
+    };
+
     function switchView(id){ document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById(id).classList.add('active'); }
     window.showTab = (t) => { document.getElementById('tab-fixtures').style.display=t==='fixtures'?'block':'none'; document.getElementById('tab-standings').style.display=t==='standings'?'block':'none'; };
     window.openSettings = () => { renderAvatars('settingsAvatarGrid','settingsSelectedAvatar'); document.getElementById('settingsNameInput').value=currentUser.displayName; switchView('view-settings'); };
     
-    // SAVE SETTINGS FIX (LOADING STATE)
     window.saveSettings = async() => { 
         const btn = document.getElementById('btnSaveSettings');
-        const oldText = btn.innerText;
-        btn.disabled = true;
         btn.innerText = "KAYDEDİLİYOR...";
         try {
             await updateProfile(currentUser,{displayName:document.getElementById('settingsNameInput').value, photoURL:document.getElementById('settingsSelectedAvatar').value}); 
             switchView('view-dashboard'); 
         } catch(e){ alert(e.message); }
-        finally {
-            btn.disabled = false;
-            btn.innerText = oldText;
-        }
+        finally { btn.innerText = "KAYDET"; }
     };
     
+    // CHAT
     const cw=document.getElementById('chatWidget'), cb=document.getElementById('chatToggleBtn');
     cb.onclick=()=>{ cw.style.display='flex'; cb.style.display='none'; document.getElementById('chatBadge').style.display='none'; scrollChat(); };
     window.hideChat=()=>{ cw.style.display='none'; if(currentTournamentId) cb.style.display='flex'; };
