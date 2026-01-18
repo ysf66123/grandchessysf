@@ -98,7 +98,6 @@
         .slot-item.me { border-bottom-color: var(--accent); background: rgba(0, 242, 255, 0.05); }
         .kick-btn { position: absolute; top: 5px; right: 5px; background: transparent; color: var(--danger); border: none; font-size: 1rem; cursor: pointer; padding: 5px; }
         
-        /* Leave Seat Button inside slot */
         .leave-seat-btn { margin-top: 5px; font-size: 0.7rem; padding: 4px 8px; border: 1px solid var(--danger); color: var(--danger); background: transparent; border-radius: 4px; cursor: pointer; }
         .leave-seat-btn:hover { background: var(--danger); color: white; }
 
@@ -146,7 +145,8 @@
         .close-modal { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
 
         /* CHAT & FLOATING BUTTONS */
-        .floating-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+        /* Varsayılan olarak GİZLİ (display: none) */
+        .floating-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: none; flex-direction: column; gap: 10px; align-items: flex-end; }
         
         .float-btn { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: transform 0.2s; border: none; }
         .float-btn:hover { transform: scale(1.1); }
@@ -787,11 +787,24 @@
         if(unsubscribeChat) unsubscribeChat(); 
         currentTournamentId=null; 
         hideChat(); 
-        document.getElementById('rulesBtn').style.display='none'; // Hide Rules
         switchView('view-dashboard'); 
     };
 
-    function switchView(id){ document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+    function switchView(id){ 
+        document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); 
+        document.getElementById(id).classList.add('active'); 
+
+        // Floating Buttons Visibility Logic
+        const floatNav = document.querySelector('.floating-container');
+        if(id === 'view-lobby' || id === 'view-tournament'){
+            floatNav.style.display = 'flex';
+        } else {
+            floatNav.style.display = 'none';
+            document.getElementById('chatWidget').style.display = 'none'; // Close chat window if open
+            document.getElementById('chatToggleBtn').style.display = 'flex'; // Reset toggle state inside container
+        }
+    }
+    
     window.showTab = (t) => { document.getElementById('tab-fixtures').style.display=t==='fixtures'?'block':'none'; document.getElementById('tab-standings').style.display=t==='standings'?'block':'none'; };
     window.openSettings = () => { renderAvatars('settingsAvatarGrid','settingsSelectedAvatar'); document.getElementById('settingsNameInput').value=currentUser.displayName; switchView('view-settings'); };
     
