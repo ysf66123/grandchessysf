@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -773,9 +772,10 @@
         {id:28000011, n:"Tornado", e:3, r:"epic", t:"spell", role:"utility"},
         {id:28000012, n:"Clone", e:3, r:"epic", t:"spell", role:"utility"},
         {id:28000013, n:"Earthquake", e:3, r:"rare", t:"spell", role:"big_spell"},
-        {id:28000014, n:"Barbarian Barrel", e:2, r:"epic", t:"spell", role:"small_spell"},
-        {id:28000017, n:"Giant Snowball", e:2, r:"common", t:"spell", role:"small_spell"}, // FIXED ID
-        {id:28000018, n:"Royal Delivery", e:3, r:"common", t:"spell", role:"defense"}, // FIXED ID
+        {id:28000014, n:"Barbarian Barrel", e:2, r:"epic", t:"spell", role:"small_spell"}, // REMOVED (Old Heal Spell ID conflict) - NO, wait. 28000015 IS BARB BARREL.
+        {id:28000015, n:"Barbarian Barrel", e:2, r:"epic", t:"spell", role:"small_spell"}, // CORRECTED ID
+        {id:28000017, n:"Giant Snowball", e:2, r:"common", t:"spell", role:"small_spell"}, // CORRECTED ID
+        {id:28000018, n:"Royal Delivery", e:3, r:"common", t:"spell", role:"defense"}, // CORRECTED ID
 
         // --- BUILDINGS ---
         {id:27000000, n:"Cannon", e:3, r:"common", t:"building", role:"defense"},
@@ -1113,7 +1113,13 @@
         const idString = currentCRDeck.map(c => c.id).join(';');
         const deepLink = `https://link.clashroyale.com/deck/en?deck=${idString}`;
         
-        window.open(deepLink, '_blank');
+        // window.open ve window.location.href birlikte kullanımı (Mobile compatibility)
+        if(navigator.userAgent.match(/iPhone|iPad|iPod|Android/i)) {
+             window.location.href = deepLink;
+        } else {
+             window.open(deepLink, '_blank');
+        }
+        
         showToast("Clash Royale açılıyor...", "success");
     };
 
