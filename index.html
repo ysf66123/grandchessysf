@@ -1,3 +1,5 @@
+<!-- START OF FILE index.html -->
+
 <!-- START OF FILE text/html -->
 
 <!DOCTYPE html>
@@ -1017,18 +1019,28 @@
         
         let deck = [];
         let deckIds = new Set();
+        let hasChampion = false;
 
         const addCard = (pool) => {
-            const available = pool.filter(c => !deckIds.has(c.id));
+            const available = pool.filter(c => {
+                if(deckIds.has(c.id)) return false;
+                if(hasChampion && c.r === 'champion') return false; 
+                return true;
+            });
+
             if(available.length === 0) return null;
+            
             const card = available[Math.floor(Math.random() * available.length)];
+            
+            if(card.r === 'champion') hasChampion = true;
+
             deck.push(card);
             deckIds.add(card.id);
             return card;
         };
 
         // 1. ADIM: Kazanma Koşulu Seç
-        const wc = addCard(winConditions);
+        addCard(winConditions);
         
         // 2. ADIM: Küçük Büyü
         addCard(smallSpells);
@@ -1051,7 +1063,7 @@
                 const added = addCard(cycles);
                 if(!added) addCard(crData); // Fallback
             } else {
-                // Genel havuzdan sinerji kartı ekle (basit random)
+                // Genel havuzdan sinerji kartı ekle
                 addCard(crData);
             }
         }
