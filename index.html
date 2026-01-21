@@ -668,9 +668,9 @@
     const navSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3");
     navSound.volume = 0.3;
 
-    // --- CLASH ROYALE VERİ TABANI (GÜNCEL ID'LER) ---
+    // --- CLASH ROYALE VERİ TABANI (DOĞRULANMIŞ & TEMİZLENMİŞ) ---
     const crData = [
-        // --- COMMON (Sıradan) ---
+        // --- COMMON ---
         {id:26000000, n:"Knight", e:3, r:"common", t:"troop", role:"mini_tank"},
         {id:26000001, n:"Archers", e:3, r:"common", t:"troop", role:"anti_air"},
         {id:26000002, n:"Goblins", e:2, r:"common", t:"troop", role:"cycle"},
@@ -738,20 +738,18 @@
         {id:26000064, n:"Firecracker", e:3, r:"common", t:"troop", role:"anti_air"},
         {id:26000065, n:"Elixir Golem", e:3, r:"rare", t:"troop", role:"win_condition"},
         {id:26000066, n:"Battle Healer", e:4, r:"rare", t:"troop", role:"mini_tank"},
-        
-        // Corrected IDs for Champions and Spirits
         {id:26000069, n:"Skeleton King", e:4, r:"champion", t:"troop", role:"tank"},
-        {id:26000074, n:"Golden Knight", e:4, r:"champion", t:"troop", role:"mini_tank"},
         {id:26000072, n:"Archer Queen", e:5, r:"champion", t:"troop", role:"anti_air"},
-        {id:26000085, n:"Mighty Miner", e:4, r:"champion", t:"troop", role:"tank_killer"},
+        {id:26000074, n:"Golden Knight", e:4, r:"champion", t:"troop", role:"mini_tank"},
         {id:26000080, n:"Skeleton Dragons", e:4, r:"common", t:"troop", role:"anti_air"},
-        {id:26000083, n:"Mother Witch", e:4, r:"legendary", t:"troop", role:"support"}, // Correct ID
-        {id:26000084, n:"Electro Spirit", e:1, r:"common", t:"troop", role:"cycle"}, // Correct ID
+        {id:26000083, n:"Mother Witch", e:4, r:"legendary", t:"troop", role:"support"},
+        {id:26000084, n:"Electro Spirit", e:1, r:"common", t:"troop", role:"cycle"},
+        {id:26000085, n:"Mighty Miner", e:4, r:"champion", t:"troop", role:"tank_killer"},
+        {id:26000088, n:"Monk", e:5, r:"champion", t:"troop", role:"tank"},
         {id:26000093, n:"Little Prince", e:3, r:"champion", t:"troop", role:"anti_air"},
         {id:26000087, n:"Phoenix", e:4, r:"legendary", t:"troop", role:"anti_air"},
-        {id:26000088, n:"Monk", e:5, r:"champion", t:"troop", role:"tank"},
-
-        // --- SPELLS (Büyüler) ---
+        
+        // --- SPELLS ---
         {id:28000000, n:"Fireball", e:4, r:"rare", t:"spell", role:"big_spell"},
         {id:28000001, n:"Arrows", e:3, r:"common", t:"spell", role:"small_spell"},
         {id:28000002, n:"Rage", e:2, r:"epic", t:"spell", role:"small_spell"},
@@ -767,11 +765,11 @@
         {id:28000012, n:"Clone", e:3, r:"epic", t:"spell", role:"utility"},
         {id:28000013, n:"Earthquake", e:3, r:"rare", t:"spell", role:"big_spell"},
         {id:28000014, n:"Barbarian Barrel", e:2, r:"epic", t:"spell", role:"small_spell"},
-        {id:26000068, n:"Heal Spirit", e:1, r:"rare", t:"troop", role:"cycle"}, // FIXED: Heal Spirit is a TROOP (26...) not Spell (28...)
+        {id:26000068, n:"Heal Spirit", e:1, r:"rare", t:"troop", role:"cycle"}, // FIXED (Was wrongly ID'd as spell 28...)
         {id:28000016, n:"Giant Snowball", e:2, r:"common", t:"spell", role:"small_spell"},
         {id:28000017, n:"Royal Delivery", e:3, r:"common", t:"spell", role:"defense"},
         
-        // --- BUILDINGS (Binalar) ---
+        // --- BUILDINGS ---
         {id:27000000, n:"Cannon", e:3, r:"common", t:"building", role:"defense"},
         {id:27000001, n:"Goblin Hut", e:5, r:"rare", t:"building", role:"spawner"},
         {id:27000002, n:"Mortar", e:4, r:"common", t:"building", role:"win_condition"},
