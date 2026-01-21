@@ -1,9 +1,11 @@
+<!-- START OF FILE text/html -->
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Grandmaster Pro | Ultimate Chess Manager</title>
+    <title>Grandmaster Pro | Ultimate Chess & Game Manager</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -38,6 +40,13 @@
             --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
             --font: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             --rank1-bg: rgba(255, 215, 0, 0.15);
+            
+            /* CLASH ROYALE RENKLERİ */
+            --cr-common: #6c8aba;
+            --cr-rare: #ffb02e;
+            --cr-epic: #b634e6;
+            --cr-legendary: linear-gradient(135deg, #38e4ff, #ff38e4);
+            --cr-champion: linear-gradient(135deg, #ffd700, #ff8c00);
         }
 
         [data-theme="light"] {
@@ -146,6 +155,81 @@
             text-align: center; transition: 0.3s;
         }
         .dash-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); border-color: var(--primary); }
+
+        /* --- CLASH ROYALE STYLES --- */
+        .cr-deck-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .cr-card {
+            position: relative;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            aspect-ratio: 0.75;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 2px solid #555;
+            overflow: hidden;
+        }
+        .cr-card:hover { transform: scale(1.05); z-index: 10; }
+        .cr-card img { width: 100%; height: 100%; object-fit: cover; }
+        .cr-elixir {
+            position: absolute;
+            top: -5px; left: -5px;
+            width: 25px; height: 25px;
+            background: #d0006f; /* Elixir Pink */
+            border: 2px solid #fff;
+            color: #fff;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 0.8rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            z-index: 5;
+        }
+        .cr-card-name {
+            position: absolute;
+            bottom: 0; width: 100%;
+            background: rgba(0,0,0,0.7);
+            font-size: 0.7rem;
+            color: #fff;
+            text-align: center;
+            padding: 2px 0;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        
+        /* Rarities */
+        .rarity-common { border-color: var(--cr-common); box-shadow: inset 0 0 10px rgba(108, 138, 186, 0.3); }
+        .rarity-rare { border-color: var(--cr-rare); box-shadow: inset 0 0 10px rgba(255, 176, 46, 0.3); }
+        .rarity-epic { border-color: var(--cr-epic); box-shadow: inset 0 0 10px rgba(182, 52, 230, 0.3); }
+        .rarity-legendary { 
+            border: 2px solid transparent; 
+            background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), var(--cr-legendary);
+            background-origin: border-box; background-clip: content-box, border-box;
+            box-shadow: 0 0 10px rgba(255, 56, 228, 0.3);
+        }
+        .rarity-champion { 
+            border: 2px solid transparent;
+            background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), var(--cr-champion);
+            background-origin: border-box; background-clip: content-box, border-box;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        .avg-elixir {
+            background: #d0006f;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-flex; align-items: center; gap: 5px;
+            box-shadow: 0 5px 15px rgba(208, 0, 111, 0.4);
+            border: 2px solid rgba(255,255,255,0.3);
+        }
         
         .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
         .slot-item { 
@@ -268,6 +352,10 @@
             #chatWidget { width: 90%; right: 5%; bottom: 100px; }
             .avatar-grid { grid-template-columns: repeat(4, 1fr); }
             .app-container { padding: 15px; border-radius: 0; min-height: 100vh; border:none; }
+            .cr-deck-container { grid-template-columns: repeat(4, 1fr); gap: 5px; }
+            .cr-card { aspect-ratio: 0.7; }
+            .cr-elixir { width: 20px; height: 20px; font-size: 0.6rem; }
+            .cr-card-name { font-size: 0.5rem; }
         }
     </style>
 </head>
@@ -292,7 +380,7 @@
     <div id="view-auth" class="view active">
         <div style="max-width: 400px; margin: 30px auto; text-align: center;">
             <h1 style="font-size: 2.5rem; text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);">Grandmaster</h1>
-            <p style="color:var(--text-muted); margin-bottom:30px;">Professional Chess Manager</p>
+            <p style="color:var(--text-muted); margin-bottom:30px;">Professional Game Manager</p>
             
             <div class="dash-card">
                 <input type="email" id="emailInput" placeholder="E-posta Adresi">
@@ -318,7 +406,7 @@
         </div>
         <div class="dashboard-grid">
             <div class="dash-card">
-                <h3><i class="fas fa-plus-circle"></i> Yeni Turnuva</h3>
+                <h3><i class="fas fa-chess"></i> Turnuva Modu</h3>
                 <input type="text" id="newTournamentName" placeholder="Turnuva Adı (Örn: Haftalık Yıldırım)">
                 <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:15px;">
                     <label style="color:var(--text-muted)">Oyuncu:</label>
@@ -326,24 +414,72 @@
                         <option value="4">4 Kişi</option>
                         <option value="5">5 Kişi</option>
                         <option value="6">6 Kişi</option>
-                        <option value="7">7 Kişi</option>
                         <option value="8">8 Kişi</option>
-                        <option value="10">10 Kişi</option>
                         <option value="12">12 Kişi</option>
                     </select>
                 </div>
                 <button id="btnCreateTournament" style="width:100%">OLUŞTUR</button>
             </div>
-            <div class="dash-card">
-                <h3><i class="fas fa-sign-in-alt"></i> Katıl</h3>
-                <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:10px;">Arkadaşından aldığın kodu gir:</p>
-                <input type="text" id="joinCodeInput" placeholder="KOD (Örn: A7X2B)" style="text-align:center; letter-spacing:3px; font-weight:bold; text-transform:uppercase;">
-                <button id="btnJoinTournament" class="secondary" style="width:100%">GİRİŞ YAP</button>
+            
+            <div style="display:flex; flex-direction:column; gap:20px;">
+                <div class="dash-card" style="flex:1;">
+                    <h3><i class="fas fa-sign-in-alt"></i> Katıl</h3>
+                    <input type="text" id="joinCodeInput" placeholder="KOD (Örn: A7X2B)" style="text-align:center; letter-spacing:3px; font-weight:bold; text-transform:uppercase;">
+                    <button id="btnJoinTournament" class="secondary" style="width:100%">GİRİŞ YAP</button>
+                </div>
+                
+                <!-- YENİ CLASH ROYALE BUTONU -->
+                <div class="dash-card" style="padding:15px; background:linear-gradient(135deg, rgba(0,0,0,0.5), rgba(56, 228, 255, 0.1)); border:1px solid #38e4ff;">
+                    <h3 style="color:#38e4ff; margin-bottom:5px; font-size:1.1rem;"><i class="fas fa-crown"></i> Clash Royale</h3>
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Yapay zeka destekli deste üreticisi</p>
+                    <button onclick="openClashGenerator()" style="width:100%; background:linear-gradient(90deg, #38e4ff, #007bff); color:white;">DESTE OLUŞTUR</button>
+                </div>
             </div>
         </div>
         <div style="margin-top:30px;">
             <h3 style="font-size:1rem; border-bottom:1px solid var(--glass-border); padding-bottom:5px;">Turnuvalarım</h3>
             <div id="myTournamentsList" class="history-list"></div>
+        </div>
+    </div>
+
+    <!-- CLASH ROYALE VIEW -->
+    <div id="view-clash" class="view">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <img src="https://cdn-icons-png.flaticon.com/512/2619/2619226.png" style="width:40px;">
+                <div>
+                    <h2 style="margin:0; font-size:1.4rem; color:#38e4ff; text-shadow:0 0 10px rgba(56,228,255,0.4);">Deste Ustası</h2>
+                    <span style="font-size:0.8rem; color:var(--text-muted);">Akıllı Deste Oluşturucu</span>
+                </div>
+            </div>
+            <button class="secondary icon-btn" onclick="switchView('view-dashboard')"><i class="fas fa-arrow-left"></i></button>
+        </div>
+
+        <div class="dash-card" style="max-width:800px; margin:0 auto; position:relative; overflow:hidden;">
+            <div style="position:absolute; top:-20px; right:-20px; width:150px; height:150px; background:radial-gradient(circle, rgba(56,228,255,0.1) 0%, transparent 70%); border-radius:50%;"></div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <div class="avg-elixir">
+                    <i class="fas fa-tint"></i> <span id="crAvgElixir">0.0</span>
+                </div>
+                <div style="font-size:0.8rem; color:var(--text-muted); font-style:italic;" id="deckArchetype">Dengeli</div>
+            </div>
+
+            <div class="cr-deck-container" id="crDeckGrid">
+                <!-- Kartlar Buraya Gelecek -->
+            </div>
+
+            <div style="margin-top:25px; display:flex; gap:15px; flex-wrap:wrap;">
+                <button onclick="generateSmartDeck()" style="flex:2; font-size:1.1rem; background:linear-gradient(45deg, #FFD700, #ff8c00); color:black; border:none; box-shadow:0 0 20px rgba(255, 215, 0, 0.3);">
+                    <i class="fas fa-magic"></i> RASTGELE OLUŞTUR
+                </button>
+                <button id="btnCopyCR" onclick="copyToCR()" style="flex:1; background:#007bff; color:white; display:none;">
+                    <i class="fas fa-gamepad"></i> OYUNDA AÇ
+                </button>
+            </div>
+            <div id="copyInstructions" style="margin-top:10px; font-size:0.8rem; color:var(--text-muted); display:none;">
+                <i class="fas fa-info-circle"></i> "Oyunda Aç" butonuna tıkladığında Clash Royale açılır ve deste kopyalanır.
+            </div>
         </div>
     </div>
 
@@ -394,16 +530,12 @@
                 <h2 id="activeTournamentTitle" style="margin:0; font-size:1.2rem;">Turnuva</h2>
             </div>
             <div style="display:flex; gap:5px; align-items:center;">
-                <!-- OTO BİTİR BUTONU -->
                 <button id="btnAutoFinish" onclick="autoFinishFixture()" style="display:none; padding:5px 10px; font-size:0.8rem; margin-right:5px; background:var(--magic); color:#fff;" title="Eksik Maçları Akıllı Tamamla">
                     <i class="fas fa-magic"></i> OTO BİTİR
                 </button>
-
-                <!-- MANUEL MAC EKLEME BUTONU -->
                 <button id="btnAddMatchManual" onclick="addMatchManual()" style="display:none; padding:5px 10px; font-size:0.8rem; margin-right:5px; background:var(--success); color:#fff;">
                     <i class="fas fa-plus"></i> MAÇ EKLE
                 </button>
-                
                 <button id="btnFinishTournament" class="danger-btn" style="display:none; padding:5px 10px; font-size:0.8rem;">BİTİR</button>
                 <button class="secondary icon-btn" onclick="leaveTournamentConfirm()"><i class="fas fa-home"></i></button>
             </div>
@@ -438,7 +570,7 @@
 
 </div>
 
-<!-- Diğer Modallar -->
+<!-- Modallar -->
 <div id="rulesModal" class="modal-overlay">
     <div class="modal-content glass-panel" style="text-align:left;">
         <span class="close-modal" onclick="closeRules()">×</span>
@@ -495,8 +627,10 @@
     import autoAnimate from 'https://cdn.jsdelivr.net/npm/@formkit/auto-animate/index.min.js';
     const standingsBody = document.getElementById('standingsBody');
     const lobbySlots = document.getElementById('lobbySlots');
+    const crDeckGrid = document.getElementById('crDeckGrid');
     autoAnimate(standingsBody);
     autoAnimate(lobbySlots);
+    autoAnimate(crDeckGrid);
 </script>
 
 <script type="module">
@@ -506,6 +640,7 @@
     import { getFirestore, collection, addDoc, setDoc, doc, onSnapshot, updateDoc, query, orderBy, serverTimestamp, deleteDoc, where, arrayUnion, arrayRemove, getDocs } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+    // --- FIREBASE CONFIG (SİZİN CONFIG) ---
     const firebaseConfig = {
       apiKey: "AIzaSyDtLQivXHDK0kGkATb9RiDuLCibFPZ8Qyw",
       authDomain: "chess-14580.firebaseapp.com",
@@ -530,11 +665,128 @@
     
     // SESLER
     const realSound = new Audio("https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3");
-    // Yeni Navigasyon Sesi (Click)
     const navSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3");
     navSound.volume = 0.3;
 
-    // --- HELPERS ---
+    // --- CLASH ROYALE VERİ TABANI (TÜM KARTLAR) ---
+    // IDs are official Supercell API IDs for Deep Linking
+    const crData = [
+        // --- COMMON (Sıradan) ---
+        {id:26000000, n:"Knight", e:3, r:"common", t:"troop", role:"mini_tank"},
+        {id:26000001, n:"Archers", e:3, r:"common", t:"troop", role:"anti_air"},
+        {id:26000002, n:"Goblins", e:2, r:"common", t:"troop", role:"cycle"},
+        {id:26000003, n:"Giant", e:5, r:"rare", t:"troop", role:"win_condition"}, 
+        {id:26000004, n:"P.E.K.K.A", e:7, r:"epic", t:"troop", role:"tank_killer"},
+        {id:26000005, n:"Minions", e:3, r:"common", t:"troop", role:"anti_air"},
+        {id:26000006, n:"Balloon", e:5, r:"epic", t:"troop", role:"win_condition"},
+        {id:26000007, n:"Witch", e:5, r:"epic", t:"troop", role:"support"},
+        {id:26000008, n:"Barbarians", e:5, r:"common", t:"troop", role:"tank_killer"},
+        {id:26000009, n:"Golem", e:8, r:"epic", t:"troop", role:"win_condition"},
+        {id:26000010, n:"Skeletons", e:1, r:"common", t:"troop", role:"cycle"},
+        {id:26000011, n:"Valkyrie", e:4, r:"rare", t:"troop", role:"mini_tank"},
+        {id:26000012, n:"Skeleton Army", e:3, r:"epic", t:"troop", role:"swarm"},
+        {id:26000013, n:"Bomber", e:2, r:"common", t:"troop", role:"support"},
+        {id:26000014, n:"Musketeer", e:4, r:"rare", t:"troop", role:"anti_air"},
+        {id:26000015, n:"Baby Dragon", e:4, r:"epic", t:"troop", role:"anti_air"},
+        {id:26000016, n:"Prince", e:5, r:"epic", t:"troop", role:"mini_tank"},
+        {id:26000017, n:"Wizard", e:5, r:"rare", t:"troop", role:"anti_air"},
+        {id:26000018, n:"Mini P.E.K.K.A", e:4, r:"rare", t:"troop", role:"tank_killer"},
+        {id:26000019, n:"Spear Goblins", e:2, r:"common", t:"troop", role:"anti_air"},
+        {id:26000020, n:"Giant Skeleton", e:6, r:"epic", t:"troop", role:"tank"},
+        {id:26000021, n:"Hog Rider", e:4, r:"rare", t:"troop", role:"win_condition"},
+        {id:26000022, n:"Minion Horde", e:5, r:"common", t:"troop", role:"swarm"},
+        {id:26000023, n:"Ice Wizard", e:3, r:"legendary", t:"troop", role:"defense"},
+        {id:26000024, n:"Royal Giant", e:6, r:"common", t:"troop", role:"win_condition"},
+        {id:26000025, n:"Guards", e:3, r:"epic", t:"troop", role:"defense"},
+        {id:26000026, n:"Princess", e:3, r:"legendary", t:"troop", role:"anti_air"},
+        {id:26000027, n:"Dark Prince", e:4, r:"epic", t:"troop", role:"mini_tank"},
+        {id:26000028, n:"Three Musketeers", e:9, r:"rare", t:"troop", role:"win_condition"},
+        {id:26000029, n:"Lava Hound", e:7, r:"legendary", t:"troop", role:"win_condition"},
+        {id:26000030, n:"Ice Spirit", e:1, r:"common", t:"troop", role:"cycle"},
+        {id:26000031, n:"Fire Spirit", e:1, r:"common", t:"troop", role:"cycle"},
+        {id:26000032, n:"Miner", e:3, r:"legendary", t:"troop", role:"win_condition"},
+        {id:26000033, n:"Sparky", e:6, r:"legendary", t:"troop", role:"win_condition"},
+        {id:26000034, n:"Bowler", e:5, r:"epic", t:"troop", role:"defense"},
+        {id:26000035, n:"Lumberjack", e:4, r:"legendary", t:"troop", role:"tank_killer"},
+        {id:26000036, n:"Battle Ram", e:4, r:"rare", t:"troop", role:"win_condition"},
+        {id:26000037, n:"Inferno Dragon", e:4, r:"legendary", t:"troop", role:"tank_killer"},
+        {id:26000038, n:"Ice Golem", e:2, r:"rare", t:"troop", role:"mini_tank"},
+        {id:26000039, n:"Mega Minion", e:3, r:"rare", t:"troop", role:"anti_air"},
+        {id:26000040, n:"Dart Goblin", e:3, r:"rare", t:"troop", role:"anti_air"},
+        {id:26000041, n:"Goblin Gang", e:3, r:"common", t:"troop", role:"swarm"},
+        {id:26000042, n:"Electro Wizard", e:4, r:"legendary", t:"troop", role:"anti_air"},
+        {id:26000043, n:"Elite Barbarians", e:6, r:"common", t:"troop", role:"win_condition"},
+        {id:26000044, n:"Hunter", e:4, r:"epic", t:"troop", role:"tank_killer"},
+        {id:26000045, n:"Executioner", e:5, r:"epic", t:"troop", role:"anti_air"},
+        {id:26000046, n:"Bandit", e:3, r:"legendary", t:"troop", role:"mini_tank"},
+        {id:26000047, n:"Royal Recruits", e:7, r:"common", t:"troop", role:"defense"},
+        {id:26000048, n:"Night Witch", e:4, r:"legendary", t:"troop", role:"support"},
+        {id:26000049, n:"Bats", e:2, r:"common", t:"troop", role:"cycle"},
+        {id:26000050, n:"Royal Ghost", e:3, r:"legendary", t:"troop", role:"mini_tank"},
+        {id:26000051, n:"Ram Rider", e:5, r:"legendary", t:"troop", role:"win_condition"},
+        {id:26000052, n:"Zappies", e:4, r:"rare", t:"troop", role:"defense"},
+        {id:26000053, n:"Rascals", e:5, r:"common", t:"troop", role:"defense"},
+        {id:26000054, n:"Cannon Cart", e:5, r:"epic", t:"troop", role:"mini_tank"},
+        {id:26000055, n:"Mega Knight", e:7, r:"legendary", t:"troop", role:"tank"},
+        {id:26000056, n:"Skeleton Barrel", e:3, r:"common", t:"troop", role:"win_condition"},
+        {id:26000057, n:"Flying Machine", e:4, r:"rare", t:"troop", role:"anti_air"},
+        {id:26000058, n:"Wall Breakers", e:2, r:"epic", t:"troop", role:"win_condition"},
+        {id:26000059, n:"Royal Hogs", e:5, r:"rare", t:"troop", role:"win_condition"},
+        {id:26000060, n:"Goblin Giant", e:6, r:"epic", t:"troop", role:"win_condition"},
+        {id:26000061, n:"Fisherman", e:3, r:"legendary", t:"troop", role:"defense"},
+        {id:26000062, n:"Magic Archer", e:4, r:"legendary", t:"troop", role:"anti_air"},
+        {id:26000063, n:"Electro Dragon", e:5, r:"epic", t:"troop", role:"anti_air"},
+        {id:26000064, n:"Firecracker", e:3, r:"common", t:"troop", role:"anti_air"},
+        {id:26000065, n:"Elixir Golem", e:3, r:"rare", t:"troop", role:"win_condition"},
+        {id:26000066, n:"Battle Healer", e:4, r:"rare", t:"troop", role:"mini_tank"},
+        {id:26000067, n:"Skeleton King", e:4, r:"champion", t:"troop", role:"tank"},
+        {id:26000068, n:"Golden Knight", e:4, r:"champion", t:"troop", role:"mini_tank"},
+        {id:26000069, n:"Archer Queen", e:5, r:"champion", t:"troop", role:"anti_air"},
+        {id:26000072, n:"Mighty Miner", e:4, r:"champion", t:"troop", role:"tank_killer"},
+        {id:26000080, n:"Skeleton Dragons", e:4, r:"common", t:"troop", role:"anti_air"},
+        {id:26000084, n:"Mother Witch", e:4, r:"legendary", t:"troop", role:"support"},
+        {id:26000085, n:"Electro Spirit", e:1, r:"common", t:"troop", role:"cycle"},
+        {id:26000093, n:"Little Prince", e:3, r:"champion", t:"troop", role:"anti_air"},
+        {id:26000087, n:"Phoenix", e:4, r:"legendary", t:"troop", role:"anti_air"},
+        {id:26000088, n:"Monk", e:5, r:"champion", t:"troop", role:"tank"},
+
+        // --- SPELLS (Büyüler) ---
+        {id:28000000, n:"Fireball", e:4, r:"rare", t:"spell", role:"big_spell"},
+        {id:28000001, n:"Arrows", e:3, r:"common", t:"spell", role:"small_spell"},
+        {id:28000002, n:"Rage", e:2, r:"epic", t:"spell", role:"small_spell"},
+        {id:28000003, n:"Rocket", e:6, r:"rare", t:"spell", role:"big_spell"},
+        {id:28000004, n:"Goblin Barrel", e:3, r:"epic", t:"spell", role:"win_condition"},
+        {id:28000005, n:"Freeze", e:4, r:"epic", t:"spell", role:"utility"},
+        {id:28000006, n:"Lightning", e:6, r:"epic", t:"spell", role:"big_spell"},
+        {id:28000007, n:"Zap", e:2, r:"common", t:"spell", role:"small_spell"},
+        {id:28000008, n:"Poison", e:4, r:"epic", t:"spell", role:"big_spell"},
+        {id:28000009, n:"Graveyard", e:5, r:"legendary", t:"spell", role:"win_condition"},
+        {id:28000010, n:"The Log", e:2, r:"legendary", t:"spell", role:"small_spell"},
+        {id:28000011, n:"Tornado", e:3, r:"epic", t:"spell", role:"utility"},
+        {id:28000012, n:"Clone", e:3, r:"epic", t:"spell", role:"utility"},
+        {id:28000013, n:"Earthquake", e:3, r:"rare", t:"spell", role:"big_spell"},
+        {id:28000014, n:"Barbarian Barrel", e:2, r:"epic", t:"spell", role:"small_spell"},
+        {id:28000015, n:"Heal Spirit", e:1, r:"rare", t:"troop", role:"cycle"}, // Corrected ID type
+        {id:28000016, n:"Giant Snowball", e:2, r:"common", t:"spell", role:"small_spell"},
+        {id:28000017, n:"Royal Delivery", e:3, r:"common", t:"spell", role:"defense"},
+        
+        // --- BUILDINGS (Binalar) ---
+        {id:27000000, n:"Cannon", e:3, r:"common", t:"building", role:"defense"},
+        {id:27000001, n:"Goblin Hut", e:5, r:"rare", t:"building", role:"spawner"},
+        {id:27000002, n:"Mortar", e:4, r:"common", t:"building", role:"win_condition"},
+        {id:27000003, n:"Inferno Tower", e:5, r:"rare", t:"building", role:"tank_killer"},
+        {id:27000004, n:"Bomb Tower", e:4, r:"rare", t:"building", role:"defense"},
+        {id:27000005, n:"Barbarian Hut", e:7, r:"rare", t:"building", role:"spawner"},
+        {id:27000006, n:"Tesla", e:4, r:"common", t:"building", role:"defense"},
+        {id:27000007, n:"Elixir Collector", e:6, r:"rare", t:"building", role:"utility"},
+        {id:27000008, n:"X-Bow", e:6, r:"epic", t:"building", role:"win_condition"},
+        {id:27000009, n:"Tombstone", e:3, r:"rare", t:"building", role:"defense"},
+        {id:27000010, n:"Furnace", e:4, r:"rare", t:"building", role:"spawner"},
+        {id:27000011, n:"Goblin Cage", e:4, r:"rare", t:"building", role:"defense"},
+        {id:27000012, n:"Goblin Drill", e:4, r:"epic", t:"building", role:"win_condition"}
+    ];
+
+    // --- GENEL HELPERS ---
     window.showToast = (msg, type = "info") => {
         let bg = "#333";
         if(type === "success") bg = "linear-gradient(to right, #00b09b, #96c93d)";
@@ -744,6 +996,125 @@
         });
     }
 
+    // --- CLASH ROYALE LOGIC ---
+    let currentCRDeck = [];
+
+    window.openClashGenerator = () => {
+        if(soundEnabled) navSound.play().catch(()=>{});
+        switchView('view-clash');
+        if(currentCRDeck.length === 0) generateSmartDeck();
+    };
+
+    window.generateSmartDeck = () => {
+        if(soundEnabled) navSound.play().catch(()=>{});
+        
+        const winConditions = crData.filter(c => c.role === 'win_condition');
+        const smallSpells = crData.filter(c => c.role === 'small_spell');
+        const bigSpells = crData.filter(c => c.role === 'big_spell');
+        const antiAir = crData.filter(c => c.role === 'anti_air');
+        const buildings = crData.filter(c => c.t === 'building');
+        const tanks = crData.filter(c => c.role === 'tank' || c.role === 'mini_tank');
+        const cycles = crData.filter(c => c.role === 'cycle' || c.e <= 2);
+        
+        let deck = [];
+        let deckIds = new Set();
+
+        const addCard = (pool) => {
+            const available = pool.filter(c => !deckIds.has(c.id));
+            if(available.length === 0) return null;
+            const card = available[Math.floor(Math.random() * available.length)];
+            deck.push(card);
+            deckIds.add(card.id);
+            return card;
+        };
+
+        // 1. ADIM: Kazanma Koşulu Seç
+        const wc = addCard(winConditions);
+        
+        // 2. ADIM: Küçük Büyü
+        addCard(smallSpells);
+
+        // 3. ADIM: Büyük Büyü
+        addCard(bigSpells);
+
+        // 4. ADIM: Hava Savunması
+        addCard(antiAir);
+
+        // 5. ADIM: Mini Tank veya Bina (Savunma)
+        if(Math.random() > 0.5) addCard(buildings);
+        else addCard(tanks);
+
+        // 6-7-8. ADIM: Deste maliyetine göre doldur
+        while(deck.length < 8) {
+            let avg = deck.reduce((a,b)=>a+b.e,0) / deck.length;
+            if(avg > 3.8) {
+                // Deste çok ağır, ucuz kart ekle
+                const added = addCard(cycles);
+                if(!added) addCard(crData); // Fallback
+            } else {
+                // Genel havuzdan sinerji kartı ekle (basit random)
+                addCard(crData);
+            }
+        }
+
+        // DOM Update
+        renderDeck(deck);
+    };
+
+    function renderDeck(deck) {
+        currentCRDeck = deck;
+        const grid = document.getElementById('crDeckGrid');
+        grid.innerHTML = '';
+        
+        let totalElixir = 0;
+        
+        deck.forEach(c => {
+            totalElixir += c.e;
+            
+            // ROYALE API GITHUB SOURCE (RELIABLE)
+            // Slugify Logic: "Mega Minion" -> "mega-minion", "P.E.K.K.A" -> "pekka"
+            const key = c.n.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
+            const imgUrl = `https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards-75/${key}.png`;
+            
+            const cardEl = document.createElement('div');
+            cardEl.className = `cr-card rarity-${c.r}`;
+            cardEl.innerHTML = `
+                <div class="cr-elixir">${c.e}</div>
+                <img src="${imgUrl}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1068/1068729.png'; this.style.filter='none';">
+                <div class="cr-card-name">${c.n}</div>
+            `;
+            grid.appendChild(cardEl);
+        });
+
+        const avg = (totalElixir / 8).toFixed(1);
+        document.getElementById('crAvgElixir').innerText = avg;
+        
+        // Arketip Tahmini
+        let type = "Dengeli";
+        if(avg < 3.0) type = "Hızlı Döngü (Cycle)";
+        else if(avg > 4.2) type = "Ağır Saldırı (Beatdown)";
+        else if(deck.some(c => c.n === "Miner" || c.n === "Goblin Barrel")) type = "Kontrol / Bait";
+        else if(deck.some(c => c.n === "X-Bow" || c.n === "Mortar")) type = "Kuşatma (Siege)";
+        
+        document.getElementById('deckArchetype').innerText = type;
+        
+        document.getElementById('btnCopyCR').style.display = 'block';
+        document.getElementById('copyInstructions').style.display = 'block';
+    }
+
+    window.copyToCR = () => {
+        if(currentCRDeck.length !== 8) return;
+        
+        // ID Listesini oluştur
+        const idString = currentCRDeck.map(c => c.id).join(';');
+        const deepLink = `https://link.clashroyale.com/deck/en?deck=${idString}`;
+        
+        // Yeni sekmede aç (Mobile'da uygulama açılır)
+        window.open(deepLink, '_blank');
+        showToast("Clash Royale açılıyor...", "success");
+    };
+
+    // --- EXISTING LOGIC ---
     window.claimSlot = async(i) => {
         const s=[...currentTournamentData.slots]; if(s[i].status!=='open') return;
         s[i]={ index:i, name:currentUser.displayName, ownerId:currentUser.uid, avatar:currentUser.photoURL||'fa-chess-pawn', status:'taken' };
@@ -1178,7 +1549,6 @@
         }
     };
 
-    // --- SMART AUTO FINISH (GREEDY COMPACT ALGORITHM) ---
     window.autoFinishFixture = async () => {
         if(!currentTournamentId || !currentTournamentData) return;
 
@@ -1198,12 +1568,10 @@
         const existingMatches = currentTournamentData.matches;
         const numPlayers = slots.length;
         
-        // 1. Oynanması Gereken Tüm Maçları Belirle (P1-P2 ile P2-P1 farklıdır)
         let neededMatches = [];
         for(let i=0; i<numPlayers; i++) {
             for(let j=0; j<numPlayers; j++) {
                 if(i !== j) {
-                    // Bu spesifik eşleşme var mı?
                     const exists = existingMatches.some(m => m.p1 === i && m.p2 === j);
                     if(!exists) {
                         neededMatches.push({p1: i, p2: j});
@@ -1217,23 +1585,18 @@
             return;
         }
 
-        // 2. Mevcut Turların Doluluk Haritasını Çıkar
-        // Key: Round, Value: Set of Player IDs
         let roundOccupancy = {};
-        
         existingMatches.forEach(m => {
             if(!roundOccupancy[m.r]) roundOccupancy[m.r] = new Set();
             roundOccupancy[m.r].add(m.p1);
             roundOccupancy[m.r].add(m.p2);
         });
 
-        // 3. Compact Fit: Her maçı mümkün olan EN ERKEN tura yerleştir
         let newMatches = [];
-        // Rastgele karıştır ki hep aynı kişiler arka arkaya gelmesin
         neededMatches.sort(() => Math.random() - 0.5);
 
         neededMatches.forEach(match => {
-            let assignedRound = 1; // Her zaman 1. Turdan kontrol etmeye başla
+            let assignedRound = 1;
             
             while(true) {
                 if(!roundOccupancy[assignedRound]) roundOccupancy[assignedRound] = new Set();
@@ -1242,7 +1605,6 @@
                 let p2Busy = roundOccupancy[assignedRound].has(match.p2);
 
                 if(!p1Busy && !p2Busy) {
-                    // Müsait! Yerleştir.
                     roundOccupancy[assignedRound].add(match.p1);
                     roundOccupancy[assignedRound].add(match.p2);
                     
@@ -1257,7 +1619,6 @@
                     });
                     break;
                 } else {
-                    // Dolu, bir sonraki tura bak
                     assignedRound++;
                 }
             }
@@ -1265,9 +1626,7 @@
 
         try {
             const finalMatches = [...existingMatches, ...newMatches];
-            // Maçları tur sırasına göre dizmek görsel açıdan iyidir (zorunlu değil ama şık durur)
             finalMatches.sort((a,b) => a.r - b.r);
-            
             await updateDoc(doc(db, "tournaments", currentTournamentId), { matches: finalMatches });
             showToast(`${newMatches.length} adet maç başarıyla planlandı!`, "success");
         } catch(e) {
