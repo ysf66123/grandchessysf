@@ -255,7 +255,7 @@
                     <span style="font-size:0.8rem; color:var(--text-muted);">Akıllı Deste Oluşturucu</span>
                 </div>
             </div>
-            <button class="secondary icon-btn" onclick="switchView('view-dashboard')"><i class="fas fa-arrow-left"></i></button>
+            <button class="secondary icon-btn" onclick="window.switchView('view-dashboard')"><i class="fas fa-arrow-left"></i></button>
         </div>
 
         <div class="dash-card" style="max-width:800px; margin:0 auto; position:relative; overflow:hidden;">
@@ -501,9 +501,7 @@
     function renderDeck(deck) { currentCRDeck = deck; const grid = document.getElementById('crDeckGrid'); grid.innerHTML = ''; let totalElixir = 0; deck.forEach(c => { totalElixir += c.e; const key = c.n.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-'); const imgUrl = `https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards-75/${key}.png`; const cardEl = document.createElement('div'); cardEl.className = `cr-card rarity-${c.r}`; cardEl.innerHTML = `<div class="cr-elixir">${c.e}</div><img src="${imgUrl}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1068/1068729.png'; this.style.filter='none';"><div class="cr-card-name">${c.n}</div>`; grid.appendChild(cardEl); }); const avg = (totalElixir / 8).toFixed(1); document.getElementById('crAvgElixir').innerText = avg; let type = "Dengeli"; if(avg < 3.0) type = "Hızlı Döngü (Cycle)"; else if(avg > 4.2) type = "Ağır Saldırı (Beatdown)"; else if(deck.some(c => c.n === "Miner" || c.n === "Goblin Barrel")) type = "Kontrol / Bait"; else if(deck.some(c => c.n === "X-Bow" || c.n === "Mortar")) type = "Kuşatma (Siege)"; document.getElementById('deckArchetype').innerText = type; document.getElementById('btnCopyCR').style.display = 'block'; document.getElementById('copyInstructions').style.display = 'block'; }
     
     // =========================================================================
-    // NİHAİ ÇÖZÜM FONKSİYONU
-    // Bu fonksiyon, gerekli "sihirli" parametreleri ekler ve linki en
-    // güvenilir yöntemle tetikler.
+    // NİHAİ ÇÖZÜM v2: SİTENİN YANINDA AÇMA VE GERİ BUTONU DÜZELTMELERİ
     // =========================================================================
     window.copyToCR = () => {
         if (!currentCRDeck || currentCRDeck.length !== 8) {
@@ -515,25 +513,30 @@
         // Gerekli doğrulama parametrelerini içeren, çalışan link yapısı:
         const finalLink = `https://link.clashroyale.com/en/?clashroyale://copyDeck?deck=${idString}&l=Royals&tt=159000000`;
 
-        // Mobil cihazlarda en güvenilir yöntem, dinamik olarak bir <a> etiketi
-        // oluşturup programatik olarak tıklamaktır. Bu, tarayıcıyı kandırarak
-        // bunun bir kullanıcı tıklaması olduğunu düşünmesini sağlar.
-        const linkElement = document.createElement('a');
-        linkElement.setAttribute('href', finalLink);
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         
-        // Görünmez olmasını sağla:
-        linkElement.style.display = 'none';
-
-        // Tıklanabilmesi için DOM'a eklenmesi gerekir:
-        document.body.appendChild(linkElement);
-
         showToast("Clash Royale açılıyor...", "success");
 
-        linkElement.click();
-
-        // İşlem bittikten sonra temizle:
-        document.body.removeChild(linkElement);
+        if (isMobile) {
+            // Mobil cihazlarda yeni sekmede açmayı deneriz. Bu, çoğu modern tarayıcıda
+            // hem oyunu açar hem de orijinal sekmeyi korur.
+            window.open(finalLink, '_blank');
+        } else {
+            // Masaüstü için zaten yeni sekmede açıyorduk.
+            window.open(finalLink, '_blank');
+        }
     };
+    
+    // Geri butonu için fonksiyonu global scope'a taşıyalım.
+    window.switchView = (id) => { 
+        if(soundEnabled) navSound.play().catch(()=>{});
+        
+        document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); 
+        document.getElementById(id).classList.add('active'); 
+        const floatNav = document.querySelector('.floating-container');
+        if(id === 'view-lobby' || id === 'view-tournament'){ floatNav.style.display = 'flex'; } 
+        else { floatNav.style.display = 'none'; document.getElementById('chatWidget').style.display = 'none'; document.getElementById('chatToggleBtn').style.display = 'flex'; }
+    }
     // =========================================================================
 
     window.enterTournament = (id) => { if(soundEnabled) navSound.play().catch(()=>{}); currentTournamentId = id; unsubscribeTournament = onSnapshot(doc(db,"tournaments",id), snap=>{ if(!snap.exists()) { showToast("Turnuva bulunamadı.", "error"); leaveTournament(); return; } const d=snap.data(); currentTournamentData=d; d.id=snap.id; document.getElementById('rulesBtn').style.display = 'flex'; if(d.status==='finished' && previousMatchesStr!=='finished') { confetti({particleCount:200, spread:100, origin:{y:0.6}, colors:['#d4af37', '#ffffff']}); Swal.fire({ title: 'Turnuva Bitti!', text: 'Şampiyon belli oldu.', icon: 'success', background: 'rgba(30,30,35,0.95)', color: '#fff', confirmButtonColor: '#d4af37' }); } const mStr=JSON.stringify(d.matches); if(previousMatchesStr && previousMatchesStr!==mStr && d.status==='active' && soundEnabled) realSound.play().catch(()=>{}); previousMatchesStr = (d.status==='finished') ? 'finished' : mStr; if(d.status==='lobby') { renderLobby(d); switchView('view-lobby'); } else { renderFixtures(d); renderStandings(d); switchView('view-tournament'); } }); initChat(id); };
@@ -551,7 +554,6 @@
     window.copyCode = () => { navigator.clipboard.writeText(document.getElementById('shareCode').innerText).then(()=>showToast("Kod kopyalandı!", "success")); };
     window.leaveTournamentConfirm = async () => { if(soundEnabled) navSound.play().catch(()=>{}); const res = await Swal.fire({ title: 'Çıkış?', text: 'Turnuva ekranından ayrılacaksın.', icon: 'question', showCancelButton: true, background: 'rgba(30,30,35,0.95)', color: '#fff', confirmButtonColor: '#555', cancelButtonColor: '#d33', confirmButtonText: 'Evet, Çık', cancelButtonText: 'Kal' }); if(res.isConfirmed) leaveTournament(); }
     window.leaveTournament = () => { if(unsubscribeTournament) unsubscribeTournament(); if(unsubscribeChat) unsubscribeChat(); currentTournamentId=null; hideChat(); switchView('view-dashboard'); };
-    function switchView(id){ if(soundEnabled) navSound.play().catch(()=>{}); document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById(id).classList.add('active'); const floatNav = document.querySelector('.floating-container'); if(id === 'view-lobby' || id === 'view-tournament'){ floatNav.style.display = 'flex'; } else { floatNav.style.display = 'none'; document.getElementById('chatWidget').style.display = 'none'; document.getElementById('chatToggleBtn').style.display = 'flex'; } }
     window.showTab = (t) => { if(soundEnabled) navSound.play().catch(()=>{}); document.getElementById('tab-fixtures').style.display=t==='fixtures'?'block':'none'; document.getElementById('tab-standings').style.display=t==='standings'?'block':'none'; };
     window.openSettings = () => { if(soundEnabled) navSound.play().catch(()=>{}); renderAvatars('settingsAvatarGrid','settingsSelectedAvatar'); document.getElementById('settingsNameInput').value=currentUser.displayName; switchView('view-settings'); };
     window.saveSettings = async() => { try { const newName = document.getElementById('settingsNameInput').value; const newAvatar = document.getElementById('settingsSelectedAvatar').value; await updateProfile(currentUser,{displayName:newName, photoURL:newAvatar}); const q = query(collection(db, "tournaments"), where("participantIds", "array-contains", currentUser.uid)); const querySnapshot = await getDocs(q); querySnapshot.forEach(async (docSnap) => { const tData = docSnap.data(); if(tData.status === 'finished') return; let updatedSlots = tData.slots.map(s => { if(s.ownerId === currentUser.uid) { return { ...s, name: newName, avatar: newAvatar }; } return s; }); if(JSON.stringify(updatedSlots) !== JSON.stringify(tData.slots)) { await updateDoc(doc(db, "tournaments", docSnap.id), { slots: updatedSlots }); } }); showToast("Profil ve aktif turnuvalar güncellendi!", "success"); switchView('view-dashboard'); } catch(e){ showToast(e.message, "error"); } };
