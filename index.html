@@ -1,6 +1,4 @@
-<!-- START OF FILE index.html -->
 
-<!-- START OF FILE text/html -->
 
 <!DOCTYPE html>
 <html lang="tr">
@@ -670,87 +668,96 @@
     const navSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3");
     navSound.volume = 0.3;
 
-    // --- CLASH ROYALE VERİ TABANI (DOĞRULANMIŞ & TEMİZLENMİŞ) ---
+    // --- CLASH ROYALE VERİ TABANI (VERIFIED & CLEANED IDs from RoyaleAPI) ---
     const crData = [
-        // --- COMMON ---
+        // --- TROOPS (COMMON) ---
         {id:26000000, n:"Knight", e:3, r:"common", t:"troop", role:"mini_tank"},
         {id:26000001, n:"Archers", e:3, r:"common", t:"troop", role:"anti_air"},
         {id:26000002, n:"Goblins", e:2, r:"common", t:"troop", role:"cycle"},
-        {id:26000003, n:"Giant", e:5, r:"rare", t:"troop", role:"win_condition"}, 
-        {id:26000004, n:"P.E.K.K.A", e:7, r:"epic", t:"troop", role:"tank_killer"},
         {id:26000005, n:"Minions", e:3, r:"common", t:"troop", role:"anti_air"},
-        {id:26000006, n:"Balloon", e:5, r:"epic", t:"troop", role:"win_condition"},
-        {id:26000007, n:"Witch", e:5, r:"epic", t:"troop", role:"support"},
         {id:26000008, n:"Barbarians", e:5, r:"common", t:"troop", role:"tank_killer"},
-        {id:26000009, n:"Golem", e:8, r:"epic", t:"troop", role:"win_condition"},
         {id:26000010, n:"Skeletons", e:1, r:"common", t:"troop", role:"cycle"},
-        {id:26000011, n:"Valkyrie", e:4, r:"rare", t:"troop", role:"mini_tank"},
-        {id:26000012, n:"Skeleton Army", e:3, r:"epic", t:"troop", role:"swarm"},
         {id:26000013, n:"Bomber", e:2, r:"common", t:"troop", role:"support"},
-        {id:26000014, n:"Musketeer", e:4, r:"rare", t:"troop", role:"anti_air"},
-        {id:26000015, n:"Baby Dragon", e:4, r:"epic", t:"troop", role:"anti_air"},
-        {id:26000016, n:"Prince", e:5, r:"epic", t:"troop", role:"mini_tank"},
-        {id:26000017, n:"Wizard", e:5, r:"rare", t:"troop", role:"anti_air"},
-        {id:26000018, n:"Mini P.E.K.K.A", e:4, r:"rare", t:"troop", role:"tank_killer"},
         {id:26000019, n:"Spear Goblins", e:2, r:"common", t:"troop", role:"anti_air"},
-        {id:26000020, n:"Giant Skeleton", e:6, r:"epic", t:"troop", role:"tank"},
-        {id:26000021, n:"Hog Rider", e:4, r:"rare", t:"troop", role:"win_condition"},
         {id:26000022, n:"Minion Horde", e:5, r:"common", t:"troop", role:"swarm"},
-        {id:26000023, n:"Ice Wizard", e:3, r:"legendary", t:"troop", role:"defense"},
         {id:26000024, n:"Royal Giant", e:6, r:"common", t:"troop", role:"win_condition"},
-        {id:26000025, n:"Guards", e:3, r:"epic", t:"troop", role:"defense"},
-        {id:26000026, n:"Princess", e:3, r:"legendary", t:"troop", role:"anti_air"},
-        {id:26000027, n:"Dark Prince", e:4, r:"epic", t:"troop", role:"mini_tank"},
-        {id:26000028, n:"Three Musketeers", e:9, r:"rare", t:"troop", role:"win_condition"},
-        {id:26000029, n:"Lava Hound", e:7, r:"legendary", t:"troop", role:"win_condition"},
         {id:26000030, n:"Ice Spirit", e:1, r:"common", t:"troop", role:"cycle"},
         {id:26000031, n:"Fire Spirit", e:1, r:"common", t:"troop", role:"cycle"},
-        {id:26000032, n:"Miner", e:3, r:"legendary", t:"troop", role:"win_condition"},
-        {id:26000033, n:"Sparky", e:6, r:"legendary", t:"troop", role:"win_condition"},
-        {id:26000034, n:"Bowler", e:5, r:"epic", t:"troop", role:"defense"},
-        {id:26000035, n:"Lumberjack", e:4, r:"legendary", t:"troop", role:"tank_killer"},
+        {id:26000041, n:"Goblin Gang", e:3, r:"common", t:"troop", role:"swarm"},
+        {id:26000043, n:"Elite Barbarians", e:6, r:"common", t:"troop", role:"win_condition"},
+        {id:26000047, n:"Royal Recruits", e:7, r:"common", t:"troop", role:"defense"},
+        {id:26000049, n:"Bats", e:2, r:"common", t:"troop", role:"cycle"},
+        {id:26000053, n:"Rascals", e:5, r:"common", t:"troop", role:"defense"},
+        {id:26000056, n:"Skeleton Barrel", e:3, r:"common", t:"troop", role:"win_condition"},
+        {id:26000064, n:"Firecracker", e:3, r:"common", t:"troop", role:"anti_air"},
+        {id:26000080, n:"Skeleton Dragons", e:4, r:"common", t:"troop", role:"anti_air"},
+        {id:26000084, n:"Electro Spirit", e:1, r:"common", t:"troop", role:"cycle"},
+
+        // --- TROOPS (RARE) ---
+        {id:26000003, n:"Giant", e:5, r:"rare", t:"troop", role:"win_condition"},
+        {id:26000011, n:"Valkyrie", e:4, r:"rare", t:"troop", role:"mini_tank"},
+        {id:26000014, n:"Musketeer", e:4, r:"rare", t:"troop", role:"anti_air"},
+        {id:26000017, n:"Wizard", e:5, r:"rare", t:"troop", role:"anti_air"},
+        {id:26000018, n:"Mini P.E.K.K.A", e:4, r:"rare", t:"troop", role:"tank_killer"},
+        {id:26000021, n:"Hog Rider", e:4, r:"rare", t:"troop", role:"win_condition"},
+        {id:26000028, n:"Three Musketeers", e:9, r:"rare", t:"troop", role:"win_condition"},
         {id:26000036, n:"Battle Ram", e:4, r:"rare", t:"troop", role:"win_condition"},
-        {id:26000037, n:"Inferno Dragon", e:4, r:"legendary", t:"troop", role:"tank_killer"},
         {id:26000038, n:"Ice Golem", e:2, r:"rare", t:"troop", role:"mini_tank"},
         {id:26000039, n:"Mega Minion", e:3, r:"rare", t:"troop", role:"anti_air"},
         {id:26000040, n:"Dart Goblin", e:3, r:"rare", t:"troop", role:"anti_air"},
-        {id:26000041, n:"Goblin Gang", e:3, r:"common", t:"troop", role:"swarm"},
-        {id:26000042, n:"Electro Wizard", e:4, r:"legendary", t:"troop", role:"anti_air"},
-        {id:26000043, n:"Elite Barbarians", e:6, r:"common", t:"troop", role:"win_condition"},
-        {id:26000044, n:"Hunter", e:4, r:"epic", t:"troop", role:"tank_killer"},
-        {id:26000045, n:"Executioner", e:5, r:"epic", t:"troop", role:"anti_air"},
-        {id:26000046, n:"Bandit", e:3, r:"legendary", t:"troop", role:"mini_tank"},
-        {id:26000047, n:"Royal Recruits", e:7, r:"common", t:"troop", role:"defense"},
-        {id:26000048, n:"Night Witch", e:4, r:"legendary", t:"troop", role:"support"},
-        {id:26000049, n:"Bats", e:2, r:"common", t:"troop", role:"cycle"},
-        {id:26000050, n:"Royal Ghost", e:3, r:"legendary", t:"troop", role:"mini_tank"},
-        {id:26000051, n:"Ram Rider", e:5, r:"legendary", t:"troop", role:"win_condition"},
         {id:26000052, n:"Zappies", e:4, r:"rare", t:"troop", role:"defense"},
-        {id:26000053, n:"Rascals", e:5, r:"common", t:"troop", role:"defense"},
-        {id:26000054, n:"Cannon Cart", e:5, r:"epic", t:"troop", role:"mini_tank"},
-        {id:26000055, n:"Mega Knight", e:7, r:"legendary", t:"troop", role:"tank"},
-        {id:26000056, n:"Skeleton Barrel", e:3, r:"common", t:"troop", role:"win_condition"},
         {id:26000057, n:"Flying Machine", e:4, r:"rare", t:"troop", role:"anti_air"},
-        {id:26000058, n:"Wall Breakers", e:2, r:"epic", t:"troop", role:"win_condition"},
         {id:26000059, n:"Royal Hogs", e:5, r:"rare", t:"troop", role:"win_condition"},
-        {id:26000060, n:"Goblin Giant", e:6, r:"epic", t:"troop", role:"win_condition"},
-        {id:26000061, n:"Fisherman", e:3, r:"legendary", t:"troop", role:"defense"},
-        {id:26000062, n:"Magic Archer", e:4, r:"legendary", t:"troop", role:"anti_air"},
-        {id:26000063, n:"Electro Dragon", e:5, r:"epic", t:"troop", role:"anti_air"},
-        {id:26000064, n:"Firecracker", e:3, r:"common", t:"troop", role:"anti_air"},
         {id:26000065, n:"Elixir Golem", e:3, r:"rare", t:"troop", role:"win_condition"},
         {id:26000066, n:"Battle Healer", e:4, r:"rare", t:"troop", role:"mini_tank"},
+        {id:26000068, n:"Heal Spirit", e:1, r:"rare", t:"troop", role:"cycle"}, 
+
+        // --- TROOPS (EPIC) ---
+        {id:26000004, n:"P.E.K.K.A", e:7, r:"epic", t:"troop", role:"tank_killer"},
+        {id:26000006, n:"Balloon", e:5, r:"epic", t:"troop", role:"win_condition"},
+        {id:26000007, n:"Witch", e:5, r:"epic", t:"troop", role:"support"},
+        {id:26000009, n:"Golem", e:8, r:"epic", t:"troop", role:"win_condition"},
+        {id:26000012, n:"Skeleton Army", e:3, r:"epic", t:"troop", role:"swarm"},
+        {id:26000015, n:"Baby Dragon", e:4, r:"epic", t:"troop", role:"anti_air"},
+        {id:26000016, n:"Prince", e:5, r:"epic", t:"troop", role:"mini_tank"},
+        {id:26000020, n:"Giant Skeleton", e:6, r:"epic", t:"troop", role:"tank"},
+        {id:26000025, n:"Guards", e:3, r:"epic", t:"troop", role:"defense"},
+        {id:26000027, n:"Dark Prince", e:4, r:"epic", t:"troop", role:"mini_tank"},
+        {id:26000034, n:"Bowler", e:5, r:"epic", t:"troop", role:"defense"},
+        {id:26000044, n:"Hunter", e:4, r:"epic", t:"troop", role:"tank_killer"},
+        {id:26000045, n:"Executioner", e:5, r:"epic", t:"troop", role:"anti_air"},
+        {id:26000054, n:"Cannon Cart", e:5, r:"epic", t:"troop", role:"mini_tank"},
+        {id:26000058, n:"Wall Breakers", e:2, r:"epic", t:"troop", role:"win_condition"},
+        {id:26000060, n:"Goblin Giant", e:6, r:"epic", t:"troop", role:"win_condition"},
+        {id:26000063, n:"Electro Dragon", e:5, r:"epic", t:"troop", role:"anti_air"},
+
+        // --- TROOPS (LEGENDARY) ---
+        {id:26000023, n:"Ice Wizard", e:3, r:"legendary", t:"troop", role:"defense"},
+        {id:26000026, n:"Princess", e:3, r:"legendary", t:"troop", role:"anti_air"},
+        {id:26000029, n:"Lava Hound", e:7, r:"legendary", t:"troop", role:"win_condition"},
+        {id:26000032, n:"Miner", e:3, r:"legendary", t:"troop", role:"win_condition"},
+        {id:26000033, n:"Sparky", e:6, r:"legendary", t:"troop", role:"win_condition"},
+        {id:26000035, n:"Lumberjack", e:4, r:"legendary", t:"troop", role:"tank_killer"},
+        {id:26000037, n:"Inferno Dragon", e:4, r:"legendary", t:"troop", role:"tank_killer"},
+        {id:26000042, n:"Electro Wizard", e:4, r:"legendary", t:"troop", role:"anti_air"},
+        {id:26000046, n:"Bandit", e:3, r:"legendary", t:"troop", role:"mini_tank"},
+        {id:26000048, n:"Night Witch", e:4, r:"legendary", t:"troop", role:"support"},
+        {id:26000050, n:"Royal Ghost", e:3, r:"legendary", t:"troop", role:"mini_tank"},
+        {id:26000051, n:"Ram Rider", e:5, r:"legendary", t:"troop", role:"win_condition"},
+        {id:26000055, n:"Mega Knight", e:7, r:"legendary", t:"troop", role:"tank"},
+        {id:26000061, n:"Fisherman", e:3, r:"legendary", t:"troop", role:"defense"},
+        {id:26000062, n:"Magic Archer", e:4, r:"legendary", t:"troop", role:"anti_air"},
+        {id:26000083, n:"Mother Witch", e:4, r:"legendary", t:"troop", role:"support"},
+        {id:26000087, n:"Phoenix", e:4, r:"legendary", t:"troop", role:"anti_air"},
+
+        // --- TROOPS (CHAMPION) ---
         {id:26000069, n:"Skeleton King", e:4, r:"champion", t:"troop", role:"tank"},
         {id:26000072, n:"Archer Queen", e:5, r:"champion", t:"troop", role:"anti_air"},
         {id:26000074, n:"Golden Knight", e:4, r:"champion", t:"troop", role:"mini_tank"},
-        {id:26000080, n:"Skeleton Dragons", e:4, r:"common", t:"troop", role:"anti_air"},
-        {id:26000083, n:"Mother Witch", e:4, r:"legendary", t:"troop", role:"support"},
-        {id:26000084, n:"Electro Spirit", e:1, r:"common", t:"troop", role:"cycle"},
         {id:26000085, n:"Mighty Miner", e:4, r:"champion", t:"troop", role:"tank_killer"},
         {id:26000088, n:"Monk", e:5, r:"champion", t:"troop", role:"tank"},
         {id:26000093, n:"Little Prince", e:3, r:"champion", t:"troop", role:"anti_air"},
-        {id:26000087, n:"Phoenix", e:4, r:"legendary", t:"troop", role:"anti_air"},
-        
+
         // --- SPELLS ---
         {id:28000000, n:"Fireball", e:4, r:"rare", t:"spell", role:"big_spell"},
         {id:28000001, n:"Arrows", e:3, r:"common", t:"spell", role:"small_spell"},
@@ -767,10 +774,9 @@
         {id:28000012, n:"Clone", e:3, r:"epic", t:"spell", role:"utility"},
         {id:28000013, n:"Earthquake", e:3, r:"rare", t:"spell", role:"big_spell"},
         {id:28000014, n:"Barbarian Barrel", e:2, r:"epic", t:"spell", role:"small_spell"},
-        {id:26000068, n:"Heal Spirit", e:1, r:"rare", t:"troop", role:"cycle"}, // FIXED (Was wrongly ID'd as spell 28...)
-        {id:28000016, n:"Giant Snowball", e:2, r:"common", t:"spell", role:"small_spell"},
-        {id:28000017, n:"Royal Delivery", e:3, r:"common", t:"spell", role:"defense"},
-        
+        {id:28000017, n:"Giant Snowball", e:2, r:"common", t:"spell", role:"small_spell"}, // FIXED ID
+        {id:28000018, n:"Royal Delivery", e:3, r:"common", t:"spell", role:"defense"}, // FIXED ID
+
         // --- BUILDINGS ---
         {id:27000000, n:"Cannon", e:3, r:"common", t:"building", role:"defense"},
         {id:27000001, n:"Goblin Hut", e:5, r:"rare", t:"building", role:"spawner"},
@@ -1022,6 +1028,7 @@
         let hasChampion = false;
 
         const addCard = (pool) => {
+            // Filter: No duplicates, No 2nd Champion
             const available = pool.filter(c => {
                 if(deckIds.has(c.id)) return false;
                 if(hasChampion && c.r === 'champion') return false; 
@@ -1039,36 +1046,28 @@
             return card;
         };
 
-        // 1. ADIM: Kazanma Koşulu Seç
+        // 1. Win Condition
         addCard(winConditions);
-        
-        // 2. ADIM: Küçük Büyü
+        // 2. Small Spell
         addCard(smallSpells);
-
-        // 3. ADIM: Büyük Büyü
+        // 3. Big Spell
         addCard(bigSpells);
-
-        // 4. ADIM: Hava Savunması
+        // 4. Anti Air
         addCard(antiAir);
+        // 5. Mini Tank or Building
+        if(Math.random() > 0.5) addCard(buildings); else addCard(tanks);
 
-        // 5. ADIM: Mini Tank veya Bina (Savunma)
-        if(Math.random() > 0.5) addCard(buildings);
-        else addCard(tanks);
-
-        // 6-7-8. ADIM: Deste maliyetine göre doldur
+        // Fill remaining slots
         while(deck.length < 8) {
             let avg = deck.reduce((a,b)=>a+b.e,0) / deck.length;
             if(avg > 3.8) {
-                // Deste çok ağır, ucuz kart ekle
                 const added = addCard(cycles);
-                if(!added) addCard(crData); // Fallback
+                if(!added) addCard(crData); 
             } else {
-                // Genel havuzdan sinerji kartı ekle
                 addCard(crData);
             }
         }
 
-        // DOM Update
         renderDeck(deck);
     };
 
@@ -1081,9 +1080,6 @@
         
         deck.forEach(c => {
             totalElixir += c.e;
-            
-            // ROYALE API GITHUB SOURCE (RELIABLE)
-            // Slugify Logic: "Mega Minion" -> "mega-minion", "P.E.K.K.A" -> "pekka"
             const key = c.n.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
             const imgUrl = `https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards-75/${key}.png`;
             
@@ -1100,7 +1096,6 @@
         const avg = (totalElixir / 8).toFixed(1);
         document.getElementById('crAvgElixir').innerText = avg;
         
-        // Arketip Tahmini
         let type = "Dengeli";
         if(avg < 3.0) type = "Hızlı Döngü (Cycle)";
         else if(avg > 4.2) type = "Ağır Saldırı (Beatdown)";
@@ -1108,7 +1103,6 @@
         else if(deck.some(c => c.n === "X-Bow" || c.n === "Mortar")) type = "Kuşatma (Siege)";
         
         document.getElementById('deckArchetype').innerText = type;
-        
         document.getElementById('btnCopyCR').style.display = 'block';
         document.getElementById('copyInstructions').style.display = 'block';
     }
@@ -1116,11 +1110,9 @@
     window.copyToCR = () => {
         if(currentCRDeck.length !== 8) return;
         
-        // ID Listesini oluştur
         const idString = currentCRDeck.map(c => c.id).join(';');
         const deepLink = `https://link.clashroyale.com/deck/en?deck=${idString}`;
         
-        // Yeni sekmede aç (Mobile'da uygulama açılır)
         window.open(deepLink, '_blank');
         showToast("Clash Royale açılıyor...", "success");
     };
