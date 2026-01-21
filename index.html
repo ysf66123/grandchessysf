@@ -34,6 +34,7 @@
             --text-muted: #aaa;
             --success: #4caf50;
             --danger: #ff4d4d;
+            --magic: #9b59b6;
             --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
             --font: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             --rank1-bg: rgba(255, 215, 0, 0.15);
@@ -54,7 +55,7 @@
         }
 
         [data-theme="wood"] { 
-            --bg-gradient: url('https://img.freepik.com/free-photo/wood-texture-background_1154-645.jpg'); /* Basit bir ahşap dokusu URL'si veya gradient */
+            --bg-gradient: url('https://img.freepik.com/free-photo/wood-texture-background_1154-645.jpg');
             --glass-panel: rgba(62, 39, 35, 0.85);
             --glass-card: rgba(0,0,0,0.2);
             --primary:#ffb74d; --accent:#8d6e63; --text-main:#ffe0b2; 
@@ -79,7 +80,6 @@
             overscroll-behavior: none; 
         }
         
-        /* GLASSMORPHISM CLASS */
         .glass-panel {
             background: var(--glass-panel);
             backdrop-filter: blur(12px);
@@ -100,7 +100,6 @@
 
         h1, h2, h3 { color: var(--primary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         
-        /* Buttons */
         button { 
             background: var(--primary); color: #121212; border: none; padding: 12px 20px; border-radius: 8px; 
             font-weight: bold; cursor: pointer; transition: transform 0.1s, box-shadow 0.2s, filter 0.2s; 
@@ -120,7 +119,6 @@
 
         .copy-btn { background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 2px 8px; font-size: 0.7rem; border-radius: 4px; cursor: pointer; margin-left: 10px; box-shadow: none; }
         
-        /* Inputs */
         input, select, textarea { 
             width: 100%; padding: 12px; 
             background: var(--glass-input); 
@@ -131,18 +129,15 @@
         input:focus, select:focus { outline: none; border-color: var(--primary); background: rgba(0,0,0,0.3); box-shadow: 0 0 10px rgba(212, 175, 55, 0.2); }
         select option { background: #1b1d24; color: #e0e0e0; }
 
-        /* Avatars */
         .avatar-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; justify-items: center; margin-bottom: 20px; }
         .avatar-option { width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 2px solid var(--glass-border); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.3rem; color: var(--text-muted); transition: 0.3s; }
         .avatar-option:hover { background: rgba(255,255,255,0.1); }
         .avatar-option.selected { background: var(--primary); color: #000; border-color: var(--primary); box-shadow: 0 0 15px var(--primary); transform: scale(1.15); }
 
-        /* Views */
         .view { display: none; animation: fadeIn 0.4s ease-out; flex: 1; }
         .view.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); filter: blur(5px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
 
-        /* Dashboard & Cards */
         .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
         .dash-card { 
             background: var(--glass-card); 
@@ -152,7 +147,6 @@
         }
         .dash-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); border-color: var(--primary); }
         
-        /* Lobby Slots */
         .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
         .slot-item { 
             background: var(--glass-card); 
@@ -170,7 +164,6 @@
         .leave-seat-btn { margin-top: 5px; font-size: 0.7rem; padding: 4px 8px; border: 1px solid var(--danger); color: var(--danger); background: transparent; border-radius: 4px; cursor: pointer; box-shadow:none; }
         .leave-seat-btn:hover { background: var(--danger); color: white; }
 
-        /* History & Matches */
         .history-list { display: grid; gap: 10px; margin-top: 20px; max-height: 200px; overflow-y: auto; padding-right:5px; }
         .history-list::-webkit-scrollbar { width: 5px; }
         .history-list::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
@@ -185,20 +178,45 @@
             position: relative; flex-wrap: wrap; transition: transform 0.2s;
         }
         .match-card:hover { transform: scale(1.01); }
+        
+        .match-card.disputed {
+            border: 1px solid var(--danger);
+            background: rgba(255, 77, 77, 0.05);
+            animation: pulse-red 2s infinite;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
+        }
+
         .match-player { flex: 1; font-weight: 500; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; }
         .match-player.right { justify-content: flex-end; text-align: right; }
         .match-player.me { color: var(--accent); text-shadow: 0 0 10px var(--accent); }
         
+        .del-match-btn {
+            position: absolute; right: 5px; top: 5px; color: var(--danger); cursor: pointer; font-size: 0.7rem; opacity: 0.5; transition: 0.2s;
+            z-index: 10; padding: 5px;
+        }
+        .del-match-btn:hover { opacity: 1; transform: scale(1.2); }
+        
+        .object-btn {
+            position: absolute; left: 5px; top: 5px; color: #ff9800; cursor: pointer; font-size: 0.8rem; transition: 0.2s;
+            z-index: 10; padding: 5px; background: rgba(0,0,0,0.3); border-radius: 4px;
+        }
+        .object-btn:hover { background: #ff9800; color: #000; }
+
         .score-select { width: 80px; height: 40px; padding: 5px; margin: 0 5px; font-weight: bold; font-size: 1rem; text-align: center; text-align-last: center; border-radius: 6px; cursor: pointer; background: rgba(0,0,0,0.4) !important; color: #d4af37 !important; border: 1px solid var(--glass-border); display: inline-block; -webkit-appearance: none; appearance: none; }
         .score-select:disabled { opacity: 0.5; cursor: not-allowed; border-color: transparent; }
 
-        /* Link Area */
         .link-area { width: 100%; margin-top: 8px; display: flex; align-items: center; gap: 5px; font-size: 0.8rem; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 4px; }
         .link-input { border: none; background: transparent; padding: 4px; margin: 0; color: var(--accent); width: 100%; font-size: 0.8rem; }
         .watch-btn { background: rgba(255,255,255,0.1); color: var(--primary); border: 1px solid var(--primary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; text-decoration: none; display: inline-block; margin-left: 5px; transition:0.2s; }
         .watch-btn:hover { background: var(--primary); color:black; }
 
-        /* Tables & Standings */
+        .proof-link { display: inline-block; width:100%; text-align:center; background:var(--danger); color:white; padding:2px; font-size:0.7rem; margin-top:5px; border-radius:4px; text-decoration:none; font-weight:bold; }
+        .proof-link:hover { opacity:0.8; }
+
         table { width: 100%; border-collapse: separate; border-spacing: 0 5px; margin-top: 10px; }
         th { padding: 12px; text-align: center; color: var(--primary); font-size: 0.8rem; text-transform:uppercase; letter-spacing:1px; }
         td { padding: 15px 12px; text-align: center; background: var(--glass-card); border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border); }
@@ -208,16 +226,10 @@
         .player-name-cell { cursor: pointer; transition: 0.2s; font-weight: 500; }
         .player-name-cell:hover { color: var(--accent); transform: translateX(5px); }
 
-        @keyframes rainbow { 
-            0% { border-color: red; box-shadow: inset 0 0 20px rgba(255,0,0,0.2); }
-            50% { border-color: yellow; box-shadow: inset 0 0 20px rgba(255,255,0,0.2); }
-            100% { border-color: red; box-shadow: inset 0 0 20px rgba(255,0,0,0.2); }
-        }
         .rank-1 td { background: var(--rank1-bg); border-top: 1px solid var(--primary); border-bottom: 1px solid var(--primary); color: #fff; font-weight: bold; }
         .rank-1 td:first-child { border-left: 1px solid var(--primary); } 
         .rank-1 td:last-child { border-right: 1px solid var(--primary); }
 
-        /* Modals */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 2000; display: none; align-items: center; justify-content: center; animation: fadeIn 0.3s; }
         .modal-content { background: rgba(30, 30, 35, 0.9); padding: 30px; border-radius: 16px; width: 90%; max-width: 400px; text-align: center; border: 1px solid var(--primary); box-shadow: 0 0 40px rgba(0,0,0,0.5); position: relative; max-height: 80vh; overflow-y: auto; }
         
@@ -228,7 +240,6 @@
         .close-modal { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); transition: 0.2s; }
         .close-modal:hover { color: var(--danger); transform: rotate(90deg); }
 
-        /* CHAT & FLOATING */
         .floating-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: none; flex-direction: column; gap: 10px; align-items: flex-end; }
         .float-btn { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: transform 0.2s; border: none; backdrop-filter: blur(5px); }
         .float-btn:hover { transform: scale(1.1); }
@@ -241,20 +252,17 @@
         #chatWidget { position: fixed; bottom: 90px; right: 20px; width: 320px; background: rgba(20, 20, 25, 0.95); backdrop-filter: blur(15px); border: 1px solid var(--glass-border); border-radius: 12px; z-index: 1000; display: none; flex-direction: column; max-height: 400px; box-shadow: var(--shadow); }
         #chatMessages { flex: 1; padding: 10px; overflow-y: auto; height: 300px; background: transparent; font-size: 0.9rem; }
         
-        /* Top Bar */
         .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px; }
         .user-info { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 20px; border: 1px solid var(--glass-border); }
         .theme-btn { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.5); margin-right: 5px; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.2s; }
         .theme-btn:hover { transform: scale(1.2); }
 
-        /* Switches */
         .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.2); transition: .4s; border-radius: 20px; }
         input:checked + .slider { background-color: var(--primary); }
         input:checked + .slider:before { transform: translateX(20px); background: #fff; position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; border-radius: 50%; transition: 0.4s; }
 
-        /* Responsive */
         @media (max-width: 600px) {
             .dashboard-grid { grid-template-columns: 1fr; }
             #chatWidget { width: 90%; right: 5%; bottom: 100px; }
@@ -366,6 +374,15 @@
                 <button class="copy-btn" onclick="copyCode()"><i class="fas fa-copy"></i></button>
             </div>
             <button id="btnStartTournament" style="width:100%; box-shadow:0 0 15px rgba(212,175,55,0.4);">TURNUVAYI BAŞLAT</button>
+            
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button onclick="adminAddPlayer()" class="secondary" style="flex:1; border:1px dashed var(--glass-border); font-size:0.8rem;">
+                    <i class="fas fa-user-plus"></i> ID ile Oturt
+                </button>
+                <button onclick="fixParticipants()" class="secondary" style="flex:1; border:1px dashed var(--glass-border); font-size:0.8rem;">
+                    <i class="fas fa-sync"></i> Listeyi Birleştir
+                </button>
+            </div>
         </div>
         
         <div id="lobbySlots" class="slot-grid"></div>
@@ -376,7 +393,17 @@
             <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60%;">
                 <h2 id="activeTournamentTitle" style="margin:0; font-size:1.2rem;">Turnuva</h2>
             </div>
-            <div style="display:flex; gap:5px;">
+            <div style="display:flex; gap:5px; align-items:center;">
+                <!-- OTO BİTİR BUTONU -->
+                <button id="btnAutoFinish" onclick="autoFinishFixture()" style="display:none; padding:5px 10px; font-size:0.8rem; margin-right:5px; background:var(--magic); color:#fff;" title="Eksik Maçları Akıllı Tamamla">
+                    <i class="fas fa-magic"></i> OTO BİTİR
+                </button>
+
+                <!-- MANUEL MAC EKLEME BUTONU -->
+                <button id="btnAddMatchManual" onclick="addMatchManual()" style="display:none; padding:5px 10px; font-size:0.8rem; margin-right:5px; background:var(--success); color:#fff;">
+                    <i class="fas fa-plus"></i> MAÇ EKLE
+                </button>
+                
                 <button id="btnFinishTournament" class="danger-btn" style="display:none; padding:5px 10px; font-size:0.8rem;">BİTİR</button>
                 <button class="secondary icon-btn" onclick="leaveTournamentConfirm()"><i class="fas fa-home"></i></button>
             </div>
@@ -389,6 +416,10 @@
         
         <div id="tab-fixtures">
             <div id="fixturesList"></div>
+            <div id="noMatchesText" style="text-align:center; color:var(--text-muted); margin-top:20px; display:none;">
+                <i class="fas fa-chess-board" style="font-size:3rem; margin-bottom:10px;"></i><br>
+                Henüz maç oluşturulmadı.<br>Yönetici "Maç Ekle" veya "Oto Bitir" butonu ile fikstürü oluşturabilir.
+            </div>
         </div>
         
         <div id="tab-standings" style="display:none;">
@@ -407,6 +438,7 @@
 
 </div>
 
+<!-- Diğer Modallar -->
 <div id="rulesModal" class="modal-overlay">
     <div class="modal-content glass-panel" style="text-align:left;">
         <span class="close-modal" onclick="closeRules()">×</span>
@@ -461,7 +493,6 @@
 
 <script type="module">
     import autoAnimate from 'https://cdn.jsdelivr.net/npm/@formkit/auto-animate/index.min.js';
-    // Standings body ve lobby container'a animasyon ekle
     const standingsBody = document.getElementById('standingsBody');
     const lobbySlots = document.getElementById('lobbySlots');
     autoAnimate(standingsBody);
@@ -472,10 +503,9 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, setDoc, doc, onSnapshot, updateDoc, query, orderBy, serverTimestamp, deleteDoc, where, arrayUnion, arrayRemove } 
+    import { getFirestore, collection, addDoc, setDoc, doc, onSnapshot, updateDoc, query, orderBy, serverTimestamp, deleteDoc, where, arrayUnion, arrayRemove, getDocs } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // Firebase Config (User provided)
     const firebaseConfig = {
       apiKey: "AIzaSyDtLQivXHDK0kGkATb9RiDuLCibFPZ8Qyw",
       authDomain: "chess-14580.firebaseapp.com",
@@ -490,7 +520,6 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Global State
     let currentUser = null;
     let currentTournamentId = null;
     let currentTournamentData = null;
@@ -498,11 +527,14 @@
     let unsubscribeChat = null;
     let previousMatchesStr = "";
     let soundEnabled = true;
-    const realSound = new Audio("https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3");
-
-    // --- HELPERS: TOASTIFY & SWEETALERT ---
     
-    // Toast Gösterme Fonksiyonu (Alert yerine)
+    // SESLER
+    const realSound = new Audio("https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3");
+    // Yeni Navigasyon Sesi (Click)
+    const navSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3");
+    navSound.volume = 0.3;
+
+    // --- HELPERS ---
     window.showToast = (msg, type = "info") => {
         let bg = "#333";
         if(type === "success") bg = "linear-gradient(to right, #00b09b, #96c93d)";
@@ -524,7 +556,6 @@
         }).showToast();
     };
 
-    // --- THEME & INIT ---
     window.setTheme = (t) => { document.body.setAttribute('data-theme', t); localStorage.setItem('gm_theme', t); };
     window.setTheme(localStorage.getItem('gm_theme') || 'dark');
     soundEnabled = localStorage.getItem('gm_mute') !== 'true';
@@ -534,7 +565,10 @@
         const c = document.getElementById(tid); c.innerHTML='';
         avatarList.forEach(i => {
             const d=document.createElement('div'); d.className='avatar-option'; d.innerHTML=`<i class="fas ${i}"></i>`;
-            d.onclick=()=>{ c.querySelectorAll('.avatar-option').forEach(e=>e.classList.remove('selected')); d.classList.add('selected'); document.getElementById(iid).value=i; };
+            d.onclick=()=>{ 
+                if(soundEnabled) navSound.play().catch(()=>{});
+                c.querySelectorAll('.avatar-option').forEach(e=>e.classList.remove('selected')); d.classList.add('selected'); document.getElementById(iid).value=i; 
+            };
             c.appendChild(d);
         });
         if(c.firstChild) c.firstChild.classList.add('selected');
@@ -553,13 +587,14 @@
     document.getElementById('btnSwitchLogin').onclick=()=>{isReg=false; toggleAuth();};
     document.getElementById('btnSwitchRegister').onclick=()=>{isReg=true; toggleAuth();};
     function toggleAuth(){ 
+        if(soundEnabled) navSound.play().catch(()=>{});
         document.getElementById('registerFields').style.display=isReg?'block':'none';
         document.getElementById('btnAuthAction').innerText=isReg?'HESAP OLUŞTUR & GİR':'GİRİŞ YAP';
-        // Buton stillerini güncelle
         document.getElementById('btnSwitchLogin').classList.toggle('secondary', isReg);
         document.getElementById('btnSwitchRegister').classList.toggle('secondary', !isReg);
     }
     document.getElementById('btnAuthAction').onclick=async()=>{
+        if(soundEnabled) navSound.play().catch(()=>{});
         const e=document.getElementById('emailInput').value, p=document.getElementById('passwordInput').value, n=document.getElementById('displayNameInput').value, a=document.getElementById('selectedAvatar').value;
         try {
             if(isReg){ 
@@ -576,6 +611,7 @@
         }
     };
     document.getElementById('btnLogout').onclick=()=>{
+        if(soundEnabled) navSound.play().catch(()=>{});
         Swal.fire({
             title: 'Çıkış Yap',
             text: "Oturumu kapatmak istiyor musun?",
@@ -626,6 +662,7 @@
     }
 
     window.removeTournament = async(tid) => {
+        if(soundEnabled) navSound.play().catch(()=>{});
         const res = await Swal.fire({title:'Listeden Kaldır?', text:"Geçmişten silinecek.", icon:'warning', showCancelButton:true, confirmButtonColor:'#d33', background:'rgba(30,30,35,0.95)', color:'#fff'});
         if(res.isConfirmed) {
             await updateDoc(doc(db,"tournaments",tid), { participantIds: arrayRemove(currentUser.uid) });
@@ -634,10 +671,11 @@
     };
 
     document.getElementById('btnCreateTournament').onclick=async()=>{
+        if(soundEnabled) navSound.play().catch(()=>{});
         const n=document.getElementById('newTournamentName').value, c=parseInt(document.getElementById('playerCount').value);
         if(!n) return showToast("Lütfen bir turnuva adı girin.", "error");
         
-        const shortId = makeId(5); // 5 Haneli ID
+        const shortId = makeId(5); 
         const slots=[]; for(let i=0;i<c;i++) slots.push({index:i, name:`Masa ${i+1}`, ownerId:null, avatar:'fa-chair', status:'open'});
         
         await setDoc(doc(db,"tournaments",shortId),{ 
@@ -651,6 +689,7 @@
 
     // --- LOGIC ---
     window.enterTournament = (id) => {
+        if(soundEnabled) navSound.play().catch(()=>{});
         currentTournamentId = id;
         unsubscribeTournament = onSnapshot(doc(db,"tournaments",id), snap=>{
             if(!snap.exists()) { showToast("Turnuva bulunamadı.", "error"); leaveTournament(); return; }
@@ -658,7 +697,6 @@
             
             document.getElementById('rulesBtn').style.display = 'flex';
             
-            // Konfeti (Sadece Bitişte)
             if(d.status==='finished' && previousMatchesStr!=='finished') { 
                 confetti({particleCount:200, spread:100, origin:{y:0.6}, colors:['#d4af37', '#ffffff']}); 
                 Swal.fire({
@@ -726,43 +764,57 @@
         await updateDoc(doc(db,"tournaments",currentTournamentId), { slots:s, participantIds:arrayRemove(uidToRemove) });
     };
 
+    // --- MANUEL / OTOMATİK BAŞLATMA MANTIĞI ---
     document.getElementById('btnStartTournament').onclick=async()=>{
-        const res = await Swal.fire({
-            title: 'Turnuva Başlatılıyor',
-            text: "Boş masalara 'CPU' atanacak ve fikstür oluşturulacak.",
-            icon: 'info',
+        if(soundEnabled) navSound.play().catch(()=>{});
+        const { value: mode } = await Swal.fire({
+            title: 'Turnuva Modu',
+            text: 'Fikstür nasıl oluşturulsun?',
+            icon: 'question',
+            input: 'radio',
+            inputOptions: {
+                'auto': 'Otomatik (Tüm masalar oynar)',
+                'manual': 'Manuel (Maçları ben ekleyeceğim)'
+            },
+            inputValue: 'auto',
             showCancelButton: true,
             confirmButtonText: 'BAŞLAT',
+            cancelButtonText: 'İptal',
             confirmButtonColor: '#d4af37',
             background: 'rgba(30,30,35,0.95)', color: '#fff'
         });
-        if(!res.isConfirmed) return;
+
+        if (!mode) return;
 
         let s=[...currentTournamentData.slots];
         s.forEach((x,i)=>{ if(x.status==='open'){ x.name=`Bot ${i+1}`; x.avatar='fa-robot'; x.status='cpu'; } });
-        
-        let players = s.map((_,i)=>i);
-        if(players.length % 2 !== 0) players.push(-1); // BYE
 
-        const m=[]; const n=players.length; const rounds = n-1; let id=1;
-        // Round Robin
-        for(let r=1; r<=rounds; r++){ 
-            for(let i=0; i<n/2; i++){
-                const p1 = players[i]; const p2 = players[n-1-i];
-                if(p1 === -1 || p2 === -1) { m.push({id:id++, r, p1:(p1===-1?p2:p1), p2:-1, res:1, link:'', isBye:true}); } 
-                else { m.push({id:id++, r, p1:p1, p2:p2, res:null, link:'', isBye:false}); }
+        let m = [];
+
+        if (mode === 'auto') {
+            let players = s.map((_,i)=>i);
+            if(players.length % 2 !== 0) players.push(-1); 
+
+            const n=players.length; const rounds = n-1; let id=1;
+            for(let r=1; r<=rounds; r++){ 
+                for(let i=0; i<n/2; i++){
+                    const p1 = players[i]; const p2 = players[n-1-i];
+                    if(p1 === -1 || p2 === -1) { m.push({id:id++, r, p1:(p1===-1?p2:p1), p2:-1, res:1, link:'', isBye:true}); } 
+                    else { m.push({id:id++, r, p1:p1, p2:p2, res:null, link:'', isBye:false}); }
+                }
+                players.splice(1, 0, players.pop());
             }
-            players.splice(1, 0, players.pop());
+            const firstHalfMatches = [...m];
+            firstHalfMatches.forEach(x => {
+                if(x.isBye) { m.push({id:id++, r:x.r+rounds, p1:x.p1, p2:-1, res:1, link:'', isBye:true}); } 
+                else { m.push({id:id++, r:x.r+rounds, p1:x.p2, p2:x.p1, res:null, link:'', isBye:false}); }
+            });
+            showToast("Otomatik fikstür oluşturuldu!", "gold");
+        } else {
+            showToast("Manuel mod başladı. Maç ekleyin!", "info");
         }
-        // Double Round
-        const firstHalfMatches = [...m];
-        firstHalfMatches.forEach(x => {
-             if(x.isBye) { m.push({id:id++, r:x.r+rounds, p1:x.p1, p2:-1, res:1, link:'', isBye:true}); } 
-             else { m.push({id:id++, r:x.r+rounds, p1:x.p2, p2:x.p1, res:null, link:'', isBye:false}); }
-        });
 
         await updateDoc(doc(db,"tournaments",currentTournamentId), { status:'active', slots:s, matches:m });
-        showToast("Turnuva Başladı! Başarılar.", "gold");
     };
 
     document.getElementById('btnFinishTournament').onclick=async()=>{
@@ -774,19 +826,35 @@
         document.getElementById('activeTournamentTitle').innerText = d.name;
         const isAdmin = (d.creatorId===currentUser.uid);
         const isFin = d.status==='finished';
+        
         document.getElementById('btnFinishTournament').style.display = (isAdmin && !isFin) ? 'block' : 'none';
         
+        document.getElementById('btnAddMatchManual').style.display = (isAdmin && !isFin) ? 'inline-block' : 'none';
+        document.getElementById('btnAutoFinish').style.display = (isAdmin && !isFin) ? 'inline-block' : 'none';
+
         const c=document.getElementById('fixturesList'); c.innerHTML='';
+        const emptyMsg = document.getElementById('noMatchesText');
+
+        if(d.matches.length === 0) {
+            emptyMsg.style.display = 'block';
+            return;
+        } else {
+            emptyMsg.style.display = 'none';
+        }
+
         const gr={}; d.matches.forEach(m=>{ if(!gr[m.r]) gr[m.r]=[]; gr[m.r].push(m); });
         
         Object.keys(gr).sort((a,b)=>a-b).forEach(r=>{
             const div=document.createElement('div');
             div.innerHTML=`<div style="background:var(--glass-card); padding:8px; margin-bottom:5px; border-left:4px solid var(--primary); font-weight:bold; color:var(--text-main); font-size:0.9rem;">TUR ${r}</div>`;
             gr[r].forEach(m=>{
+                const deleteBtn = (isAdmin && !isFin) ? `<i class="fas fa-trash del-match-btn" onclick="deleteMatch(${m.id})"></i>` : '';
+
                 if(m.isBye) {
                      const p1=d.slots[m.p1];
                      div.innerHTML += `
                      <div class="match-card" style="opacity:0.6">
+                        ${deleteBtn}
                         <div class="match-player"><i class="fas ${p1.avatar}"></i> ${p1.name}</div>
                         <span style="font-weight:bold; color:var(--success); margin:0 10px;">BAY</span>
                         <div class="match-player right" style="color:var(--text-muted)">-</div>
@@ -795,21 +863,44 @@
                 }
                 const p1=d.slots[m.p1], p2=d.slots[m.p2];
                 const isP1=(p1.ownerId===currentUser.uid), isP2=(p2.ownerId===currentUser.uid);
-                const canEdit = isAdmin && !isFin; 
+                
+                const isDisputed = m.isDisputed === true;
+                const disputeLink = m.disputeLink || "#";
+
+                let canEdit = false;
+                if(!isFin) {
+                    if(isAdmin) canEdit = true;
+                    else if((isP1 || isP2) && !isDisputed) canEdit = true;
+                }
+
+                let objectBtn = '';
+                if( (isP1 || isP2) && m.res !== null && !isDisputed && !isFin ) {
+                    objectBtn = `<div class="object-btn" title="Sonuca İtiraz Et" onclick="objectToMatch(${m.id})"><i class="fas fa-flag"></i></div>`;
+                }
+
+                let disputeBadge = '';
+                let cardClass = 'match-card';
+                if(isDisputed) {
+                    cardClass += ' disputed';
+                    disputeBadge = `<a href="${disputeLink}" target="_blank" class="proof-link"><i class="fas fa-exclamation-triangle"></i> İTİRAZ (KANIT)</a>`;
+                }
                 
                 let lnk=''; 
                 const watch = m.link ? `<a href="${m.link}" target="_blank" class="watch-btn"><i class="fas fa-eye"></i> İzle</a>` : '';
-                const inp = ((isP1||isAdmin) && !isFin) ? `<input class="link-input" placeholder="Maç Linki (Lichess/Chess.com)..." value="${m.link||''}" onchange="upLink(${m.id},this.value)">` : '';
+                const inp = ((isP1||isP2||isAdmin) && !isFin) ? `<input class="link-input" placeholder="Maç Linki (Lichess/Chess.com)..." value="${m.link||''}" onchange="upLink(${m.id},this.value)">` : '';
                 if(watch||inp) lnk=`<div class="link-area">${watch}${inp}</div>`;
 
                 div.innerHTML += `
-                <div class="match-card">
+                <div class="${cardClass}">
+                    ${deleteBtn}
+                    ${objectBtn}
                     <div class="match-player ${isP1?'me':''}"><i class="fas ${p1.avatar}"></i> ${p1.name}</div>
                     <select class="score-select" ${canEdit?'':'disabled'} onchange="upMatch(${m.id},this.value)">
                         <option value="">vs</option><option value="1" ${m.res===1?'selected':''}>1 - 0</option>
                         <option value="0" ${m.res===0?'selected':''}>½ - ½</option><option value="2" ${m.res===2?'selected':''}>0 - 1</option>
                     </select>
                     <div class="match-player right ${isP2?'me':''}">${p2.name} <i class="fas ${p2.avatar}"></i></div>
+                    ${disputeBadge}
                     ${lnk}
                 </div>`;
             });
@@ -817,7 +908,20 @@
         });
     }
 
-    window.upMatch = async(id,v)=>{ await updateDoc(doc(db,"tournaments",currentTournamentId), { matches:currentTournamentData.matches.map(m=>m.id===id?{...m,res:v===""?null:parseInt(v)}:m) }); };
+    window.upMatch = async(id, v) => { 
+        const isAdmin = currentTournamentData.creatorId === currentUser.uid;
+        await updateDoc(doc(db,"tournaments",currentTournamentId), { 
+            matches: currentTournamentData.matches.map(m => {
+                if(m.id === id) {
+                    const newVal = v === "" ? null : parseInt(v);
+                    if(isAdmin) return { ...m, res: newVal, isDisputed: false, disputeLink: null };
+                    else return { ...m, res: newVal };
+                }
+                return m;
+            }) 
+        }); 
+    };
+    
     window.upLink = async(id,v)=>{ await updateDoc(doc(db,"tournaments",currentTournamentId), { matches:currentTournamentData.matches.map(m=>m.id===id?{...m,link:v.trim()}:m) }); };
 
     function renderStandings(d){
@@ -833,7 +937,6 @@
                 }
             }
         });
-        // Sonneborn-Berger
         d.matches.forEach(m=>{
             if(m.res !== null && !m.isBye){
                 if(m.res===1) stats[m.p1].sb += stats[m.p2].pts; 
@@ -867,11 +970,10 @@
         });
     }
 
-    // --- UTILS ---
     window.downloadStandings = () => {
         const element = document.getElementById("standingsContainer");
         const originalBg = element.style.background;
-        element.style.background = "#1b1d24"; // Reset for clean screenshot
+        element.style.background = "#1b1d24";
         html2canvas(element, { scale: 2, backgroundColor: "#1b1d24" }).then(canvas => {
             const link = document.createElement("a");
             link.download = `Grandmaster_Puan_${currentTournamentId}.png`;
@@ -883,6 +985,7 @@
     };
 
     window.openRules = () => {
+        if(soundEnabled) navSound.play().catch(()=>{});
         const isAdmin = currentTournamentData.creatorId === currentUser.uid;
         document.getElementById('rulesText').value = currentTournamentData.rules || "";
         document.getElementById('rulesReadOnly').innerText = currentTournamentData.rules || "Henüz kural eklenmedi.";
@@ -900,6 +1003,7 @@
     };
 
     window.showStats = (s) => {
+        if(soundEnabled) navSound.play().catch(()=>{});
         document.getElementById('modalAvatar').innerHTML = `<i class="fas ${s.avatar}"></i>`;
         document.getElementById('modalName').innerText = s.name;
         document.getElementById('statWins').innerText = s.w;
@@ -917,6 +1021,7 @@
     window.copyCode = () => { navigator.clipboard.writeText(document.getElementById('shareCode').innerText).then(()=>showToast("Kod kopyalandı!", "success")); };
     
     window.leaveTournamentConfirm = async () => {
+        if(soundEnabled) navSound.play().catch(()=>{});
         const res = await Swal.fire({
             title: 'Çıkış?', 
             text: 'Turnuva ekranından ayrılacaksın.', 
@@ -936,6 +1041,8 @@
     };
 
     function switchView(id){ 
+        if(soundEnabled) navSound.play().catch(()=>{});
+        
         document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); 
         document.getElementById(id).classList.add('active'); 
         const floatNav = document.querySelector('.floating-container');
@@ -943,12 +1050,42 @@
         else { floatNav.style.display = 'none'; document.getElementById('chatWidget').style.display = 'none'; document.getElementById('chatToggleBtn').style.display = 'flex'; }
     }
     
-    window.showTab = (t) => { document.getElementById('tab-fixtures').style.display=t==='fixtures'?'block':'none'; document.getElementById('tab-standings').style.display=t==='standings'?'block':'none'; };
-    window.openSettings = () => { renderAvatars('settingsAvatarGrid','settingsSelectedAvatar'); document.getElementById('settingsNameInput').value=currentUser.displayName; switchView('view-settings'); };
+    window.showTab = (t) => { 
+        if(soundEnabled) navSound.play().catch(()=>{});
+        document.getElementById('tab-fixtures').style.display=t==='fixtures'?'block':'none'; document.getElementById('tab-standings').style.display=t==='standings'?'block':'none'; 
+    };
+    window.openSettings = () => { 
+        if(soundEnabled) navSound.play().catch(()=>{});
+        renderAvatars('settingsAvatarGrid','settingsSelectedAvatar'); document.getElementById('settingsNameInput').value=currentUser.displayName; switchView('view-settings'); 
+    };
+    
     window.saveSettings = async() => { 
         try {
-            await updateProfile(currentUser,{displayName:document.getElementById('settingsNameInput').value, photoURL:document.getElementById('settingsSelectedAvatar').value}); 
-            showToast("Ayarlar kaydedildi", "success");
+            const newName = document.getElementById('settingsNameInput').value;
+            const newAvatar = document.getElementById('settingsSelectedAvatar').value;
+
+            await updateProfile(currentUser,{displayName:newName, photoURL:newAvatar}); 
+            
+            const q = query(collection(db, "tournaments"), where("participantIds", "array-contains", currentUser.uid));
+            const querySnapshot = await getDocs(q);
+            
+            querySnapshot.forEach(async (docSnap) => {
+                const tData = docSnap.data();
+                if(tData.status === 'finished') return; 
+                
+                let updatedSlots = tData.slots.map(s => {
+                    if(s.ownerId === currentUser.uid) {
+                        return { ...s, name: newName, avatar: newAvatar };
+                    }
+                    return s;
+                });
+                
+                if(JSON.stringify(updatedSlots) !== JSON.stringify(tData.slots)) {
+                    await updateDoc(doc(db, "tournaments", docSnap.id), { slots: updatedSlots });
+                }
+            });
+
+            showToast("Profil ve aktif turnuvalar güncellendi!", "success");
             switchView('view-dashboard'); 
         } catch(e){ showToast(e.message, "error"); }
     };
@@ -966,6 +1103,212 @@
     }
     document.getElementById('chatInputArea').onsubmit=async(e)=>{ e.preventDefault(); const i=document.getElementById('chatInput'); if(!i.value.trim()) return; await addDoc(collection(db,`tournaments/${currentTournamentId}/messages`),{text:i.value, user:currentUser.displayName, uid:currentUser.uid, createdAt:serverTimestamp()}); i.value=''; };
     function scrollChat(){ const d=document.getElementById('chatMessages'); d.scrollTop=d.scrollHeight; }
+
+    window.fixParticipants = async () => {
+        if(!currentTournamentId || !currentTournamentData) return;
+        const res = await Swal.fire({
+            title: 'Listeyi Birleştir',
+            text: "Masadaki oyuncular ile veritabanındaki mevcut liste birleştirilecek. Silinme olmayacak.",
+            icon: 'info',
+            showCancelButton: true,
+            background: 'rgba(30,30,35,0.95)', color: '#fff',
+            confirmButtonColor: '#d4af37'
+        });
+        if(!res.isConfirmed) return;
+        let currentDBList = currentTournamentData.participantIds || [];
+        let slotIds = currentTournamentData.slots.map(s=>s.ownerId).filter(id=>id);
+        if(currentTournamentData.creatorId) slotIds.push(currentTournamentData.creatorId);
+        let mergedList = [...new Set([...currentDBList, ...slotIds])];
+        try {
+            await updateDoc(doc(db, "tournaments", currentTournamentId), { participantIds: mergedList });
+            showToast("Liste başarıyla birleştirildi!", "success");
+        } catch(e) { console.error(e); showToast("Hata: " + e.message, "error"); }
+    };
+
+    window.adminAddPlayer = async () => {
+        if(!currentTournamentId || !currentTournamentData) return;
+        const { value: uid } = await Swal.fire({ title: 'Kullanıcı UID', input: 'text', inputLabel: 'Firebase Authentication kısmındaki User UID', inputPlaceholder: 'Örn: J8d9S...', background: 'rgba(30,30,35,0.95)', color: '#fff', confirmButtonColor: '#d4af37' });
+        if(!uid) return;
+        const { value: seatNum } = await Swal.fire({ title: 'Masa Numarası', input: 'number', inputLabel: 'Kaç numaralı masaya oturtulsun?', inputValue: 1, background: 'rgba(30,30,35,0.95)', color: '#fff', confirmButtonColor: '#d4af37' });
+        if(!seatNum) return;
+        const index = parseInt(seatNum) - 1;
+        const slots = [...currentTournamentData.slots];
+        if(!slots[index]) { showToast("Geçersiz masa numarası!", "error"); return; }
+        const { value: name } = await Swal.fire({ title: 'Görünen İsim', input: 'text', inputValue: 'Oyuncu', background: 'rgba(30,30,35,0.95)', color: '#fff', confirmButtonColor: '#d4af37' });
+        slots[index] = { index: index, name: name || "Oyuncu", ownerId: uid.trim(), avatar: 'fa-user-secret', status: 'taken' };
+        try { await updateDoc(doc(db, "tournaments", currentTournamentId), { slots: slots, participantIds: arrayUnion(uid.trim()) }); showToast("Oyuncu başarıyla masaya oturtuldu!", "success"); } catch(e) { showToast("Hata: " + e.message, "error"); }
+    };
+
+    window.addMatchManual = async () => {
+        if(!currentTournamentId || !currentTournamentData) return;
+        let options = {};
+        currentTournamentData.slots.forEach(s => { options[s.index] = s.name; });
+        const htmlContent = `
+            <div style="text-align:left;">
+                <label>Tur Numarası:</label>
+                <input type="number" id="swal-round" class="swal2-input" value="1" min="1" style="width:100%; margin-bottom:10px;">
+                <label>1. Oyuncu (Beyaz):</label>
+                <select id="swal-p1" class="swal2-input" style="width:100%; margin-bottom:10px; background:#333; color:#fff;">
+                    ${Object.keys(options).map(k => `<option value="${k}">${options[k]}</option>`).join('')}
+                </select>
+                <label>2. Oyuncu (Siyah):</label>
+                <select id="swal-p2" class="swal2-input" style="width:100%; background:#333; color:#fff;">
+                    ${Object.keys(options).map(k => `<option value="${k}">${options[k]}</option>`).join('')}
+                </select>
+            </div>
+        `;
+        const { isConfirmed } = await Swal.fire({
+            title: 'Yeni Maç Ekle',
+            html: htmlContent,
+            showCancelButton: true,
+            confirmButtonText: 'EKLE',
+            background: 'rgba(30,30,35,0.95)', color: '#fff',
+            confirmButtonColor: '#d4af37',
+            preConfirm: () => { return [ document.getElementById('swal-round').value, document.getElementById('swal-p1').value, document.getElementById('swal-p2').value ] }
+        });
+
+        if(isConfirmed) {
+            const r = parseInt(document.getElementById('swal-round').value);
+            const p1 = parseInt(document.getElementById('swal-p1').value);
+            const p2 = parseInt(document.getElementById('swal-p2').value);
+            if(p1 === p2) { showToast("Aynı oyuncuyu kendisine karşı seçemezsin!", "error"); return; }
+            const newMatch = { id: Date.now(), r: r, p1: p1, p2: p2, res: null, link: '', isBye: false };
+            await updateDoc(doc(db,"tournaments",currentTournamentId), { matches: arrayUnion(newMatch) });
+            showToast("Maç eklendi!", "success");
+        }
+    };
+
+    // --- SMART AUTO FINISH (GREEDY COMPACT ALGORITHM) ---
+    window.autoFinishFixture = async () => {
+        if(!currentTournamentId || !currentTournamentData) return;
+
+        const res = await Swal.fire({
+            title: 'Akıllı Tamamlama',
+            text: "Sistem, çift devreli lig usulüne göre EKSİK kalan maçları hesaplayıp, en erken turlardaki boşlukları doldurarak yerleştirecek.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'HESAPLA VE EKLE',
+            confirmButtonColor: '#9b59b6', 
+            background: 'rgba(30,30,35,0.95)', color: '#fff'
+        });
+
+        if(!res.isConfirmed) return;
+
+        const slots = currentTournamentData.slots;
+        const existingMatches = currentTournamentData.matches;
+        const numPlayers = slots.length;
+        
+        // 1. Oynanması Gereken Tüm Maçları Belirle (P1-P2 ile P2-P1 farklıdır)
+        let neededMatches = [];
+        for(let i=0; i<numPlayers; i++) {
+            for(let j=0; j<numPlayers; j++) {
+                if(i !== j) {
+                    // Bu spesifik eşleşme var mı?
+                    const exists = existingMatches.some(m => m.p1 === i && m.p2 === j);
+                    if(!exists) {
+                        neededMatches.push({p1: i, p2: j});
+                    }
+                }
+            }
+        }
+
+        if(neededMatches.length === 0) {
+            showToast("Fikstür zaten eksiksiz.", "info");
+            return;
+        }
+
+        // 2. Mevcut Turların Doluluk Haritasını Çıkar
+        // Key: Round, Value: Set of Player IDs
+        let roundOccupancy = {};
+        
+        existingMatches.forEach(m => {
+            if(!roundOccupancy[m.r]) roundOccupancy[m.r] = new Set();
+            roundOccupancy[m.r].add(m.p1);
+            roundOccupancy[m.r].add(m.p2);
+        });
+
+        // 3. Compact Fit: Her maçı mümkün olan EN ERKEN tura yerleştir
+        let newMatches = [];
+        // Rastgele karıştır ki hep aynı kişiler arka arkaya gelmesin
+        neededMatches.sort(() => Math.random() - 0.5);
+
+        neededMatches.forEach(match => {
+            let assignedRound = 1; // Her zaman 1. Turdan kontrol etmeye başla
+            
+            while(true) {
+                if(!roundOccupancy[assignedRound]) roundOccupancy[assignedRound] = new Set();
+                
+                let p1Busy = roundOccupancy[assignedRound].has(match.p1);
+                let p2Busy = roundOccupancy[assignedRound].has(match.p2);
+
+                if(!p1Busy && !p2Busy) {
+                    // Müsait! Yerleştir.
+                    roundOccupancy[assignedRound].add(match.p1);
+                    roundOccupancy[assignedRound].add(match.p2);
+                    
+                    newMatches.push({
+                        id: Date.now() + Math.floor(Math.random()*1000000),
+                        r: assignedRound,
+                        p1: match.p1,
+                        p2: match.p2,
+                        res: null,
+                        link: '',
+                        isBye: false
+                    });
+                    break;
+                } else {
+                    // Dolu, bir sonraki tura bak
+                    assignedRound++;
+                }
+            }
+        });
+
+        try {
+            const finalMatches = [...existingMatches, ...newMatches];
+            // Maçları tur sırasına göre dizmek görsel açıdan iyidir (zorunlu değil ama şık durur)
+            finalMatches.sort((a,b) => a.r - b.r);
+            
+            await updateDoc(doc(db, "tournaments", currentTournamentId), { matches: finalMatches });
+            showToast(`${newMatches.length} adet maç başarıyla planlandı!`, "success");
+        } catch(e) {
+            console.error(e);
+            showToast("Hata: " + e.message, "error");
+        }
+    };
+
+    window.deleteMatch = async (matchId) => {
+        if(!currentTournamentId || !currentTournamentData) return;
+        const res = await Swal.fire({ title: 'Maçı Sil?', text: "Bu maç fikstürden kaldırılacak.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', background: 'rgba(30,30,35,0.95)', color: '#fff' });
+        if(!res.isConfirmed) return;
+        const newMatches = currentTournamentData.matches.filter(m => m.id !== matchId);
+        await updateDoc(doc(db,"tournaments",currentTournamentId), { matches: newMatches });
+        showToast("Maç silindi.", "info");
+    };
+
+    window.objectToMatch = async (matchId) => {
+        const { value: url } = await Swal.fire({
+            title: 'Sonuca İtiraz Et',
+            text: "Lütfen kanıt olarak bir link (Lichess/Chess.com/Resim) girin. Bu zorunludur!",
+            input: 'url',
+            inputPlaceholder: 'https://...',
+            showCancelButton: true,
+            confirmButtonText: 'GÖNDER',
+            confirmButtonColor: '#d33', 
+            background: 'rgba(30,30,35,0.95)', color: '#fff'
+        });
+
+        if (url) {
+            await updateDoc(doc(db,"tournaments",currentTournamentId), { 
+                matches: currentTournamentData.matches.map(m => {
+                    if(m.id === matchId) {
+                        return { ...m, isDisputed: true, disputeLink: url };
+                    }
+                    return m;
+                }) 
+            });
+            showToast("İtiraz gönderildi! Yönetici inceleyecek.", "warning");
+        }
+    };
 
 </script>
 </body>
