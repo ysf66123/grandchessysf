@@ -4,22 +4,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Grandmaster Pro | Ultimate Chess & Game Manager</title>
+    <title>Grandmaster Pro | Ultimate Game Suite</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1b1d24">
-    <link rel="manifest" href='data:application/manifest+json,{"name":"Grandmaster Pro","short_name":"Grandmaster","start_url":".","display":"standalone","background_color":"#1b1d24","theme_color":"#d4af37","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/3002/3002626.png","sizes":"512x512","type":"image/png"}]}' />
-
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Chess Libraries -->
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    
+    <!-- Utilities -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 
     <style>
+        /* --- CORE CSS --- */
         :root {
             --bg-gradient: linear-gradient(135deg, #0f1014 0%, #222530 100%);
             --glass-panel: rgba(27, 29, 36, 0.6);
@@ -27,8 +34,8 @@
             --glass-card: rgba(255, 255, 255, 0.03);
             --glass-input: rgba(0, 0, 0, 0.2);
             --primary: #d4af37;
-            --primary-hover: #eac64f;
             --accent: #00f2ff;
+            --quiz-color: #ff0055;
             --text-main: #e0e0e0;
             --text-muted: #aaa;
             --success: #4caf50;
@@ -76,7 +83,6 @@
         .view.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); filter: blur(5px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
         
-        /* Dashboard Layout */
         .hero-card {
             background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(0,0,0,0.4) 100%);
             border: 1px solid var(--primary);
@@ -92,10 +98,7 @@
             align-items: center;
             justify-content: center;
         }
-        .hero-card::before {
-            content: ''; position: absolute; top: -50px; left: -50px; width: 100px; height: 100px;
-            background: var(--primary); filter: blur(60px); opacity: 0.2; border-radius: 50%;
-        }
+        .hero-card::before { content: ''; position: absolute; top: -50px; left: -50px; width: 100px; height: 100px; background: var(--primary); filter: blur(60px); opacity: 0.2; border-radius: 50%; }
         .hero-card h3 { font-size: 1.8rem; margin-bottom: 5px; color: #fff; text-shadow: 0 0 15px var(--primary); }
         .hero-card p { max-width: 500px; margin: 0 auto 20px auto; color: #ddd; font-size: 0.95rem; }
         .hero-actions { display: flex; gap: 15px; width: 100%; max-width: 400px; }
@@ -105,7 +108,54 @@
         .dash-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); border-color: var(--primary); }
         .dash-card h3 { font-size: 1.1rem; }
         
-        /* 2v2 Chess Styles & Locking */
+        /* --- QUIZ MODE STYLES --- */
+        .quiz-card { background: linear-gradient(145deg, rgba(255, 0, 85, 0.05), rgba(0,0,0,0.4)); border-color: rgba(255, 0, 85, 0.3); }
+        .quiz-card:hover { border-color: var(--quiz-color); }
+        .quiz-builder-item { background: rgba(0,0,0,0.3); border:1px solid var(--glass-border); padding:15px; margin-bottom:15px; border-radius:10px; position: relative; animation: fadeIn 0.3s; }
+        .quiz-builder-item .remove-q { position: absolute; top: 10px; right: 10px; color: var(--danger); cursor: pointer; }
+        .quiz-opt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .quiz-opt-input { margin:0 !important; font-size:0.9rem; padding:8px; border-left:4px solid transparent; }
+        .quiz-opt-input.correct { border-left-color: var(--success); background: rgba(76, 175, 80, 0.1); }
+        .q-img-preview { max-width: 100%; height: 150px; object-fit: contain; border-radius: 8px; margin-top: 10px; display: none; background: rgba(0,0,0,0.2); }
+        
+        .quiz-game-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 50px; }
+        .quiz-timer-bar { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
+        .quiz-timer-fill { height: 100%; background: var(--quiz-color); width: 100%; transition: width 1s linear; box-shadow: 0 0 10px var(--quiz-color); }
+        
+        .quiz-play-options { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .quiz-btn { padding: 25px; font-size: 1.1rem; color: white; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid rgba(0,0,0,0.1); display:flex; align-items:center; justify-content:center; min-height:80px; text-shadow: 0 1px 3px rgba(0,0,0,0.5); font-weight: bold; }
+        .quiz-btn:hover { transform: scale(1.02); filter: brightness(1.1); }
+        .quiz-btn:active { transform: scale(0.98); }
+        .quiz-btn.opt-0 { background-color: #e21b3c; } 
+        .quiz-btn.opt-1 { background-color: #1368ce; } 
+        .quiz-btn.opt-2 { background-color: #d89e00; } 
+        .quiz-btn.opt-3 { background-color: #26890c; } 
+        
+        .quiz-btn.disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; filter: grayscale(0.8); }
+        .quiz-btn.selected { border-color: white; box-shadow: 0 0 20px rgba(255,255,255,0.8); z-index: 10; transform: scale(1.05); }
+        .quiz-btn.is-correct { opacity: 1 !important; box-shadow: 0 0 30px #4caf50; border: 4px solid #fff; filter:brightness(1.2); }
+        .quiz-btn.is-wrong { opacity: 0.3; filter: grayscale(1); }
+        
+        .podium-container { display: flex; align-items: flex-end; justify-content: center; height: 250px; gap: 15px; margin-top: 30px; margin-bottom:30px; }
+        .podium-bar { width: 90px; background: linear-gradient(to top, #222, #444); border-radius: 8px 8px 0 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 15px; position: relative; animation: growUp 1s ease-out; box-shadow: 0 10px 20px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); }
+        .podium-1 { height: 220px; background: linear-gradient(to top, #d4af37, #f7d768); color: black; z-index: 2; box-shadow: 0 0 25px rgba(212,175,55,0.5); order: 2; border:none; }
+        .podium-2 { height: 160px; background: linear-gradient(to top, #a0a0a0, #e0e0e0); color: black; order: 1; border:none; }
+        .podium-3 { height: 120px; background: linear-gradient(to top, #cd7f32, #eda96e); color: black; order: 3; border:none; }
+        .podium-avatar { width: 60px; height: 60px; border-radius: 50%; background: #333; position: absolute; top: -30px; border: 4px solid white; display:flex; align-items:center; justify-content:center; color:white; font-size:1.5rem; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        @keyframes growUp { from { height: 0; } }
+
+        /* File Upload Style */
+        .file-upload-wrapper { position: relative; margin-bottom: 10px; border: 2px dashed var(--glass-border); border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .file-upload-wrapper:hover { border-color: var(--primary); background: rgba(255,255,255,0.05); }
+        .file-upload-wrapper input[type=file] { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        
+        .quiz-final-table { width: 100%; border-collapse: separate; border-spacing: 0 5px; margin-top: 20px; }
+        .quiz-final-table th { background: rgba(0,0,0,0.3); padding: 10px; color: var(--quiz-color); }
+        .quiz-final-table td { background: rgba(255,255,255,0.05); padding: 10px; text-align: center; }
+        .quiz-final-table tr:first-child td { background: linear-gradient(90deg, rgba(255,215,0,0.1), rgba(0,0,0,0)); border-left: 3px solid gold; }
+
+        /* --- END QUIZ STYLES --- */
+
         .chess-lobby-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
         .team-slot { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 2px dashed var(--glass-border); display: flex; align-items: center; justify-content: space-between; transition:0.2s; position: relative; }
         .team-slot.taken { border-style: solid; background: rgba(255,255,255,0.05); border-color: var(--glass-border); }
@@ -122,14 +172,12 @@
         .square.highlight::after { content: ''; position: absolute; width: 30%; height: 30%; background: rgba(0,0,0,0.2); border-radius: 50%; }
         .square.selected { background-color: var(--board-highlight) !important; }
         
-        /* Coordinates Style */
         .coord { position: absolute; font-size: 0.7rem; font-weight: bold; pointer-events: none; z-index: 1; font-family: sans-serif; }
         .coord-rank { top: 2px; left: 3px; }
         .coord-file { bottom: 0px; right: 3px; }
         .square.white .coord { color: var(--board-dark); }
         .square.black .coord { color: var(--board-light); }
 
-        /* PIECE STYLES & LOCKING */
         .piece { width: 100%; height: 100%; background-size: cover; z-index: 2; transition: transform 0.1s, filter 0.2s, opacity 0.2s; }
         .piece.active { cursor: pointer; filter: drop-shadow(0 0 2px rgba(255,255,255,0.5)); }
         .piece.active:active { transform: scale(1.15); }
@@ -142,12 +190,10 @@
         .timer-box.white { background: #fff; color: #000; }
         .timer-box.black { background: #222; color: #fff; }
         
-        /* Game Over Modal Special */
         .game-over-content { background: linear-gradient(135deg, #1b1d24, #2a2d38); border: 2px solid var(--primary); padding: 40px; }
         .winner-crown { font-size: 4rem; color: #FFD700; margin-bottom: 15px; filter: drop-shadow(0 0 15px rgba(255,215,0,0.6)); animation: float 3s ease-in-out infinite; }
         @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
 
-        /* ... Existing Styles ... */
         .cr-deck-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px; }
         .cr-card { position: relative; background: rgba(0,0,0,0.3); border-radius: 10px; aspect-ratio: 0.75; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; border: 2px solid #555; overflow: hidden; }
         .cr-card:hover { transform: scale(1.05); z-index: 10; }
@@ -160,6 +206,7 @@
         .rarity-legendary { border: 2px solid transparent; background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), var(--cr-legendary); background-origin: border-box; background-clip: content-box, border-box; box-shadow: 0 0 10px rgba(255, 56, 228, 0.3); }
         .rarity-champion { border: 2px solid transparent; background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), var(--cr-champion); background-origin: border-box; background-clip: content-box, border-box; box-shadow: 0 0 15px rgba(255, 215, 0, 0.5); }
         .avg-elixir { background: #d0006f; color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 5px 15px rgba(208, 0, 111, 0.4); border: 2px solid rgba(255,255,255,0.3); }
+        
         .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
         .slot-item { background: var(--glass-card); padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; border: 1px solid var(--glass-border); border-bottom: 4px solid var(--glass-border); position: relative; transition: 0.3s; }
         .slot-item:hover { background: rgba(255,255,255,0.08); }
@@ -168,11 +215,13 @@
         .kick-btn { position: absolute; top: 5px; right: 5px; background: transparent; color: var(--danger); border: none; box-shadow:none; font-size: 1rem; cursor: pointer; padding: 5px; }
         .leave-seat-btn { margin-top: 5px; font-size: 0.7rem; padding: 4px 8px; border: 1px solid var(--danger); color: var(--danger); background: transparent; border-radius: 4px; cursor: pointer; box-shadow:none; }
         .leave-seat-btn:hover { background: var(--danger); color: white; }
+        
         .history-list { display: grid; gap: 10px; margin-top: 20px; max-height: 200px; overflow-y: auto; padding-right:5px; }
         .history-list::-webkit-scrollbar { width: 5px; }
         .history-list::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
         .history-item { background: var(--glass-card); padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; transition:0.2s; }
         .history-item:hover { background: rgba(255,255,255,0.08); border-color: var(--primary); }
+        
         .match-card { background: var(--glass-card); padding: 12px; margin-bottom: 8px; border-radius: 8px; display: flex; align-items: center; border: 1px solid var(--glass-border); position: relative; flex-wrap: wrap; transition: transform 0.2s; }
         .match-card:hover { transform: scale(1.01); }
         .match-card.disputed { border: 1px solid var(--danger); background: rgba(255, 77, 77, 0.05); animation: pulse-red 2s infinite; }
@@ -186,12 +235,14 @@
         .object-btn:hover { background: #ff9800; color: #000; }
         .score-select { width: 80px; height: 40px; padding: 5px; margin: 0 5px; font-weight: bold; font-size: 1rem; text-align: center; text-align-last: center; border-radius: 6px; cursor: pointer; background: rgba(0,0,0,0.4) !important; color: #d4af37 !important; border: 1px solid var(--glass-border); display: inline-block; -webkit-appearance: none; appearance: none; }
         .score-select:disabled { opacity: 0.5; cursor: not-allowed; border-color: transparent; }
+        
         .link-area { width: 100%; margin-top: 8px; display: flex; align-items: center; gap: 5px; font-size: 0.8rem; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 4px; }
         .link-input { border: none; background: transparent; padding: 4px; margin: 0; color: var(--accent); width: 100%; font-size: 0.8rem; }
         .watch-btn { background: rgba(255,255,255,0.1); color: var(--primary); border: 1px solid var(--primary); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; text-decoration: none; display: inline-block; margin-left: 5px; transition:0.2s; }
         .watch-btn:hover { background: var(--primary); color:black; }
         .proof-link { display: inline-block; width:100%; text-align:center; background:var(--danger); color:white; padding:2px; font-size:0.7rem; margin-top:5px; border-radius:4px; text-decoration:none; font-weight:bold; }
         .proof-link:hover { opacity:0.8; }
+        
         table { width: 100%; border-collapse: separate; border-spacing: 0 5px; margin-top: 10px; }
         th { padding: 12px; text-align: center; color: var(--primary); font-size: 0.8rem; text-transform:uppercase; letter-spacing:1px; }
         td { padding: 15px 12px; text-align: center; background: var(--glass-card); border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border); }
@@ -202,6 +253,7 @@
         .rank-1 td { background: var(--rank1-bg); border-top: 1px solid var(--primary); border-bottom: 1px solid var(--primary); color: #fff; font-weight: bold; }
         .rank-1 td:first-child { border-left: 1px solid var(--primary); } 
         .rank-1 td:last-child { border-right: 1px solid var(--primary); }
+        
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 2000; display: none; align-items: center; justify-content: center; animation: fadeIn 0.3s; }
         .modal-content { background: rgba(30, 30, 35, 0.9); padding: 30px; border-radius: 16px; width: 90%; max-width: 400px; text-align: center; border: 1px solid var(--primary); box-shadow: 0 0 40px rgba(0,0,0,0.5); position: relative; max-height: 80vh; overflow-y: auto; }
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
@@ -209,6 +261,7 @@
         .stat-val { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
         .close-modal { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); transition: 0.2s; }
         .close-modal:hover { color: var(--danger); transform: rotate(90deg); }
+        
         .floating-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: none; flex-direction: column; gap: 10px; align-items: flex-end; }
         .float-btn { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: transform 0.2s; border: none; backdrop-filter: blur(5px); }
         .float-btn:hover { transform: scale(1.1); }
@@ -239,10 +292,39 @@
             .cr-elixir { width: 20px; height: 20px; font-size: 0.6rem; }
             .cr-card-name { font-size: 0.5rem; }
             .timer-box { font-size: 1.1rem; padding: 5px; width: 70px; }
+            
+            /* Quiz Mobile */
+            .quiz-btn { padding: 15px; font-size: 0.9rem; min-height: 60px; }
+            .podium-container { height: 150px; }
+            .podium-1 { height: 130px; } .podium-2 { height: 90px; } .podium-3 { height: 70px; }
         }
     </style>
 </head>
 <body>
+
+    <div id="audio-container" style="display:none;">
+        <audio id="audio-move" preload="auto" crossorigin="anonymous">
+            <source src="https://images.chesscomfiles.com/chess-themes/sounds/_common/default/move-self.mp3" type="audio/mp3">
+        </audio>
+        <audio id="audio-capture" preload="auto" crossorigin="anonymous">
+            <source src="https://images.chesscomfiles.com/chess-themes/sounds/_common/default/capture.mp3" type="audio/mp3">
+        </audio>
+        <audio id="audio-check" preload="auto" crossorigin="anonymous">
+            <source src="https://images.chesscomfiles.com/chess-themes/sounds/_common/default/move-check.mp3" type="audio/mp3">
+        </audio>
+        <audio id="audio-castle" preload="auto" crossorigin="anonymous">
+            <source src="https://images.chesscomfiles.com/chess-themes/sounds/_common/default/castle.mp3" type="audio/mp3">
+        </audio>
+        <audio id="audio-notify" preload="auto" crossorigin="anonymous">
+            <source src="https://images.chesscomfiles.com/chess-themes/sounds/_common/default/notify.mp3" type="audio/mp3">
+        </audio>
+        <audio id="audio-game-end" preload="auto" crossorigin="anonymous">
+            <source src="https://images.chesscomfiles.com/chess-themes/sounds/_common/default/game-end.mp3" type="audio/mp3">
+        </audio>
+        <audio id="audio-nav" preload="auto" crossorigin="anonymous">
+            <source src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" type="audio/mp3">
+        </audio>
+    </div>
 
 <div class="app-container glass-panel">
     
@@ -304,6 +386,21 @@
             </button>
         </div>
 
+        <!-- NEW QUIZ MODE SECTION -->
+        <div class="dash-card quiz-card" style="margin-bottom:20px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div style="text-align:left;">
+                    <h3 style="color:#ff0055;"><i class="fas fa-question-circle"></i> Quiz Master</h3>
+                    <p style="font-size:0.8rem; color:#ddd; margin:0;">Kahoot tarzı interaktif yarışma. Soruları hazırla, arkadaşlarını davet et!</p>
+                </div>
+                <div style="min-width:150px; text-align:right;">
+                     <button onclick="switchView('view-quiz-menu')" style="background:linear-gradient(45deg, #ff0055, #ff5e00); color:white; padding:10px 15px; font-size:0.9rem;">
+                        <i class="fas fa-gamepad"></i> OYNA / KUR
+                     </button>
+                </div>
+            </div>
+        </div>
+
         <div class="sub-grid">
             <div class="dash-card">
                 <div>
@@ -348,6 +445,167 @@
         </div>
     </div>
 
+    <!-- ===== QUIZ VIEWS ===== -->
+    
+    <!-- 1. Quiz Menu -->
+    <div id="view-quiz-menu" class="view">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2><i class="fas fa-question-circle" style="color:var(--quiz-color);"></i> Quiz Master</h2>
+            <button class="secondary icon-btn" onclick="switchView('view-dashboard')"><i class="fas fa-arrow-left"></i></button>
+        </div>
+        
+        <div class="dash-card" style="margin-bottom:20px;">
+            <h3>Quiz Oluştur</h3>
+            <input type="text" id="newQuizName" placeholder="Quiz Başlığı (Örn: Tarih Yarışması)">
+            <button onclick="startQuizBuilder()" style="width:100%; background:var(--quiz-color);">SORULARI HAZIRLA</button>
+        </div>
+        
+        <div class="dash-card">
+            <h3>Oyuna Katıl</h3>
+            <input type="text" id="quizJoinCode" placeholder="Oda Kodu (Örn: Q9X2)" style="text-align:center; font-size:1.5rem; letter-spacing:2px; text-transform:uppercase;">
+            <button onclick="joinQuizPrompt()" style="width:100%;">GİRİŞ YAP</button>
+        </div>
+    </div>
+
+    <!-- 2. Quiz Builder -->
+    <div id="view-quiz-builder" class="view">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3>Quiz Hazırlayıcı</h3>
+            <button class="secondary icon-btn" onclick="switchView('view-quiz-menu')"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div id="quizBuilderList" style="max-height:500px; overflow-y:auto; padding-right:5px; margin-bottom:15px;">
+            <!-- Questions will be added here -->
+        </div>
+        
+        <button onclick="addQuizQuestionUI()" class="secondary" style="width:100%; margin-bottom:10px; border-style:dashed;">+ SORU EKLE</button>
+        
+        <div class="dash-card" style="margin-top:20px;">
+            <h4 id="builderSummary">0 Soru</h4>
+            <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:8px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+                <span>Yönetici de oynasın mı?</span>
+                <div class="switch">
+                    <input type="checkbox" id="hostPlaysToggleBuilder" checked>
+                    <span class="slider"></span>
+                </div>
+            </div>
+            <button onclick="saveAndStartQuiz()" style="width:100%; background:var(--quiz-color);">QUİZE BAŞLA & LOBİ AÇ</button>
+        </div>
+    </div>
+
+    <!-- 3. Quiz Lobby -->
+    <div id="view-quiz-lobby" class="view">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>Quiz Lobisi</h2>
+            <button class="secondary icon-btn" onclick="leaveQuizLobby()"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="hero-card" style="border-color:var(--quiz-color); background: linear-gradient(135deg, rgba(255, 0, 85, 0.15) 0%, rgba(0,0,0,0.4) 100%);">
+            <h3 id="quizLobbyTitle">Quiz Başlığı</h3>
+            <p style="margin-bottom:5px;">Oda Kodu:</p>
+            <div id="quizCodeDisplay" style="font-size:3rem; font-weight:bold; letter-spacing:5px; cursor:pointer; color:var(--quiz-color);" onclick="copyQuizCode()">...</div>
+            <div style="font-size:0.8rem; color:#aaa; margin-bottom:20px;">Kopyalamak için tıkla</div>
+            
+            <div id="quizHostControls" style="display:none; width:100%; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                     <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:0.9rem;">
+                        <div class="switch"><input type="checkbox" id="speedBonusToggle" checked><span class="slider"></span></div>
+                        <span>Hız Bonusu (İlk bilene +1)</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:0.9rem;">
+                        <div class="switch"><input type="checkbox" id="hostParticipateToggle" onchange="toggleHostParticipation(this.checked)"><span class="slider"></span></div>
+                        <span>Yönetici Katılsın</span>
+                    </label>
+                </div>
+                <button onclick="launchQuizGame()" style="width:100%; margin-top:15px; background:var(--quiz-color); font-size:1.1rem;">BAŞLAT</button>
+            </div>
+            
+            <div id="quizWaitingMsg" style="margin-top:15px; color:var(--text-muted); font-style:italic;">Yönetici başlatana kadar bekle...</div>
+        </div>
+        
+        <h4 style="margin-top:20px; border-bottom:1px solid var(--glass-border);">KATILIMCILAR (<span id="quizPlayerCount">0</span>)</h4>
+        <div id="quizPlayerList" class="slot-grid" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));"></div>
+    </div>
+
+    <!-- 4. Quiz Game (Active) -->
+    <div id="view-quiz-game" class="view">
+        <div class="quiz-game-header">
+            <div id="quizQIndex" style="font-weight:bold; color:var(--quiz-color);">Soru 1/10</div>
+            <div id="quizScoreDisplay" style="background:rgba(255,255,255,0.1); padding:2px 10px; border-radius:10px;">0 Puan</div>
+        </div>
+        
+        <div class="quiz-timer-bar">
+            <div id="quizTimerFill" class="quiz-timer-fill"></div>
+        </div>
+        
+        <div class="dash-card" style="margin-bottom:15px; min-height:150px; justify-content:center;">
+            <h2 id="quizQuestionText" style="font-size:1.4rem; color:white; margin:0;">Soru Yükleniyor...</h2>
+            <img id="quizQuestionImg" src="" style="max-width:100%; max-height:200px; object-fit:contain; margin-top:15px; border-radius:8px; display:none;">
+        </div>
+
+        <!-- HOST CONTROL (Hidden for players) -->
+        <div id="quizHostGameControls" style="text-align:center; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px; margin-bottom:15px; display:none;">
+            <div style="font-size:0.9rem; color:#aaa;">YÖNETİCİ PANELİ</div>
+            <div id="quizAnswerCount" style="font-size:1.5rem; font-weight:bold; margin:5px 0;">0 / 0 Cevap</div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">Herkes cevapladığında veya süre bittiğinde otomatik geçilir.</div>
+            <button onclick="quizForceNext()" style="background:white; color:black; font-size:0.8rem; margin-top:5px;">MANUEL GEÇ <i class="fas fa-forward"></i></button>
+        </div>
+        
+        <div id="quizOptionGrid" class="quiz-play-options">
+            <div class="quiz-btn opt-0" onclick="submitQuizAnswer(0)"><span>Seçenek A</span></div>
+            <div class="quiz-btn opt-1" onclick="submitQuizAnswer(1)"><span>Seçenek B</span></div>
+            <div class="quiz-btn opt-2" onclick="submitQuizAnswer(2)"><span>Seçenek C</span></div>
+            <div class="quiz-btn opt-3" onclick="submitQuizAnswer(3)"><span>Seçenek D</span></div>
+        </div>
+
+        <div id="quizResultMsg" style="text-align:center; font-size:1.5rem; font-weight:bold; margin-top:20px; display:none; animation:fadeIn 0.5s;">
+            <!-- CORRECT / WRONG -->
+        </div>
+
+        <!-- Leaderboard Overlay (Inside Game) -->
+        <div id="quizIntermission" style="display:none; text-align:center; margin-top:20px;">
+            <h3 style="color:var(--primary); text-transform:uppercase;">Puan Durumu</h3>
+            <div id="quizTopList" style="max-width:400px; margin:0 auto; background:rgba(0,0,0,0.3); border-radius:10px; padding:10px; max-height:300px; overflow-y:auto;"></div>
+            <div id="autoNextTimer" style="margin-top:10px; font-size:0.8rem; color:var(--text-muted);">Sonraki soruya geçiliyor...</div>
+        </div>
+    </div>
+
+    <!-- 5. Quiz Final Results -->
+    <div id="view-quiz-end" class="view">
+        <div class="game-over-content" style="text-align:center; border-color:var(--quiz-color);">
+            <i class="fas fa-crown winner-crown"></i>
+            <h2>YARIŞMA BİTTİ</h2>
+            
+            <div class="podium-container">
+                <div class="podium-bar podium-2">
+                    <div class="podium-avatar" id="av-2"><i class="fas fa-user"></i></div>
+                    <div id="name-2" style="font-size:0.8rem; font-weight:bold; margin-top:5px;">-</div>
+                    <div id="score-2" style="font-size:0.9rem;">0</div>
+                </div>
+                <div class="podium-bar podium-1">
+                    <div class="podium-avatar" id="av-1" style="background:var(--primary); top:-40px; width:70px; height:70px;"><i class="fas fa-crown"></i></div>
+                    <div id="name-1" style="font-size:1rem; font-weight:bold; margin-top:10px;">-</div>
+                    <div id="score-1" style="font-size:1.2rem; font-weight:bold;">0</div>
+                </div>
+                <div class="podium-bar podium-3">
+                    <div class="podium-avatar" id="av-3"><i class="fas fa-user"></i></div>
+                    <div id="name-3" style="font-size:0.8rem; font-weight:bold; margin-top:5px;">-</div>
+                    <div id="score-3" style="font-size:0.9rem;">0</div>
+                </div>
+            </div>
+
+            <table class="quiz-final-table">
+                <thead><tr><th>Sıra</th><th>İsim</th><th>Puan</th></tr></thead>
+                <tbody id="quizFinalTableBody"></tbody>
+            </table>
+
+            <div style="margin-top:30px;">
+                <button onclick="leaveQuizLobby()" style="width:100%; margin-top:20px; background:var(--quiz-color);">ANASAYFA</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ... Existing Views (Lobby, 2v2 Game, Clash, Settings, etc.) ... -->
     <div id="view-2v2-lobby" class="view">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2>2v2 Lobi</h2>
@@ -481,6 +739,9 @@
             <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:15px; border-radius:8px; margin-top:20px; border:1px solid var(--glass-border);">
                 <span>Oyun Sesleri</span>
                 <label class="switch"><input type="checkbox" id="muteSoundToggle"><span class="slider"></span></label>
+            </div>
+            <div style="margin-top:10px; font-size:0.8rem; color:#aaa; text-align:left;">
+                <i class="fas fa-info-circle"></i> Ses gelmiyorsa ekranda herhangi bir yere tıklayın.
             </div>
             <button id="btnSaveSettings" onclick="saveSettings()" style="width:100%; margin-top:20px;">KAYDET</button>
             <button class="secondary" onclick="switchView('view-dashboard')" style="width:100%; margin-top:10px;">GERİ DÖN</button>
@@ -635,41 +896,45 @@
 </div>
 
 <script>
-    /* ========================================================
-       GLOBAL SOUND MANAGER (NON-MODULE FOR SAFETY)
-       ======================================================== */
-    const GAME_SOUNDS = {
-        move: new Audio("https://images.chesscomfiles.com/chess-themes/sounds/_common/move-self.mp3"),
-        capture: new Audio("https://images.chesscomfiles.com/chess-themes/sounds/_common/capture.mp3"),
-        check: new Audio("https://images.chesscomfiles.com/chess-themes/sounds/_common/move-check.mp3"),
-        gameStart: new Audio("https://images.chesscomfiles.com/chess-themes/sounds/_common/game-start.mp3"),
-        gameEnd: new Audio("https://images.chesscomfiles.com/chess-themes/sounds/_common/game-end.mp3"),
-        nav: new Audio("https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3")
+    const sounds = {
+        move: document.getElementById('audio-move'),
+        capture: document.getElementById('audio-capture'),
+        check: document.getElementById('audio-check'),
+        castle: document.getElementById('audio-castle'),
+        notify: document.getElementById('audio-notify'),
+        gameEnd: document.getElementById('audio-game-end'),
+        nav: document.getElementById('audio-nav')
     };
     
-    let audioUnlocked = false;
-
-    // First user interaction unlocks the audio context
-    function unlockAudio() {
-        if(audioUnlocked) return;
-        Object.values(GAME_SOUNDS).forEach(s => {
-            s.muted = true;
-            s.play().catch(e=>{});
-            s.pause();
-            s.currentTime = 0;
-            s.muted = false;
+    // Robust Sound Unlock
+    function unlockAudioContext() {
+        Object.values(sounds).forEach(audio => {
+            if(audio) {
+                audio.muted = true;
+                const promise = audio.play();
+                if(promise !== undefined) {
+                    promise.then(() => {
+                        audio.pause();
+                        audio.currentTime = 0;
+                        audio.muted = false;
+                    }).catch(error => { console.log("Audio waiting for interaction"); });
+                }
+            }
         });
-        audioUnlocked = true;
-        document.removeEventListener('click', unlockAudio);
+        document.body.removeEventListener('click', unlockAudioContext);
+        document.body.removeEventListener('touchstart', unlockAudioContext);
     }
-    document.addEventListener('click', unlockAudio);
+    
+    document.body.addEventListener('click', unlockAudioContext);
+    document.body.addEventListener('touchstart', unlockAudioContext);
 
     window.playGameSound = function(key) {
         if(localStorage.getItem('gm_mute') === 'true') return;
-        const s = GAME_SOUNDS[key];
-        if(s) {
-            s.currentTime = 0;
-            s.play().catch(e => console.log("Ses hatası (Autoplay Policy olabilir):", e));
+        const audio = sounds[key];
+        if(audio) {
+            audio.currentTime = 0; 
+            const playPromise = audio.play();
+            if (playPromise !== undefined) { playPromise.catch(error => { console.error("Sound play failed:", error); }); }
         }
     };
 </script>
@@ -679,9 +944,15 @@
     const standingsBody = document.getElementById('standingsBody');
     const lobbySlots = document.getElementById('lobbySlots');
     const crDeckGrid = document.getElementById('crDeckGrid');
+    const quizPlayerList = document.getElementById('quizPlayerList');
+    const quizBuilderList = document.getElementById('quizBuilderList');
+    const quizFinalTableBody = document.getElementById('quizFinalTableBody');
     autoAnimate(standingsBody);
     autoAnimate(lobbySlots);
     autoAnimate(crDeckGrid);
+    autoAnimate(quizPlayerList);
+    autoAnimate(quizBuilderList);
+    autoAnimate(quizFinalTableBody);
 </script>
 
 <script type="module">
@@ -729,6 +1000,7 @@
     let current2v2Data = null;
     let unsubscribe2v2 = null;
     let chess = new Chess();
+    let board = null; 
     let boardSelectedSquare = null;
     let boardValidMoves = [];
     let gameTimerInterval = null;
@@ -739,7 +1011,6 @@
         {id:26000003, n:"Giant", e:5, r:"rare", t:"troop", role:"win_condition"},{id:26000011, n:"Valkyrie", e:4, r:"rare", t:"troop", role:"mini_tank"},{id:26000014, n:"Musketeer", e:4, r:"rare", t:"troop", role:"anti_air"},{id:26000017, n:"Wizard", e:5, r:"rare", t:"troop", role:"anti_air"},{id:26000018, n:"Mini P.E.K.K.A", e:4, r:"rare", t:"troop", role:"tank_killer"},{id:26000021, n:"Hog Rider", e:4, r:"rare", t:"troop", role:"win_condition"},{id:26000028, n:"Three Musketeers", e:9, r:"rare", t:"troop", role:"win_condition"},{id:26000036, n:"Battle Ram", e:4, r:"rare", t:"troop", role:"win_condition"},{id:26000038, n:"Ice Golem", e:2, r:"rare", t:"troop", role:"mini_tank"},{id:26000039, n:"Mega Minion", e:3, r:"rare", t:"troop", role:"anti_air"},{id:26000040, n:"Dart Goblin", e:3, r:"rare", t:"troop", role:"anti_air"},{id:26000052, n:"Zappies", e:4, r:"rare", t:"troop", role:"defense"},{id:26000057, n:"Flying Machine", e:4, r:"rare", t:"troop", role:"anti_air"},{id:26000059, n:"Royal Hogs", e:5, r:"rare", t:"troop", role:"win_condition"},{id:26000065, n:"Elixir Golem", e:3, r:"rare", t:"troop", role:"win_condition"},{id:26000066, n:"Battle Healer", e:4, r:"rare", t:"troop", role:"mini_tank"},{id:26000068, n:"Heal Spirit", e:1, r:"rare", t:"troop", role:"cycle"},
         {id:26000004, n:"P.E.K.K.A", e:7, r:"epic", t:"troop", role:"tank_killer"},{id:26000006, n:"Balloon", e:5, r:"epic", t:"troop", role:"win_condition"},{id:26000007, n:"Witch", e:5, r:"epic", t:"troop", role:"support"},{id:26000009, n:"Golem", e:8, r:"epic", t:"troop", role:"win_condition"},{id:26000012, n:"Skeleton Army", e:3, r:"epic", t:"troop", role:"swarm"},{id:26000015, n:"Baby Dragon", e:4, r:"epic", t:"troop", role:"anti_air"},{id:26000016, n:"Prince", e:5, r:"epic", t:"troop", role:"mini_tank"},{id:26000020, n:"Giant Skeleton", e:6, r:"epic", t:"troop", role:"tank"},{id:26000025, n:"Guards", e:3, r:"epic", t:"troop", role:"defense"},{id:26000027, n:"Dark Prince", e:4, r:"epic", t:"troop", role:"mini_tank"},{id:26000034, n:"Bowler", e:5, r:"epic", t:"troop", role:"defense"},{id:26000044, n:"Hunter", e:4, r:"epic", t:"troop", role:"tank_killer"},{id:26000045, n:"Executioner", e:5, r:"epic", t:"troop", role:"anti_air"},{id:26000054, n:"Cannon Cart", e:5, r:"epic", t:"troop", role:"mini_tank"},{id:26000058, n:"Wall Breakers", e:2, r:"epic", t:"troop", role:"win_condition"},{id:26000060, n:"Goblin Giant", e:6, r:"epic", t:"troop", role:"win_condition"},{id:26000063, n:"Electro Dragon", e:5, r:"epic", t:"troop", role:"anti_air"},
         {id:26000023, n:"Ice Wizard", e:3, r:"legendary", t:"troop", role:"defense"},{id:26000026, n:"Princess", e:3, r:"legendary", t:"troop", role:"anti_air"},{id:26000029, n:"Lava Hound", e:7, r:"legendary", t:"troop", role:"win_condition"},{id:26000032, n:"Miner", e:3, r:"legendary", t:"troop", role:"win_condition"},{id:26000033, n:"Sparky", e:6, r:"legendary", t:"troop", role:"win_condition"},{id:26000035, n:"Lumberjack", e:4, r:"legendary", t:"troop", role:"tank_killer"},{id:26000037, n:"Inferno Dragon", e:4, r:"legendary", t:"troop", role:"tank_killer"},{id:26000042, n:"Electro Wizard", e:4, r:"legendary", t:"troop", role:"anti_air"},{id:26000046, n:"Bandit", e:3, r:"legendary", t:"troop", role:"mini_tank"},{id:26000048, n:"Night Witch", e:4, r:"legendary", t:"troop", role:"support"},{id:26000050, n:"Royal Ghost", e:3, r:"legendary", t:"troop", role:"mini_tank"},{id:26000051, n:"Ram Rider", e:5, r:"legendary", t:"troop", role:"win_condition"},{id:26000055, n:"Mega Knight", e:7, r:"legendary", t:"troop", role:"tank"},{id:26000061, n:"Fisherman", e:3, r:"legendary", t:"troop", role:"defense"},{id:26000062, n:"Magic Archer", e:4, r:"legendary", t:"troop", role:"anti_air"},{id:26000083, n:"Mother Witch", e:4, r:"legendary", t:"troop", role:"support"},{id:26000087, n:"Phoenix", e:4, r:"legendary", t:"troop", role:"anti_air"},
-        {id:26000069, n:"Skeleton King", e:4, r:"champion", t:"troop", role:"tank"},{id:26000072, n:"Archer Queen", e:5, r:"champion", t:"troop", role:"anti_air"},{id:26000074, n:"Golden Knight", e:4, r:"champion", t:"troop", role:"mini_tank"},{id:26000085, n:"Mighty Miner", e:4, r:"champion", t:"troop", role:"tank_killer"},{id:26000088, n:"Monk", e:5, r:"champion", t:"troop", role:"tank"},{id:26000093, n:"Little Prince", e:3, r:"champion", t:"troop", role:"anti_air"},
         {id:28000000, n:"Fireball", e:4, r:"rare", t:"spell", role:"big_spell"},{id:28000001, n:"Arrows", e:3, r:"common", t:"spell", role:"small_spell"},{id:28000002, n:"Rage", e:2, r:"epic", t:"spell", role:"small_spell"},{id:28000003, n:"Rocket", e:6, r:"rare", t:"spell", role:"big_spell"},{id:28000004, n:"Goblin Barrel", e:3, r:"epic", t:"spell", role:"win_condition"},{id:28000005, n:"Freeze", e:4, r:"epic", t:"spell", role:"utility"},{id:28000006, n:"Lightning", e:6, r:"epic", t:"spell", role:"big_spell"},{id:28000007, n:"Zap", e:2, r:"common", t:"spell", role:"small_spell"},{id:28000008, n:"Poison", e:4, r:"epic", t:"spell", role:"big_spell"},{id:28000009, n:"Graveyard", e:5, r:"legendary", t:"spell", role:"win_condition"},{id:28000010, n:"The Log", e:2, r:"legendary", t:"spell", role:"small_spell"},{id:28000011, n:"Tornado", e:3, r:"epic", t:"spell", role:"utility"},{id:28000012, n:"Clone", e:3, r:"epic", t:"spell", role:"utility"},{id:28000013, n:"Earthquake", e:3, r:"rare", t:"spell", role:"big_spell"},{id:28000015, n:"Barbarian Barrel", e:2, r:"epic", t:"spell", role:"small_spell"}, {id:28000017, n:"Giant Snowball", e:2, r:"common", t:"spell", role:"small_spell"}, {id:28000018, n:"Royal Delivery", e:3, r:"common", t:"spell", role:"defense"},
         {id:27000000, n:"Cannon", e:3, r:"common", t:"building", role:"defense"},{id:27000001, n:"Goblin Hut", e:5, r:"rare", t:"building", role:"spawner"},{id:27000002, n:"Mortar", e:4, r:"common", t:"building", role:"win_condition"},{id:27000003, n:"Inferno Tower", e:5, r:"rare", t:"building", role:"tank_killer"},{id:27000004, n:"Bomb Tower", e:4, r:"rare", t:"building", role:"defense"},{id:27000005, n:"Barbarian Hut", e:7, r:"rare", t:"building", role:"spawner"},{id:27000006, n:"Tesla", e:4, r:"common", t:"building", role:"defense"},{id:27000007, n:"Elixir Collector", e:6, r:"rare", t:"building", role:"utility"},{id:27000008, n:"X-Bow", e:6, r:"epic", t:"building", role:"win_condition"},{id:27000009, n:"Tombstone", e:3, r:"rare", t:"building", role:"defense"},{id:27000010, n:"Furnace", e:4, r:"rare", t:"building", role:"spawner"},{id:27000011, n:"Goblin Cage", e:4, r:"rare", t:"building", role:"defense"},{id:27000012, n:"Goblin Drill", e:4, r:"epic", t:"building", role:"win_condition"}
     ];
@@ -768,10 +1039,531 @@
     window.generateSmartDeck = () => { window.playGameSound('nav'); const winConditions = crData.filter(c => c.role === 'win_condition'); const smallSpells = crData.filter(c => c.role === 'small_spell'); const bigSpells = crData.filter(c => c.role === 'big_spell'); const antiAir = crData.filter(c => c.role === 'anti_air'); const buildings = crData.filter(c => c.t === 'building'); const tanks = crData.filter(c => c.role === 'tank' || c.role === 'mini_tank'); const cycles = crData.filter(c => c.role === 'cycle' || c.e <= 2); let deck = []; let deckIds = new Set(); let hasChampion = false; const addCard = (pool, fallbackPool = crData) => { let available = pool.filter(c => !deckIds.has(c.id) && !(hasChampion && c.r === 'champion')); if(available.length === 0) { available = fallbackPool.filter(c => !deckIds.has(c.id) && !(hasChampion && c.r === 'champion')); } if(available.length === 0) return null; const card = available[Math.floor(Math.random() * available.length)]; if(card.r === 'champion') hasChampion = true; deck.push(card); deckIds.add(card.id); return card; }; addCard(winConditions); addCard(smallSpells); addCard(bigSpells); addCard(antiAir); if(Math.random() > 0.5) addCard(buildings); else addCard(tanks); while(deck.length < 8) { let avg = deck.reduce((a,b)=>a+b.e,0) / deck.length; if(avg > 3.8) { addCard(cycles); } else { addCard(crData); } } renderDeck(deck); };
     function renderDeck(deck) { currentCRDeck = deck; const grid = document.getElementById('crDeckGrid'); grid.innerHTML = ''; let totalElixir = 0; deck.forEach(c => { totalElixir += c.e; const key = c.n.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-'); const imgUrl = `https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards-75/${key}.png`; const cardEl = document.createElement('div'); cardEl.className = `cr-card rarity-${c.r}`; cardEl.innerHTML = `<div class="cr-elixir">${c.e}</div><img src="${imgUrl}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1068/1068729.png'; this.style.filter='none';"><div class="cr-card-name">${c.n}</div>`; grid.appendChild(cardEl); }); const avg = (totalElixir / 8).toFixed(1); document.getElementById('crAvgElixir').innerText = avg; let type = "Dengeli"; if(avg < 3.0) type = "Hızlı Döngü (Cycle)"; else if(avg > 4.2) type = "Ağır Saldırı (Beatdown)"; else if(deck.some(c => c.n === "Miner" || c.n === "Goblin Barrel")) type = "Kontrol / Bait"; else if(deck.some(c => c.n === "X-Bow" || c.n === "Mortar")) type = "Kuşatma (Siege)"; document.getElementById('deckArchetype').innerText = type; document.getElementById('btnCopyCR').style.display = 'block'; document.getElementById('copyInstructions').style.display = 'block'; }
     window.copyToCR = () => { if (!currentCRDeck || currentCRDeck.length !== 8) { return showToast("Önce bir deste oluşturulmalı!", "error"); } const idString = currentCRDeck.map(c => c.id).join(';'); const finalLink = `https://link.clashroyale.com/en/?clashroyale://copyDeck?deck=${idString}&l=Royals&tt=159000000`; const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent); showToast("Clash Royale açılıyor...", "success"); if (isMobile) { window.open(finalLink, '_blank'); } else { window.open(finalLink, '_blank'); } };
-    window.switchView = (id) => { window.playGameSound('nav'); document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById(id).classList.add('active'); const floatNav = document.querySelector('.floating-container'); if(id === 'view-lobby' || id === 'view-tournament' || id === 'view-2v2-lobby' || id === 'view-2v2-game'){ floatNav.style.display = 'flex'; } else { floatNav.style.display = 'none'; document.getElementById('chatWidget').style.display = 'none'; document.getElementById('chatToggleBtn').style.display = 'flex'; } }
+    window.switchView = (id) => { 
+        window.playGameSound('nav'); 
+        document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); 
+        document.getElementById(id).classList.add('active'); 
+        const floatNav = document.querySelector('.floating-container'); 
+        if(id === 'view-lobby' || id === 'view-tournament' || id === 'view-2v2-lobby' || id === 'view-2v2-game'){ 
+            floatNav.style.display = 'flex'; 
+        } else { 
+            floatNav.style.display = 'none'; 
+            document.getElementById('chatWidget').style.display = 'none'; 
+            document.getElementById('chatToggleBtn').style.display = 'flex'; 
+        }
+    };
 
     /* ========================================================================================== */
-    /* 2v2 CHESS MODULE                                         */
+    /* NEW: QUIZ MASTER MODULE                                                                    */
+    /* ========================================================================================== */
+    let quizBuilderQuestions = [];
+    let currentQuizId = null;
+    let currentQuizData = null;
+    let unsubscribeQuiz = null;
+    let quizTimerInterval = null;
+
+    // --- BUILDER LOGIC ---
+    window.startQuizBuilder = () => {
+        const name = document.getElementById('newQuizName').value.trim();
+        if(!name) return showToast("Lütfen bir quiz adı girin.", "error");
+        quizBuilderQuestions = [];
+        window.switchView('view-quiz-builder');
+        updateBuilderUI();
+    };
+
+    window.addQuizQuestionUI = () => {
+        quizBuilderQuestions.push({
+            q: "", 
+            img: "", 
+            opts: ["", "", "", ""], 
+            correct: 0, 
+            time: 20
+        });
+        updateBuilderUI();
+    };
+
+    window.removeQuestion = (index) => {
+        quizBuilderQuestions.splice(index, 1);
+        updateBuilderUI();
+    };
+
+    function updateBuilderUI() {
+        const container = document.getElementById('quizBuilderList');
+        container.innerHTML = "";
+        
+        quizBuilderQuestions.forEach((q, idx) => {
+            const div = document.createElement('div');
+            div.className = 'quiz-builder-item';
+            div.innerHTML = `
+                <i class="fas fa-trash remove-q" onclick="removeQuestion(${idx})"></i>
+                <div style="font-weight:bold; margin-bottom:5px; color:var(--quiz-color);">Soru ${idx + 1}</div>
+                <input type="text" placeholder="Soru Metni Giriniz..." value="${q.q}" oninput="updateQData(${idx}, 'q', this.value)" style="margin-bottom:5px;">
+                
+                <div class="file-upload-wrapper" style="font-size:0.8rem;">
+                     ${q.img ? '<i class="fas fa-image" style="color:var(--success)"></i> Resim Yüklendi' : '<i class="fas fa-cloud-upload-alt"></i> Resim Yükle (İsteğe Bağlı)'}
+                     <input type="file" accept="image/png, image/jpeg" onchange="handleImageUpload(this, ${idx})">
+                </div>
+                <img src="${q.img}" class="q-img-preview" id="preview-${idx}" onerror="this.style.display='none'">
+                
+                <div class="quiz-opt-grid">
+                    ${[0,1,2,3].map(i => `
+                        <div style="position:relative;">
+                            <input type="text" class="quiz-opt-input ${q.correct===i?'correct':''}" 
+                                placeholder="Seçenek ${['A','B','C','D'][i]}" 
+                                value="${q.opts[i]}" 
+                                oninput="updateQData(${idx}, 'opt', this.value, ${i})">
+                            <input type="radio" name="correct-${idx}" ${q.correct===i?'checked':''} 
+                                onclick="updateQData(${idx}, 'correct', ${i})" 
+                                style="position:absolute; right:5px; top:10px; width:20px; height:20px; cursor:pointer;" title="Doğru Cevap Olarak İşaretle">
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="margin-top:10px; display:flex; align-items:center; gap:10px;">
+                    <label style="font-size:0.8rem;">Süre (sn):</label>
+                    <input type="number" value="${q.time}" min="5" max="60" style="width:60px; text-align:center; margin:0;" onchange="updateQData(${idx}, 'time', this.value)">
+                </div>
+            `;
+            container.appendChild(div);
+            if(q.img) document.getElementById(`preview-${idx}`).style.display = 'block';
+        });
+
+        document.getElementById('builderSummary').innerText = `${quizBuilderQuestions.length} Soru Eklendi`;
+    }
+    
+    window.handleImageUpload = (input, idx) => {
+        if (input.files && input.files[0]) {
+            if(input.files[0].size > 800000) { // Limit roughly 800KB for Base64 safety
+                 showToast("Resim boyutu çok büyük! (Max 800KB)", "error");
+                 input.value = "";
+                 return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                quizBuilderQuestions[idx].img = e.target.result;
+                updateBuilderUI();
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    };
+
+    window.updateQData = (idx, field, val, subIdx = null) => {
+        if(field === 'q') quizBuilderQuestions[idx].q = val;
+        if(field === 'opt') quizBuilderQuestions[idx].opts[subIdx] = val;
+        if(field === 'correct') { quizBuilderQuestions[idx].correct = parseInt(val); updateBuilderUI(); } 
+        if(field === 'time') quizBuilderQuestions[idx].time = parseInt(val);
+    };
+
+    window.saveAndStartQuiz = async () => {
+        if(quizBuilderQuestions.length === 0) return showToast("En az 1 soru eklemelisin!", "error");
+        for(let i=0; i<quizBuilderQuestions.length; i++) {
+            const q = quizBuilderQuestions[i];
+            if(!q.q) return showToast(`${i+1}. sorunun metni eksik!`, "error");
+            if(q.opts.some(o => !o)) return showToast(`${i+1}. sorunun seçenekleri eksik!`, "error");
+        }
+
+        const name = document.getElementById('newQuizName').value.trim();
+        const hostPlays = document.getElementById('hostPlaysToggleBuilder').checked;
+        const code = makeId(4); 
+        
+        const initialPlayers = [];
+        // If Host wants to play, add them initially.
+        if(hostPlays) {
+             initialPlayers.push({ uid: currentUser.uid, name: currentUser.displayName, avatar: currentUser.photoURL, score: 0, answers: {} });
+        }
+
+        const quizData = {
+            code: code,
+            name: name,
+            hostId: currentUser.uid,
+            status: 'lobby', 
+            state: 'waiting', 
+            currentQuestion: 0,
+            questions: quizBuilderQuestions,
+            players: initialPlayers,
+            settings: { speedBonus: true, hostParticipate: hostPlays },
+            createdAt: serverTimestamp(),
+            startTime: null
+        };
+        
+        try {
+            await setDoc(doc(db, "games_quiz", code), quizData);
+            enterQuizGame(code);
+        } catch(e) {
+            console.error(e);
+            showToast("Hata oluştu: " + e.message, "error");
+        }
+    };
+
+    // --- LOBBY & JOIN ---
+    window.joinQuizPrompt = async () => {
+        const code = document.getElementById('quizJoinCode').value.trim().toUpperCase();
+        if(!code) return showToast("Kod girin.", "error");
+        enterQuizGame(code);
+    };
+
+    window.enterQuizGame = (code) => {
+        if(unsubscribeQuiz) unsubscribeQuiz();
+        currentQuizId = code;
+        
+        unsubscribeQuiz = onSnapshot(doc(db, "games_quiz", code), async (snap) => {
+            if(!snap.exists()) { showToast("Quiz bulunamadı veya bitti.", "error"); leaveQuizLobby(); return; }
+            const d = snap.data();
+            currentQuizData = d;
+            
+            // JOIN LOGIC
+            const myPlayer = d.players.find(p => p.uid === currentUser.uid);
+            
+            // If I am NOT Host and NOT in players, Join automatically if in Lobby
+            if(d.hostId !== currentUser.uid && !myPlayer && d.status === 'lobby') {
+                const newPlayer = { uid: currentUser.uid, name: currentUser.displayName, avatar: currentUser.photoURL, score: 0, answers: {} };
+                const newPlayers = [...d.players, newPlayer];
+                await updateDoc(doc(db, "games_quiz", code), { players: newPlayers });
+                return; 
+            }
+
+            // AUTO-ADVANCE LOGIC (Only Host Checks This)
+            if(d.hostId === currentUser.uid && d.state === 'question' && d.status === 'active') {
+                 // Check if everyone answered
+                 const qIdx = d.currentQuestion;
+                 const answerCount = d.players.filter(p => p.answers && p.answers[qIdx]).length;
+                 const activePlayerCount = d.players.length;
+                 
+                 if(activePlayerCount > 0 && answerCount === activePlayerCount) {
+                     // Wait a brief moment to show last selection then reveal
+                     setTimeout(() => quizForceNext(), 1000); 
+                 }
+            }
+
+            if(d.status === 'lobby') {
+                renderQuizLobby(d);
+                switchView('view-quiz-lobby');
+            } else if(d.status === 'active') {
+                renderQuizGame(d);
+                if(!document.getElementById('view-quiz-game').classList.contains('active')) {
+                    switchView('view-quiz-game');
+                }
+            } else if(d.status === 'finished') {
+                renderQuizResults(d);
+                switchView('view-quiz-end');
+            }
+        });
+    };
+
+    function renderQuizLobby(d) {
+        document.getElementById('quizLobbyTitle').innerText = d.name;
+        document.getElementById('quizCodeDisplay').innerText = d.code;
+        document.getElementById('quizPlayerCount').innerText = d.players.length;
+        
+        const isHost = (d.hostId === currentUser.uid);
+        document.getElementById('quizHostControls').style.display = isHost ? 'block' : 'none';
+        document.getElementById('quizWaitingMsg').style.display = isHost ? 'none' : 'block';
+        
+        if(isHost) {
+            document.getElementById('hostParticipateToggle').checked = d.settings.hostParticipate;
+        }
+
+        const list = document.getElementById('quizPlayerList');
+        list.innerHTML = "";
+        d.players.forEach(p => {
+            const el = document.createElement('div');
+            el.className = `slot-item ${p.uid===currentUser.uid ? 'me' : ''}`;
+            el.innerHTML = `<div style="font-size:2rem; margin-bottom:5px;"><i class="fas ${p.avatar || 'fa-user'}"></i></div>
+                            <div style="font-weight:bold;">${p.name}</div>
+                            <div style="font-size:0.8rem;">0 Puan</div>`;
+            list.appendChild(el);
+        });
+    }
+
+    window.toggleHostParticipation = async (shouldParticipate) => {
+        if(!currentQuizData) return;
+        let newPlayers = [...currentQuizData.players];
+        
+        if(shouldParticipate) {
+             // Add host if not present
+             if(!newPlayers.find(p => p.uid === currentUser.uid)) {
+                 newPlayers.push({ uid: currentUser.uid, name: currentUser.displayName, avatar: currentUser.photoURL, score: 0, answers: {} });
+             }
+        } else {
+             // Remove host
+             newPlayers = newPlayers.filter(p => p.uid !== currentUser.uid);
+        }
+        
+        await updateDoc(doc(db, "games_quiz", currentQuizId), { 
+            players: newPlayers,
+            "settings.hostParticipate": shouldParticipate
+        });
+    };
+
+    window.copyQuizCode = () => { navigator.clipboard.writeText(currentQuizId); showToast("Kod kopyalandı!", "success"); };
+    window.leaveQuizLobby = () => { if(unsubscribeQuiz) unsubscribeQuiz(); currentQuizId=null; switchView('view-quiz-menu'); };
+
+    // --- GAME LOOP ---
+    window.launchQuizGame = async () => {
+        const bonus = document.getElementById('speedBonusToggle').checked;
+        await updateDoc(doc(db, "games_quiz", currentQuizId), { 
+            status: 'active',
+            state: 'question', 
+            currentQuestion: 0,
+            "settings.speedBonus": bonus,
+            startTime: Date.now()
+        });
+        window.playGameSound('gameStart');
+    };
+
+    let localTimerAnim = null;
+    let autoNextTimeout = null;
+
+    function renderQuizGame(d) {
+        const qIdx = d.currentQuestion;
+        const qData = d.questions[qIdx];
+        const isHost = d.hostId === currentUser.uid;
+        
+        document.getElementById('quizQIndex').innerText = `Soru ${qIdx + 1} / ${d.questions.length}`;
+        const myP = d.players.find(p => p.uid === currentUser.uid);
+        document.getElementById('quizScoreDisplay').innerText = (myP ? myP.score : 0) + " Puan";
+        
+        document.getElementById('quizQuestionText').innerText = qData.q;
+        const imgEl = document.getElementById('quizQuestionImg');
+        if(qData.img) { imgEl.src = qData.img; imgEl.style.display='block'; } else { imgEl.style.display='none'; }
+
+        // HOST Controls
+        const answersCount = d.players.filter(p => p.answers && p.answers[qIdx]).length;
+        if(isHost) {
+            document.getElementById('quizHostGameControls').style.display = 'block';
+            document.getElementById('quizAnswerCount').innerText = `${answersCount} / ${d.players.length} Cevap`;
+        } else {
+            document.getElementById('quizHostGameControls').style.display = 'none';
+        }
+
+        // --- STATE MACHINE ---
+        if(d.state === 'question') {
+            document.getElementById('quizIntermission').style.display = 'none';
+            document.getElementById('quizResultMsg').style.display = 'none';
+            document.getElementById('autoNextTimer').style.display = 'none';
+            
+            // Reset Animation
+            const el = document.getElementById('quizTimerFill');
+            el.style.transition = 'none';
+            el.style.width = '100%';
+            
+            // Delay slighty to allow CSS repaint for animation
+            setTimeout(() => {
+                el.style.transition = `width ${qData.time}s linear`;
+                el.style.width = '0%';
+            }, 50);
+
+            const optsDiv = document.getElementById('quizOptionGrid');
+            optsDiv.style.pointerEvents = 'auto'; 
+            optsDiv.style.opacity = '1';
+            
+            [0,1,2,3].forEach(i => {
+                const btn = optsDiv.children[i];
+                btn.querySelector('span').innerText = qData.opts[i];
+                btn.className = `quiz-btn opt-${i}`; 
+                
+                if(myP && myP.answers && myP.answers[qIdx]) {
+                    if(myP.answers[qIdx].selected === i) btn.classList.add('selected');
+                    else btn.classList.add('disabled');
+                    optsDiv.style.pointerEvents = 'none'; 
+                }
+            });
+
+            // HOST: Timeout Logic
+            if(isHost && !localTimerAnim) { 
+                 // Clear previous
+                 if(autoNextTimeout) clearTimeout(autoNextTimeout);
+                 
+                 localTimerAnim = setTimeout(() => {
+                     quizForceNext(); 
+                 }, qData.time * 1000 + 1000); 
+            }
+
+        } else if(d.state === 'reveal') {
+            // STOP Timer
+            document.getElementById('quizTimerFill').style.transition = 'none';
+            document.getElementById('quizTimerFill').style.width = '0%';
+            if(localTimerAnim) { clearTimeout(localTimerAnim); localTimerAnim = null; }
+
+            document.getElementById('quizIntermission').style.display = 'none';
+            
+            const optsDiv = document.getElementById('quizOptionGrid');
+            optsDiv.style.pointerEvents = 'none';
+            
+            [0,1,2,3].forEach(i => {
+                const btn = optsDiv.children[i];
+                if(i === qData.correct) {
+                    btn.classList.add('is-correct');
+                } else {
+                    btn.classList.add('is-wrong');
+                }
+            });
+
+            // Show Msg
+            const resDiv = document.getElementById('quizResultMsg');
+            resDiv.style.display = 'block';
+            if(myP && myP.answers[qIdx]) {
+                const isCor = myP.answers[qIdx].selected === qData.correct;
+                resDiv.innerText = isCor ? "DOĞRU! 🎉" : "YANLIŞ... 😔";
+                resDiv.style.color = isCor ? "var(--success)" : "var(--danger)";
+                if(isCor) window.playGameSound('capture');
+            } else {
+                resDiv.innerText = myP ? "CEVAP VERMEDİN ⌛" : "İZLEYİCİ MODU";
+                resDiv.style.color = "#aaa";
+            }
+            
+            // HOST: Auto move to Leaderboard after 3s
+            if(isHost && !autoNextTimeout) {
+                autoNextTimeout = setTimeout(() => {
+                    quizGoLeaderboard();
+                    autoNextTimeout = null;
+                }, 3000); 
+            }
+
+        } else if(d.state === 'leaderboard') {
+            document.getElementById('quizResultMsg').style.display = 'none';
+            document.getElementById('quizIntermission').style.display = 'block';
+            document.getElementById('quizOptionGrid').style.opacity = '0.3';
+            document.getElementById('autoNextTimer').style.display = 'block';
+
+            // Show Top Scores
+            const sorted = [...d.players].sort((a,b) => b.score - a.score);
+            const topList = document.getElementById('quizTopList');
+            topList.innerHTML = sorted.map((p,i) => 
+                `<div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #444; color:${p.uid===currentUser.uid ? 'var(--quiz-color)' : 'white'}; font-weight:${p.uid===currentUser.uid ? 'bold' : 'normal'}">
+                    <span>${i===0?'👑 ':''}${i+1}. ${p.name}</span> <span style="font-weight:bold;">${p.score} P</span>
+                 </div>`
+            ).join('');
+
+            // HOST: Auto Next Question after 4s
+            if(isHost && !autoNextTimeout) {
+                autoNextTimeout = setTimeout(() => {
+                    quizNextQuestionReal();
+                    autoNextTimeout = null;
+                }, 4000);
+            }
+        }
+    }
+
+    window.submitQuizAnswer = async (optIdx) => {
+        window.playGameSound('move');
+        const qIdx = currentQuizData.currentQuestion;
+        
+        // Optimistic UI
+        const optsDiv = document.getElementById('quizOptionGrid');
+        optsDiv.children[optIdx].classList.add('selected');
+        optsDiv.style.pointerEvents = 'none';
+        for(let i=0; i<4; i++) if(i!==optIdx) optsDiv.children[i].classList.add('disabled');
+
+        const myIdx = currentQuizData.players.findIndex(p => p.uid === currentUser.uid);
+        if(myIdx === -1) return;
+        
+        const newPlayers = [...currentQuizData.players];
+        if(!newPlayers[myIdx].answers) newPlayers[myIdx].answers = {};
+        
+        newPlayers[myIdx].answers[qIdx] = {
+            selected: optIdx,
+            time: Date.now() 
+        };
+        
+        await updateDoc(doc(db, "games_quiz", currentQuizId), { players: newPlayers });
+    };
+
+    // HOST FUNCTIONS
+    window.quizForceNext = async () => {
+        if(!currentQuizData || currentQuizData.hostId !== currentUser.uid) return;
+        if(localTimerAnim) { clearTimeout(localTimerAnim); localTimerAnim = null; }
+        
+        // SCORING LOGIC
+        if(currentQuizData.state === 'question') {
+            const qIdx = currentQuizData.currentQuestion;
+            const correctOpt = currentQuizData.questions[qIdx].correct;
+            const useBonus = currentQuizData.settings.speedBonus;
+            
+            let updatedPlayers = currentQuizData.players.map(p => {
+                if(!p.answers || !p.answers[qIdx]) return p;
+                const ans = p.answers[qIdx];
+                if(ans.selected === correctOpt) {
+                    p.score += 1; // BASE POINT: +1
+                    p.isCorrect = true; 
+                    p.ansTime = ans.time;
+                } else {
+                    p.isCorrect = false;
+                }
+                return p;
+            });
+            
+            // SPEED BONUS (+1 extra => Total +2)
+            if(useBonus) {
+                const correctOnes = updatedPlayers.filter(p => p.isCorrect);
+                if(correctOnes.length > 0) {
+                    correctOnes.sort((a,b) => a.ansTime - b.ansTime);
+                    // Fastest gets bonus
+                    const fastestUID = correctOnes[0].uid;
+                    updatedPlayers = updatedPlayers.map(p => {
+                        if(p.uid === fastestUID) p.score += 1; // BONUS +1
+                        delete p.isCorrect; delete p.ansTime;
+                        return p;
+                    });
+                }
+            } else {
+                updatedPlayers.forEach(p => { delete p.isCorrect; delete p.ansTime; });
+            }
+
+            await updateDoc(doc(db, "games_quiz", currentQuizId), {
+                state: 'reveal',
+                players: updatedPlayers
+            });
+        }
+    };
+    
+    window.quizGoLeaderboard = async () => {
+        await updateDoc(doc(db, "games_quiz", currentQuizId), { state: 'leaderboard' });
+    };
+
+    window.quizNextQuestionReal = async () => {
+        const nextIdx = currentQuizData.currentQuestion + 1;
+        if(nextIdx >= currentQuizData.questions.length) {
+            await updateDoc(doc(db, "games_quiz", currentQuizId), { status: 'finished' });
+        } else {
+            await updateDoc(doc(db, "games_quiz", currentQuizId), { 
+                state: 'question', 
+                currentQuestion: nextIdx,
+                startTime: Date.now()
+            });
+        }
+    };
+
+    // --- RESULTS ---
+    function renderQuizResults(d) {
+        confetti({particleCount: 400, spread: 200, origin: { y: 0.6 }});
+        window.playGameSound('gameEnd');
+        
+        const sorted = [...d.players].sort((a,b) => b.score - a.score);
+        
+        // Podium
+        const p1 = sorted[0];
+        const p2 = sorted[1];
+        const p3 = sorted[2];
+        
+        if(p1) { document.getElementById('name-1').innerText = p1.name; document.getElementById('score-1').innerText = p1.score; document.getElementById('av-1').innerHTML = `<i class="fas ${p1.avatar || 'fa-user'}"></i>`; }
+        if(p2) { document.getElementById('name-2').innerText = p2.name; document.getElementById('score-2').innerText = p2.score; document.getElementById('av-2').innerHTML = `<i class="fas ${p2.avatar || 'fa-user'}"></i>`; } else { document.querySelector('.podium-2').style.opacity=0; }
+        if(p3) { document.getElementById('name-3').innerText = p3.name; document.getElementById('score-3').innerText = p3.score; document.getElementById('av-3').innerHTML = `<i class="fas ${p3.avatar || 'fa-user'}"></i>`; } else { document.querySelector('.podium-3').style.opacity=0; }
+        
+        // Full Table
+        const tb = document.getElementById('quizFinalTableBody');
+        tb.innerHTML = "";
+        sorted.forEach((p, i) => {
+             const row = `<tr>
+                            <td>${i+1}</td>
+                            <td>${p.name}</td>
+                            <td>${p.score}</td>
+                          </tr>`;
+             tb.innerHTML += row;
+        });
+    }
+
+    /* ========================================================================================== */
+    /* EXISTING LOGIC PRESERVATION (2v2 Chess, Tournament, Etc)                                 */
     /* ========================================================================================== */
 
     window.create2v2Game = async () => {
@@ -781,8 +1573,8 @@
             code: code,
             hostId: currentUser.uid,
             status: 'lobby',
-            timeControl: 10, // Default 10 mins
-            movesPerTurn: 5, // Default 5 moves
+            timeControl: 10,
+            movesPerTurn: 5,
             whiteTime: 600000,
             blackTime: 600000,
             lastMoveTime: null,
@@ -816,12 +1608,13 @@
 
     window.enter2v2Game = (code) => {
         current2v2Id = code;
+        lastPlayedMoveCount = -1;
+        
         unsubscribe2v2 = onSnapshot(doc(db, "games_2v2", code), snap => {
             if(!snap.exists()) { showToast("Oyun bulunamadı.", "error"); leave2v2Lobby(); return; }
             const d = snap.data();
             current2v2Data = d;
             
-            // Check status
             if(d.status === 'lobby') {
                 render2v2Lobby(d);
                 switchView('view-2v2-lobby');
@@ -829,9 +1622,9 @@
                 update2v2Game(d);
                 if(document.getElementById('view-2v2-game').classList.contains('active') === false) {
                     switchView('view-2v2-game');
-                    drawBoard(); // Initial draw with calculated state
+                    if(lastPlayedMoveCount === -1) lastPlayedMoveCount = d.moveCount;
+                    drawBoard(); 
                 }
-                
                 if(d.status === 'finished') {
                     showGameOverModal(d);
                 }
@@ -848,13 +1641,11 @@
         if(unsubscribe2v2) unsubscribe2v2();
         if(unsubscribeChat) unsubscribeChat();
         
-        // Remove self from players if in lobby
         if(current2v2Data && current2v2Data.status === 'lobby') {
              const newPlayers = current2v2Data.players.map(p => {
                  if(p.uid === currentUser.uid) return {uid: null, name: "Boş", team: p.team, index: p.index, isReady: false};
                  return p;
              });
-             // Remove from participantIds
              await updateDoc(doc(db, "games_2v2", current2v2Id), { 
                  players: newPlayers,
                  participantIds: arrayRemove(currentUser.uid)
@@ -869,7 +1660,6 @@
         const isHost = (d.hostId === currentUser.uid);
         document.getElementById('hostControls2v2').style.display = isHost ? 'block' : 'none';
         
-        // Populate inputs if host
         if(isHost) {
             document.getElementById('movesPerTurnSelect').value = d.movesPerTurn || 5;
             document.getElementById('timeControlSelect').value = d.timeControl || 10;
@@ -931,7 +1721,6 @@
         await updateDoc(doc(db, "games_2v2", current2v2Id), { players: newPlayers });
     };
     
-    // Updates when host changes options
     const updateGameSettings = async () => {
         const tc = parseInt(document.getElementById('timeControlSelect').value);
         const mpt = parseInt(document.getElementById('movesPerTurnSelect').value);
@@ -943,7 +1732,6 @@
     window.start2v2Game = async () => {
         const d = current2v2Data;
         if(d.players.some(p => !p.uid || !p.isReady)) return showToast("Tüm oyuncular hazır olmalı!", "error");
-        
         window.playGameSound('gameStart');
         const ms = d.timeControl * 60 * 1000;
         await updateDoc(doc(db, "games_2v2", current2v2Id), { 
@@ -957,35 +1745,27 @@
         });
     };
 
-    // --- GAME LOGIC ---
+    // --- CHESS GAME LOGIC ---
 
     function update2v2Game(d) {
         chess.load(d.fen);
         
-        // --- SOUND LOGIC (FIXED) ---
-        // Sadece yeni bir hamle geldiğinde ses çal (ilk yüklemede çalma)
         if(d.moveCount > lastPlayedMoveCount) {
-            // Eğer oyun henüz yükleniyorsa (sayfa yenileme), ses çalma.
-            if(d.moveCount > 0 && lastPlayedMoveCount !== -1) {
-                const history = chess.history({ verbose: true });
-                const lastMove = history[history.length - 1];
-
-                if(chess.in_check()) {
-                     window.playGameSound('check');
-                } else if(lastMove && (lastMove.flags.includes('c') || lastMove.flags.includes('e'))) {
-                     // 'c' = standard capture, 'e' = en passant
-                     window.playGameSound('capture');
-                } else {
-                     window.playGameSound('move');
-                }
+            if(lastPlayedMoveCount !== -1) {
+                const flags = d.lastMoveFlags || "";
+                const isCheck = d.isCheck === true;
+                const isCapture = flags.includes('c') || flags.includes('e');
+                const isCastle = flags.includes('k') || flags.includes('q');
+                if (isCheck) window.playGameSound('check');
+                else if (isCapture) window.playGameSound('capture');
+                else if (isCastle) window.playGameSound('castle');
+                else window.playGameSound('move');
             }
             lastPlayedMoveCount = d.moveCount;
-        } else if (d.moveCount === 0) {
-            // Reset for new game
-            lastPlayedMoveCount = 0;
+        } else if (d.moveCount === 0 && lastPlayedMoveCount !== 0) {
+             lastPlayedMoveCount = 0;
         }
 
-        // Sync Timer
         if(gameTimerInterval) clearInterval(gameTimerInterval);
         if(d.status === 'active') {
             gameTimerInterval = setInterval(() => {
@@ -1005,7 +1785,6 @@
             updateTimerDisplay(d.whiteTime, d.blackTime);
         }
 
-        // Logic for Turn (Moves Per Turn)
         const movesPerTurn = d.movesPerTurn || 5;
         const movesMadeByColor = Math.floor(d.moveCount / 2);
         const activePlayerIndex = Math.floor(movesMadeByColor / movesPerTurn) % 2;
@@ -1067,10 +1846,9 @@
         const isWhiteTeam = current2v2Data.players.find(p => p.uid === currentUser.uid)?.team === 'white';
         const rotate = !isWhiteTeam && current2v2Data.players.find(p => p.uid === currentUser.uid)?.team === 'black';
 
-        const board = chess.board(); 
+        const boardArray = chess.board(); 
         const myP = current2v2Data.players.find(p => p.uid === currentUser.uid);
         
-        // Strict Turn Checking
         const isMyTurn = myP && (myP.team === (turnColor==='w'?'white':'black')) && (myP.index === activeIdx);
 
         for(let r=0; r<8; r++) {
@@ -1078,7 +1856,7 @@
                 const row = rotate ? 7-r : r;
                 const col = rotate ? 7-c : c;
                 
-                const sq = board[row][col]; 
+                const sq = boardArray[row][col]; 
                 const squareName = String.fromCharCode(97 + col) + (8 - row);
                 
                 const div = document.createElement('div');
@@ -1086,7 +1864,6 @@
                 if(boardSelectedSquare === squareName) div.classList.add('selected');
                 if(boardValidMoves.includes(squareName)) div.classList.add('highlight');
                 
-                // --- Coordinates ---
                 if(c === 0) {
                      const rankEl = document.createElement('span');
                      rankEl.className = 'coord coord-rank';
@@ -1118,7 +1895,6 @@
     async function handleSquareClick(sq, isMyTurn) {
         if(!isMyTurn || current2v2Data.status !== 'active') return;
 
-        // If clicking a valid move
         if(boardValidMoves.includes(sq)) {
             const move = chess.move({ from: boardSelectedSquare, to: sq, promotion: 'q' }); 
             if(move) {
@@ -1129,7 +1905,9 @@
                 let updates = {
                     fen: newFen,
                     lastMoveTime: now,
-                    moveCount: current2v2Data.moveCount + 1
+                    moveCount: current2v2Data.moveCount + 1,
+                    lastMoveFlags: move.flags,
+                    isCheck: chess.in_check()
                 };
                 
                 if(chess.turn() === 'b') { 
@@ -1156,7 +1934,6 @@
             }
         }
 
-        // Select Piece
         const piece = chess.get(sq);
         if(piece && piece.color === chess.turn()) {
             boardSelectedSquare = sq;
@@ -1175,103 +1952,51 @@
          if(res.isConfirmed) leave2v2Lobby();
     }
     
-    // --- History & Game Over Logic ---
-    
     window.load2v2History = async () => {
         window.playGameSound('nav');
         document.getElementById('history2v2Modal').style.display = 'flex';
         const list = document.getElementById('history2v2List');
         list.innerHTML = '<p style="text-align:center;">Yükleniyor...</p>';
-        
         try {
             const q = query(collection(db, "games_2v2"), where("participantIds", "array-contains", currentUser.uid));
             const snap = await getDocs(q);
             list.innerHTML = '';
-            
-            if(snap.empty) {
-                list.innerHTML = '<p style="text-align:center; color:#888;">Henüz maç oynanmadı.</p>';
-                return;
-            }
-
+            if(snap.empty) { list.innerHTML = '<p style="text-align:center; color:#888;">Henüz maç oynanmadı.</p>'; return; }
             let games = [];
-            snap.forEach(d => {
-                const game = d.data();
-                if(game.status === 'finished') {
-                    games.push(game);
-                }
-            });
-
-            // Sort Client-Side (Newest First)
-            games.sort((a, b) => {
-                const tA = a.createdAt ? a.createdAt.seconds : 0;
-                const tB = b.createdAt ? b.createdAt.seconds : 0;
-                return tB - tA;
-            });
-            
-            if(games.length === 0) {
-                 list.innerHTML = '<p style="text-align:center; color:#888;">Henüz tamamlanmış maç yok.</p>';
-                 return;
-            }
-
+            snap.forEach(d => { if(d.data().status === 'finished') games.push(d.data()); });
+            games.sort((a, b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+            if(games.length === 0) { list.innerHTML = '<p style="text-align:center; color:#888;">Henüz tamamlanmış maç yok.</p>'; return; }
             games.forEach(game => {
                 const myP = game.players.find(p => p.uid === currentUser.uid);
                 if(!myP) return;
-                
                 const isWin = game.winner === myP.team;
                 const isDraw = game.winner === 'draw';
                 const resultColor = isWin ? 'var(--success)' : (isDraw ? 'var(--text-muted)' : 'var(--danger)');
                 const resultText = isWin ? 'KAZANDIN' : (isDraw ? 'BERABERE' : 'KAYBETTİN');
-                
                 const partner = game.players.find(p => p.team === myP.team && p.uid !== currentUser.uid)?.name || "Bilinmiyor";
                 const date = game.createdAt ? new Date(game.createdAt.seconds * 1000).toLocaleDateString() : "-";
-                
-                list.innerHTML += `
-                    <div class="history-item" style="border-left: 4px solid ${resultColor}">
-                        <div>
-                            <div style="font-weight:bold; color:${resultColor}">${resultText}</div>
-                            <div style="font-size:0.8rem; color:#aaa;">${date} • Partner: ${partner}</div>
-                        </div>
-                        <div style="font-family:monospace;">${game.timeControl} dk</div>
-                    </div>
-                `;
+                list.innerHTML += `<div class="history-item" style="border-left: 4px solid ${resultColor}"><div><div style="font-weight:bold; color:${resultColor}">${resultText}</div><div style="font-size:0.8rem; color:#aaa;">${date} • Partner: ${partner}</div></div><div style="font-family:monospace;">${game.timeControl} dk</div></div>`;
             });
-        } catch(e) {
-            console.error(e);
-            list.innerHTML = '<p style="text-align:center; color:var(--danger);">Bir hata oluştu.</p>';
-        }
+        } catch(e) { list.innerHTML = '<p style="text-align:center; color:var(--danger);">Bir hata oluştu.</p>'; }
     };
     window.closeHistory2v2 = () => document.getElementById('history2v2Modal').style.display='none';
     
     function showGameOverModal(d) {
         if(document.getElementById('gameOverModal').style.display === 'flex') return;
-        
         confetti({particleCount: 200, spread: 150, origin: { y: 0.6 }});
         window.playGameSound('gameEnd');
-        
         let winnerText = "";
         let winners = [];
-        
-        if(d.winner === 'draw') {
-             winnerText = "BERABERE";
-             winners = ["Dostluk Kazandı"];
-        } else {
-             winnerText = d.winner === 'white' ? "KAZANAN: BEYAZ TAKIM" : "KAZANAN: SİYAH TAKIM";
-             winners = d.players.filter(p => p.team === d.winner).map(p => p.name);
-        }
-        
+        if(d.winner === 'draw') { winnerText = "BERABERE"; winners = ["Dostluk Kazandı"]; } 
+        else { winnerText = d.winner === 'white' ? "KAZANAN: BEYAZ TAKIM" : "KAZANAN: SİYAH TAKIM"; winners = d.players.filter(p => p.team === d.winner).map(p => p.name); }
         document.getElementById('winnerText').innerText = winnerText;
         document.getElementById('winnerText').style.color = d.winner === 'white' ? '#fff' : '#aaa';
         document.getElementById('winnerPlayers').innerText = winners.join(' & ');
-        
         document.getElementById('gameOverModal').style.display = 'flex';
     }
-    
-    window.closeGameOver = () => {
-        document.getElementById('gameOverModal').style.display = 'none';
-        leave2v2Lobby();
-    };
+    window.closeGameOver = () => { document.getElementById('gameOverModal').style.display = 'none'; leave2v2Lobby(); };
 
-    // --- TOURNAMENT LOGIC (FIXED) ---
+    // --- TOURNAMENT LOGIC ---
     window.enterTournament = (id) => { 
         window.playGameSound('nav'); 
         currentTournamentId = id; 
@@ -1289,14 +2014,8 @@
             if(previousMatchesStr && previousMatchesStr!==mStr && d.status==='active') window.playGameSound('nav'); 
             previousMatchesStr = (d.status==='finished') ? 'finished' : mStr; 
             
-            if(d.status==='lobby') { 
-                renderLobby(d); 
-                switchView('view-lobby'); 
-            } else { 
-                renderFixtures(d); 
-                renderStandings(d); 
-                switchView('view-tournament'); 
-            } 
+            if(d.status==='lobby') { renderLobby(d); switchView('view-lobby'); } 
+            else { renderFixtures(d); renderStandings(d); switchView('view-tournament'); } 
         }); 
         initChat(id); 
     };
@@ -1307,11 +2026,8 @@
         const isAdmin = (d.creatorId === currentUser.uid);
         document.getElementById('adminControls').style.display = isAdmin ? 'block' : 'none';
         document.getElementById('btnStartTournament').onclick = async () => {
-            if (d.slots.some(s => s.status === 'taken')) {
-                await updateDoc(doc(db, "tournaments", d.id), { status: 'active' });
-            } else {
-                showToast("En az 1 oyuncu olmalı!", "error");
-            }
+            if (d.slots.some(s => s.status === 'taken')) { await updateDoc(doc(db, "tournaments", d.id), { status: 'active' }); } 
+            else { showToast("En az 1 oyuncu olmalı!", "error"); }
         };
 
         const grid = document.getElementById('lobbySlots');
@@ -1320,62 +2036,34 @@
             const isMe = slot.ownerId === currentUser.uid;
             const div = document.createElement('div');
             div.className = `slot-item ${slot.status === 'taken' ? 'taken' : ''} ${isMe ? 'me' : ''}`;
-            
             let html = '';
             if (slot.status === 'open') {
-                html = `<div style="font-size:2rem; color:var(--text-muted); margin-bottom:10px;"><i class="fas fa-chair"></i></div>
-                        <div style="font-weight:bold; margin-bottom:10px;">${slot.name}</div>
-                        <button onclick="takeSlot(${slot.index})" style="font-size:0.8rem;">OTUR</button>`;
+                html = `<div style="font-size:2rem; color:var(--text-muted); margin-bottom:10px;"><i class="fas fa-chair"></i></div><div style="font-weight:bold; margin-bottom:10px;">${slot.name}</div><button onclick="takeSlot(${slot.index})" style="font-size:0.8rem;">OTUR</button>`;
             } else {
-                html = `<div style="font-size:2rem; color:${isMe ? 'var(--accent)' : 'var(--primary)'}; margin-bottom:10px;">
-                            <i class="fas ${slot.avatar}"></i>
-                        </div>
-                        <div style="font-weight:bold; margin-bottom:5px;">${slot.name}</div>
-                        ${isMe ? '<button class="leave-seat-btn" onclick="leaveSlot(' + slot.index + ')">KALK</button>' : ''}`;
-                
-                if (isAdmin && !isMe) {
-                    html += `<button class="kick-btn" onclick="kickPlayer(${slot.index})" title="Masadan Kaldır"><i class="fas fa-times"></i></button>`;
-                }
+                html = `<div style="font-size:2rem; color:${isMe ? 'var(--accent)' : 'var(--primary)'}; margin-bottom:10px;"><i class="fas ${slot.avatar}"></i></div><div style="font-weight:bold; margin-bottom:5px;">${slot.name}</div>${isMe ? '<button class="leave-seat-btn" onclick="leaveSlot(' + slot.index + ')">KALK</button>' : ''}`;
+                if (isAdmin && !isMe) { html += `<button class="kick-btn" onclick="kickPlayer(${slot.index})" title="Masadan Kaldır"><i class="fas fa-times"></i></button>`; }
             }
             div.innerHTML = html;
             grid.appendChild(div);
         });
     }
 
-    window.takeSlot = async (index) => {
-        window.playGameSound('nav');
-        if (currentTournamentData.slots.some(s => s.ownerId === currentUser.uid)) {
-            return showToast("Zaten bir masadasın!", "error");
-        }
-        let slots = [...currentTournamentData.slots];
-        slots[index] = { ...slots[index], ownerId: currentUser.uid, name: currentUser.displayName, avatar: currentUser.photoURL || 'fa-chess-pawn', status: 'taken' };
-        await updateDoc(doc(db, "tournaments", currentTournamentId), { slots: slots, participantIds: arrayUnion(currentUser.uid) });
-    };
-
-    window.leaveSlot = async (index) => {
-        window.playGameSound('nav');
-        let slots = [...currentTournamentData.slots];
-        slots[index] = { ...slots[index], ownerId: null, name: `Masa ${index + 1}`, avatar: 'fa-chair', status: 'open' };
-        await updateDoc(doc(db, "tournaments", currentTournamentId), { slots: slots, participantIds: arrayRemove(currentUser.uid) });
-    };
-
-    window.kickPlayer = async (index) => {
-        let slots = [...currentTournamentData.slots];
-        const uidToRemove = slots[index].ownerId;
-        slots[index] = { ...slots[index], ownerId: null, name: `Masa ${index + 1}`, avatar: 'fa-chair', status: 'open' };
-        await updateDoc(doc(db, "tournaments", currentTournamentId), { slots: slots, participantIds: arrayRemove(uidToRemove) });
-    };
+    window.takeSlot = async (index) => { window.playGameSound('nav'); if (currentTournamentData.slots.some(s => s.ownerId === currentUser.uid)) return showToast("Zaten bir masadasın!", "error"); let slots = [...currentTournamentData.slots]; slots[index] = { ...slots[index], ownerId: currentUser.uid, name: currentUser.displayName, avatar: currentUser.photoURL || 'fa-chess-pawn', status: 'taken' }; await updateDoc(doc(db, "tournaments", currentTournamentId), { slots: slots, participantIds: arrayUnion(currentUser.uid) }); };
+    window.leaveSlot = async (index) => { window.playGameSound('nav'); let slots = [...currentTournamentData.slots]; slots[index] = { ...slots[index], ownerId: null, name: `Masa ${index + 1}`, avatar: 'fa-chair', status: 'open' }; await updateDoc(doc(db, "tournaments", currentTournamentId), { slots: slots, participantIds: arrayRemove(currentUser.uid) }); };
+    window.kickPlayer = async (index) => { let slots = [...currentTournamentData.slots]; const uidToRemove = slots[index].ownerId; slots[index] = { ...slots[index], ownerId: null, name: `Masa ${index + 1}`, avatar: 'fa-chair', status: 'open' }; await updateDoc(doc(db, "tournaments", currentTournamentId), { slots: slots, participantIds: arrayRemove(uidToRemove) }); };
 
     function renderFixtures(d){ document.getElementById('activeTournamentTitle').innerText = d.name; const isAdmin = (d.creatorId===currentUser.uid); const isFin = d.status==='finished'; document.getElementById('btnFinishTournament').style.display = (isAdmin && !isFin) ? 'block' : 'none'; document.getElementById('btnAddMatchManual').style.display = (isAdmin && !isFin) ? 'inline-block' : 'none'; document.getElementById('btnAutoFinish').style.display = (isAdmin && !isFin) ? 'inline-block' : 'none'; const c=document.getElementById('fixturesList'); c.innerHTML=''; const emptyMsg = document.getElementById('noMatchesText'); if(d.matches.length === 0) { emptyMsg.style.display = 'block'; return; } else { emptyMsg.style.display = 'none'; } const gr={}; d.matches.forEach(m=>{ if(!gr[m.r]) gr[m.r]=[]; gr[m.r].push(m); }); Object.keys(gr).sort((a,b)=>a-b).forEach(r=>{ const div=document.createElement('div'); div.innerHTML=`<div style="background:var(--glass-card); padding:8px; margin-bottom:5px; border-left:4px solid var(--primary); font-weight:bold; color:var(--text-main); font-size:0.9rem;">TUR ${r}</div>`; gr[r].forEach(m=>{ const deleteBtn = (isAdmin && !isFin) ? `<i class="fas fa-trash del-match-btn" onclick="deleteMatch(${m.id})"></i>` : ''; if(m.isBye) { const p1=d.slots[m.p1]; div.innerHTML += `<div class="match-card" style="opacity:0.6">${deleteBtn}<div class="match-player"><i class="fas ${p1.avatar}"></i> ${p1.name}</div><span style="font-weight:bold; color:var(--success); margin:0 10px;">BAY</span><div class="match-player right" style="color:var(--text-muted)">-</div></div>`; return; } const p1=d.slots[m.p1], p2=d.slots[m.p2]; const isP1=(p1.ownerId===currentUser.uid), isP2=(p2.ownerId===currentUser.uid); const isDisputed = m.isDisputed === true; const disputeLink = m.disputeLink || "#"; let canEdit = false; if(!isFin) { if(isAdmin) canEdit = true; else if((isP1 || isP2) && !isDisputed) canEdit = true; } let objectBtn = ''; if( (isP1 || isP2) && m.res !== null && !isDisputed && !isFin ) { objectBtn = `<div class="object-btn" title="Sonuca İtiraz Et" onclick="objectToMatch(${m.id})"><i class="fas fa-flag"></i></div>`; } let disputeBadge = ''; let cardClass = 'match-card'; if(isDisputed) { cardClass += ' disputed'; disputeBadge = `<a href="${disputeLink}" target="_blank" class="proof-link"><i class="fas fa-exclamation-triangle"></i> İTİRAZ (KANIT)</a>`; } let lnk=''; const watch = m.link ? `<a href="${m.link}" target="_blank" class="watch-btn"><i class="fas fa-eye"></i> İzle</a>` : ''; const inp = ((isP1||isP2||isAdmin) && !isFin) ? `<input class="link-input" placeholder="Maç Linki (Lichess/Chess.com)..." value="${m.link||''}" onchange="upLink(${m.id},this.value)">` : ''; if(watch||inp) lnk=`<div class="link-area">${watch}${inp}</div>`; div.innerHTML += `<div class="${cardClass}">${deleteBtn} ${objectBtn}<div class="match-player ${isP1?'me':''}"><i class="fas ${p1.avatar}"></i> ${p1.name}</div><select class="score-select" ${canEdit?'':'disabled'} onchange="upMatch(${m.id},this.value)"><option value="">vs</option><option value="1" ${m.res===1?'selected':''}>1 - 0</option><option value="0" ${m.res===0?'selected':''}>½ - ½</option><option value="2" ${m.res===2?'selected':''}>0 - 1</option></select><div class="match-player right ${isP2?'me':''}">${p2.name} <i class="fas ${p2.avatar}"></i></div>${disputeBadge} ${lnk}</div>`; }); c.appendChild(div); }); }
     window.upMatch = async(id, v) => { const isAdmin = currentTournamentData.creatorId === currentUser.uid; await updateDoc(doc(db,"tournaments",currentTournamentId), { matches: currentTournamentData.matches.map(m => { if(m.id === id) { const newVal = v === "" ? null : parseInt(v); if(isAdmin) return { ...m, res: newVal, isDisputed: false, disputeLink: null }; else return { ...m, res: newVal }; } return m; }) }); };
     window.upLink = async(id,v)=>{ await updateDoc(doc(db,"tournaments",currentTournamentId), { matches:currentTournamentData.matches.map(m=>m.id===id?{...m,link:v.trim()}:m) }); };
     function renderStandings(d){ const stats = d.slots.map((s,i)=>({ ...s, idx:i, p:0, w:0, d:0, l:0, pts:0, sb:0 })); d.matches.forEach(m=>{ if(m.res !== null){ if(m.isBye) { stats[m.p1].p++; stats[m.p1].w++; stats[m.p1].pts+=1; } else { stats[m.p1].p++; stats[m.p2].p++; if(m.res===1) { stats[m.p1].w++; stats[m.p1].pts+=1; stats[m.p2].l++; } else if(m.res===2) { stats[m.p2].w++; stats[m.p2].pts+=1; stats[m.p1].l++; } else { stats[m.p1].d++; stats[m.p1].pts+=0.5; stats[m.p2].d++; stats[m.p2].pts+=0.5; } } } }); d.matches.forEach(m=>{ if(m.res !== null && !m.isBye){ if(m.res===1) stats[m.p1].sb += stats[m.p2].sb + stats[m.p2].pts; else if(m.res===2) stats[m.p2].sb += stats[m.p1].pts; else { stats[m.p1].sb += 0.5 * stats[m.p2].pts; stats[m.p2].sb += 0.5 * stats[m.p1].pts; } } }); stats.sort((a,b)=> b.pts - a.pts || b.sb - a.sb || b.w - a.w); const b=document.getElementById('standingsBody'); b.innerHTML=''; const isFin = d.status==='finished'; stats.forEach((s,rank)=>{ let rowClass = ''; if(isFin){ if(rank===0) rowClass='rank-1'; } else if(s.ownerId===currentUser.uid) rowClass='me'; const tr=document.createElement('tr'); tr.className=rowClass; if(s.ownerId===currentUser.uid && !isFin) tr.style.background='rgba(0, 242, 255, 0.1)'; tr.innerHTML = `<td>${rank+1}</td><td class="player-name-cell" onclick='showStats(${JSON.stringify(s)})' style="text-align:left;"><i class="fas ${s.avatar}"></i> ${s.name} ${rank===0&&isFin?'👑':''}</td><td style="font-weight:bold; color:var(--primary); font-size:1.1rem;">${s.pts}</td><td style="color:var(--text-muted); font-size:0.9rem;">${s.sb.toFixed(2)}</td><td>${s.p}</td><td style="color:var(--success)">${s.w}</td><td>${s.d}</td><td style="color:var(--danger)">${s.l}</td>`; b.appendChild(tr); }); }
     window.downloadStandings = () => { const element = document.getElementById("standingsContainer"); const originalBg = element.style.background; element.style.background = "#1b1d24"; html2canvas(element, { scale: 2, backgroundColor: "#1b1d24" }).then(canvas => { const link = document.createElement("a"); link.download = `Grandmaster_Puan_${currentTournamentId}.png`; link.href = canvas.toDataURL(); link.click(); element.style.background = originalBg; showToast("Resim indirildi!", "success"); }); };
+    
     window.openRules = () => { window.playGameSound('nav'); const isAdmin = currentTournamentData.creatorId === currentUser.uid; document.getElementById('rulesText').value = currentTournamentData.rules || ""; document.getElementById('rulesReadOnly').innerText = currentTournamentData.rules || "Henüz kural eklenmedi."; document.getElementById('rulesText').style.display = isAdmin ? 'block' : 'none'; document.getElementById('btnSaveRules').style.display = isAdmin ? 'block' : 'none'; document.getElementById('rulesReadOnly').style.display = isAdmin ? 'none' : 'block'; document.getElementById('rulesModal').style.display = 'flex'; };
     window.closeRules = () => document.getElementById('rulesModal').style.display = 'none';
     window.saveRules = async() => { const txt = document.getElementById('rulesText').value; await updateDoc(doc(db,"tournaments",currentTournamentId), { rules: txt }); closeRules(); showToast("Kurallar güncellendi", "success"); };
     window.showStats = (s) => { window.playGameSound('nav'); document.getElementById('modalAvatar').innerHTML = `<i class="fas ${s.avatar}"></i>`; document.getElementById('modalName').innerText = s.name; document.getElementById('statWins').innerText = s.w; document.getElementById('statDraws').innerText = s.d; document.getElementById('statLosses').innerText = s.l; document.getElementById('statPoints').innerText = s.pts; document.getElementById('statSB').innerText = s.sb.toFixed(2); const rate = s.p > 0 ? Math.round(((s.pts - (s.d * 0.5)) / s.p) * 100) : 0; document.getElementById('statRate').innerText = `%${rate}`; document.getElementById('statsModal').style.display = 'flex'; };
     window.closeStats = () => document.getElementById('statsModal').style.display='none';
+    
     window.onclick = (e) => { if(e.target.classList.contains('modal-overlay')) { closeStats(); closeRules(); closeHistory2v2(); } }
     window.copyCode = () => { navigator.clipboard.writeText(document.getElementById('shareCode').innerText).then(()=>showToast("Kod kopyalandı!", "success")); };
     window.leaveTournamentConfirm = async () => { window.playGameSound('nav'); const res = await Swal.fire({ title: 'Çıkış?', text: 'Turnuva ekranından ayrılacaksın.', icon: 'question', showCancelButton: true, background: 'rgba(30,30,35,0.95)', color: '#fff', confirmButtonColor: '#555', cancelButtonColor: '#d33', confirmButtonText: 'Evet, Çık', cancelButtonText: 'Kal' }); if(res.isConfirmed) leaveTournament(); }
@@ -1383,14 +2071,15 @@
     window.showTab = (t) => { window.playGameSound('nav'); document.getElementById('tab-fixtures').style.display=t==='fixtures'?'block':'none'; document.getElementById('tab-standings').style.display=t==='standings'?'block':'none'; };
     window.openSettings = () => { window.playGameSound('nav'); renderAvatars('settingsAvatarGrid','settingsSelectedAvatar'); document.getElementById('settingsNameInput').value=currentUser.displayName; switchView('view-settings'); };
     window.saveSettings = async() => { try { const newName = document.getElementById('settingsNameInput').value; const newAvatar = document.getElementById('settingsSelectedAvatar').value; await updateProfile(currentUser,{displayName:newName, photoURL:newAvatar}); const q = query(collection(db, "tournaments"), where("participantIds", "array-contains", currentUser.uid)); const querySnapshot = await getDocs(q); querySnapshot.forEach(async (docSnap) => { const tData = docSnap.data(); if(tData.status === 'finished') return; let updatedSlots = tData.slots.map(s => { if(s.ownerId === currentUser.uid) { return { ...s, name: newName, avatar: newAvatar }; } return s; }); if(JSON.stringify(updatedSlots) !== JSON.stringify(tData.slots)) { await updateDoc(doc(db, "tournaments", docSnap.id), { slots: updatedSlots }); } }); showToast("Profil ve aktif turnuvalar güncellendi!", "success"); switchView('view-dashboard'); } catch(e){ showToast(e.message, "error"); } };
+    
     const cw=document.getElementById('chatWidget'), cb=document.getElementById('chatToggleBtn');
     cb.onclick=()=>{ cw.style.display='flex'; cb.style.display='none'; document.getElementById('chatBadge').style.display='none'; scrollChat(); };
     window.hideChat=()=>{ cw.style.display='none'; if(currentTournamentId || current2v2Id) cb.style.display='flex'; };
     function initChat(tid){ cb.style.display='flex'; const q=query(collection(db,`tournaments/${tid}/messages`),orderBy('createdAt','asc')); unsubscribeChat=onSnapshot(q,s=>{ const d=document.getElementById('chatMessages'); d.innerHTML=''; let n=false; s.forEach(x=>{ const m=x.data(); const me=m.uid===currentUser.uid; d.innerHTML+=`<div style="text-align:${me?'right':'left'}; margin-bottom:5px;"><strong style="color:${me?'var(--accent)':'var(--primary)'}; font-size:0.8rem;">${m.user}</strong><div style="background:${me?'var(--primary)':'rgba(255,255,255,0.1)'}; color:${me?'#000':'var(--text-main)'}; display:inline-block; padding:5px 10px; border-radius:10px; margin-top:2px; max-width:80%; word-break:break-word;">${m.text}</div></div>`; n=true; }); scrollChat(); if(n && cw.style.display==='none') document.getElementById('chatBadge').style.display='flex'; }); }
     document.getElementById('chatInputArea').onsubmit=async(e)=>{ e.preventDefault(); const i=document.getElementById('chatInput'); if(!i.value.trim()) return; const id = currentTournamentId || current2v2Id; await addDoc(collection(db,`tournaments/${id}/messages`),{text:i.value, user:currentUser.displayName, uid:currentUser.uid, createdAt:serverTimestamp()}); i.value=''; };
     function scrollChat(){ const d=document.getElementById('chatMessages'); d.scrollTop=d.scrollHeight; }
-    
-    // ... (Keep other helpers like renderLobby, adminAddPlayer etc. for the original Tournament mode) ...
+
+    // Admin Tools
     window.fixParticipants = async () => { if(!currentTournamentId || !currentTournamentData) return; const res = await Swal.fire({ title: 'Listeyi Birleştir', text: "Masadaki oyuncular ile veritabanındaki mevcut liste birleştirilecek. Silinme olmayacak.", icon: 'info', showCancelButton: true, background: 'rgba(30,30,35,0.95)', color: '#fff', confirmButtonColor: '#d4af37' }); if(!res.isConfirmed) return; let currentDBList = currentTournamentData.participantIds || []; let slotIds = currentTournamentData.slots.map(s=>s.ownerId).filter(id=>id); if(currentTournamentData.creatorId) slotIds.push(currentTournamentData.creatorId); let mergedList = [...new Set([...currentDBList, ...slotIds])]; try { await updateDoc(doc(db, "tournaments", currentTournamentId), { participantIds: mergedList }); showToast("Liste başarıyla birleştirildi!", "success"); } catch(e) { console.error(e); showToast("Hata: " + e.message, "error"); } };
     window.adminAddPlayer = async () => { if(!currentTournamentId || !currentTournamentData) return; const { value: uid } = await Swal.fire({ title: 'Kullanıcı UID', input: 'text', inputLabel: 'Firebase Authentication kısmındaki User UID', inputPlaceholder: 'Örn: J8d9S...', background: 'rgba(30,30,35,0.95)', color: '#fff', confirmButtonColor: '#d4af37' }); if(!uid) return; const { value: seatNum } = await Swal.fire({ title: 'Masa Numarası', input: 'number', inputLabel: 'Kaç numaralı masaya oturtulsun?', inputValue: 1, background: 'rgba(30,30,35,0.95)', color: '#fff', confirmButtonColor: '#d4af37' }); if(!seatNum) return; const index = parseInt(seatNum) - 1; const slots = [...currentTournamentData.slots]; if(!slots[index]) { showToast("Geçersiz masa numarası!", "error"); return; } const { value: name } = await Swal.fire({ title: 'Görünen İsim', input: 'text', inputValue: 'Oyuncu', background: 'rgba(30,30,35,0.95)', color: '#fff', confirmButtonColor: '#d4af37' }); slots[index] = { index: index, name: name || "Oyuncu", ownerId: uid.trim(), avatar: 'fa-user-secret', status: 'taken' }; try { await updateDoc(doc(db, "tournaments", currentTournamentId), { slots: slots, participantIds: arrayUnion(uid.trim()) }); showToast("Oyuncu başarıyla masaya oturtuldu!", "success"); } catch(e) { showToast("Hata: " + e.message, "error"); } };
     window.addMatchManual = async () => { if(!currentTournamentId || !currentTournamentData) return; let options = {}; currentTournamentData.slots.forEach(s => { options[s.index] = s.name; }); const htmlContent = `<div style="text-align:left;"><label>Tur Numarası:</label><input type="number" id="swal-round" class="swal2-input" value="1" min="1" style="width:100%; margin-bottom:10px;"><label>1. Oyuncu (Beyaz):</label><select id="swal-p1" class="swal2-input" style="width:100%; margin-bottom:10px; background:#333; color:#fff;">${Object.keys(options).map(k => `<option value="${k}">${options[k]}</option>`).join('')}</select><label>2. Oyuncu (Siyah):</label><select id="swal-p2" class="swal2-input" style="width:100%; background:#333; color:#fff;">${Object.keys(options).map(k => `<option value="${k}">${options[k]}</option>`).join('')}</select></div>`; const { value: formValues } = await Swal.fire({ title: 'Yeni Maç Ekle', html: htmlContent, showCancelButton: true, confirmButtonText: 'EKLE', background: 'rgba(30,30,35,0.95)', color: '#fff', confirmButtonColor: '#d4af37', preConfirm: () => { return [ document.getElementById('swal-round').value, document.getElementById('swal-p1').value, document.getElementById('swal-p2').value ] } }); if(formValues) { const r = parseInt(formValues[0]); const p1 = parseInt(formValues[1]); const p2 = parseInt(formValues[2]); if(p1 === p2) { showToast("Aynı oyuncuyu kendisine karşı seçemezsin!", "error"); return; } const newMatch = { id: Date.now(), r: r, p1: p1, p2: p2, res: null, link: '', isBye: false }; await updateDoc(doc(db,"tournaments",currentTournamentId), { matches: arrayUnion(newMatch) }); showToast("Maç eklendi!", "success"); } };
