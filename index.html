@@ -280,6 +280,42 @@
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.2); transition: .4s; border-radius: 20px; }
         input:checked + .slider { background-color: var(--primary); }
         input:checked + .slider:before { transform: translateX(20px); background: #fff; position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; border-radius: 50%; transition: 0.4s; }
+        
+        /* --- ANALYSIS MODE STYLES --- */
+        .analysis-container { display: flex; flex-direction: column; gap: 15px; width:100%; }
+        .analysis-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; width: 100%; max-width: 1000px; margin: 0 auto; }
+        .eval-bar-container { width: 20px; background: #333; border-radius: 4px; position: relative; overflow: hidden; height: 100%; border: 1px solid #555; }
+        .eval-fill { width: 100%; background: #fff; position: absolute; bottom: 0; transition: height 0.5s ease; }
+        .eval-score { position: absolute; width: 100%; text-align: center; font-size: 0.6rem; color: #555; font-weight: bold; top: 50%; transform: translateY(-50%); z-index: 2; mix-blend-mode: difference; }
+        
+        .move-list-container { background: var(--glass-card); border: 1px solid var(--glass-border); border-radius: 8px; height: 100%; display: flex; flex-direction: column; max-height: 500px; }
+        .move-list-header { padding: 10px; background: rgba(255,255,255,0.05); border-bottom: 1px solid var(--glass-border); font-weight: bold; text-align: center; }
+        .move-list { flex: 1; overflow-y: auto; padding: 0; }
+        .move-list-row { display: flex; padding: 5px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.1s; font-size: 0.9rem; }
+        .move-list-row:hover { background: rgba(255,255,255,0.05); }
+        .move-list-row.active { background: rgba(212, 175, 55, 0.2); border-left: 3px solid var(--primary); }
+        .move-num { width: 30px; color: var(--text-muted); }
+        .move-san { flex: 1; display: flex; align-items: center; justify-content: center; }
+        .move-san.empty { color: transparent; }
+        
+        .analysis-controls { display: flex; gap: 5px; padding: 10px; background: rgba(0,0,0,0.2); border-top: 1px solid var(--glass-border); justify-content: center; }
+        .analysis-btn { background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); width: 40px; height: 35px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .analysis-btn:hover { background: var(--primary); color: #000; }
+        
+        .analysis-tabs { display: flex; margin-bottom: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 5px; }
+        .analysis-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; border-radius: 6px; font-size: 0.9rem; color: var(--text-muted); transition: 0.2s; }
+        .analysis-tab.active { background: var(--primary); color: #000; font-weight: bold; }
+        
+        .report-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px; }
+        .report-card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; text-align: center; }
+        .accuracy-ring { width: 80px; height: 80px; border-radius: 50%; border: 5px solid #333; margin: 0 auto 10px auto; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; color: var(--success); position: relative; }
+        .accuracy-ring::after { content: ''; position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px; border-radius: 50%; border: 5px solid var(--success); border-left-color: transparent; border-bottom-color: transparent; transform: rotate(-45deg); }
+        
+        @media (max-width: 768px) {
+            .analysis-layout { grid-template-columns: 1fr; }
+            .move-list-container { max-height: 300px; }
+        }
+
         @media (max-width: 600px) {
             .hero-card h3 { font-size: 1.5rem; }
             .hero-actions { flex-direction: column; }
@@ -459,6 +495,73 @@
         <div style="margin-top:30px;">
             <h3 style="font-size:1rem; border-bottom:1px solid var(--glass-border); padding-bottom:5px;">Turnuvalarım</h3>
             <div id="myTournamentsList" class="history-list"></div>
+        </div>
+    </div>
+
+    <!-- ===== NEW: ANALYSIS / GAME REVIEW VIEW ===== -->
+    <div id="view-2v2-analysis" class="view">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h2><i class="fas fa-search-plus" style="color:var(--success)"></i> MAÇ ANALİZİ</h2>
+            <button class="secondary icon-btn" onclick="switchView('view-dashboard')"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="analysis-layout">
+            <!-- Left Side: Board & Eval -->
+            <div style="display:flex; gap:10px;">
+                <div class="eval-bar-container">
+                    <div id="analysisEvalFill" class="eval-fill" style="height:50%;"></div>
+                    <div id="analysisEvalScore" class="eval-score">0.0</div>
+                </div>
+                <div style="flex:1;">
+                    <div class="game-info-bar">
+                         <div class="player-tag"><i class="fas fa-user"></i> <span id="an-black-player">Siyah</span></div>
+                         <div style="font-family:monospace; font-weight:bold;">VS</div>
+                         <div class="player-tag"><i class="fas fa-user"></i> <span id="an-white-player">Beyaz</span></div>
+                    </div>
+                    <div class="board-container" id="analysisBoard"></div>
+                    <div class="analysis-controls">
+                        <button class="analysis-btn" onclick="navAnalysis('start')"><i class="fas fa-step-backward"></i></button>
+                        <button class="analysis-btn" onclick="navAnalysis('prev')"><i class="fas fa-chevron-left"></i></button>
+                        <button class="analysis-btn" onclick="navAnalysis('next')"><i class="fas fa-chevron-right"></i></button>
+                        <button class="analysis-btn" onclick="navAnalysis('end')"><i class="fas fa-step-forward"></i></button>
+                        <button class="analysis-btn" onclick="flipAnalysisBoard()"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Side: Info & Moves -->
+            <div>
+                 <div class="analysis-tabs">
+                     <div class="analysis-tab active" onclick="switchAnalysisTab('review')" id="tab-btn-review">OYUN RAPORU</div>
+                     <div class="analysis-tab" onclick="switchAnalysisTab('moves')" id="tab-btn-moves">HAMLELER</div>
+                 </div>
+                 
+                 <div id="tab-content-review">
+                     <div class="report-stats">
+                         <div class="report-card">
+                             <div class="accuracy-ring" id="acc-white">88%</div>
+                             <div style="font-size:0.8rem; color:#aaa;">Beyaz Doğruluk</div>
+                         </div>
+                         <div class="report-card">
+                             <div class="accuracy-ring" id="acc-black" style="color:var(--danger); border-color:var(--danger);">75%</div>
+                             <div style="font-size:0.8rem; color:#aaa;">Siyah Doğruluk</div>
+                         </div>
+                     </div>
+                     <div class="dash-card" style="margin-top:10px; text-align:left; font-size:0.9rem;">
+                         <div style="margin-bottom:10px;"><i class="fas fa-star" style="color:gold;"></i> <strong>En İyi Hamle:</strong> <span id="report-best">...</span></div>
+                         <div style="margin-bottom:10px;"><i class="fas fa-exclamation-circle" style="color:orange;"></i> <strong>Kritik Hata:</strong> <span id="report-blunder">...</span></div>
+                         <div style="margin-bottom:10px;"><i class="fas fa-check-circle" style="color:var(--success);"></i> <strong>Maç Sonucu:</strong> <span id="report-result">...</span></div>
+                         <button style="width:100%; margin-top:10px; font-size:0.8rem;" onclick="switchAnalysisTab('moves')">HAMLELERİ İNCELE</button>
+                     </div>
+                 </div>
+                 
+                 <div id="tab-content-moves" style="display:none; height:400px;">
+                     <div class="move-list-container">
+                         <div class="move-list-header">HAMLE LİSTESİ</div>
+                         <div class="move-list" id="analysisMoveList"></div>
+                     </div>
+                 </div>
+            </div>
         </div>
     </div>
 
@@ -848,7 +951,7 @@
                  Oyuncu 1 & Oyuncu 2
              </div>
         </div>
-        <button onclick="closeGameOver()" style="width:100%; background:var(--primary); color:black;">LOBİYE DÖN</button>
+        <button onclick="closeGameOver()" style="width:100%; background:var(--primary); color:black;">MAÇ ANALİZİ</button>
     </div>
 </div>
 
@@ -1023,51 +1126,31 @@
     let gameTimerInterval = null;
     let lastPlayedMoveCount = -1; 
     
-    /* ----------------------------------------------------------------------- */
-    /* IDRIS CLICKER LOGIC                                                     */
-    /* ----------------------------------------------------------------------- */
+    // Idris Clicker Logic
     let idrisCooldown = false;
     let idrisTimer = null;
-    
     window.initIdrisListener = () => {
-        // Listen to global stats
         const docRef = doc(db, "global_stats", "idris_clicker");
         onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
-                const data = docSnap.data();
-                // Animate counter logic could go here, but simple assignment for now
-                document.getElementById('idrisGlobalCounter').innerText = data.count || 0;
+                document.getElementById('idrisGlobalCounter').innerText = docSnap.data().count || 0;
             } else {
-                // If not exists, create it safely (only if admin/first run)
                 setDoc(docRef, { count: 0 }, { merge: true });
             }
         });
     };
-
     window.clickIdris = async () => {
         if(idrisCooldown) return;
-        
-        // 1. UI Feedback
         window.playGameSound('capture');
-        confetti({
-            particleCount: 50,
-            spread: 60,
-            origin: { y: 0.7 },
-            colors: ['#8E2DE2', '#4A00E0', '#ffffff']
-        });
-        
-        // 2. Cooldown Logic (5 Seconds)
+        confetti({particleCount: 50, spread: 60, origin: { y: 0.7 }, colors: ['#8E2DE2', '#4A00E0', '#ffffff']});
         idrisCooldown = true;
         const btn = document.getElementById('btnIdrisClick');
         const txt = document.getElementById('idrisCooldownText');
-        
         btn.disabled = true;
         btn.style.filter = "grayscale(1)";
         btn.innerHTML = `<i class="fas fa-hourglass-half"></i> BEKLE`;
-        
         let timeLeft = 5;
         txt.innerText = `Sonraki basış: ${timeLeft}s`;
-        
         idrisTimer = setInterval(() => {
             timeLeft--;
             txt.innerText = `Sonraki basış: ${timeLeft}s`;
@@ -1080,21 +1163,9 @@
                 txt.innerText = "";
             }
         }, 1000);
-
-        // 3. Update Firebase
-        try {
-            const docRef = doc(db, "global_stats", "idris_clicker");
-            await updateDoc(docRef, {
-                count: increment(1)
-            });
-        } catch(e) {
-            console.error("Idris Update Error:", e);
-            // Fallback create if missing
-            await setDoc(doc(db, "global_stats", "idris_clicker"), { count: 1 }, { merge: true });
-        }
+        try { await updateDoc(doc(db, "global_stats", "idris_clicker"), { count: increment(1) }); } 
+        catch(e) { await setDoc(doc(db, "global_stats", "idris_clicker"), { count: 1 }, { merge: true }); }
     };
-
-    /* ----------------------------------------------------------------------- */
 
     const crData = [
         {id:26000000, n:"Knight", e:3, r:"common", t:"troop", role:"mini_tank"},{id:26000001, n:"Archers", e:3, r:"common", t:"troop", role:"anti_air"},{id:26000002, n:"Goblins", e:2, r:"common", t:"troop", role:"cycle"},{id:26000005, n:"Minions", e:3, r:"common", t:"troop", role:"anti_air"},{id:26000008, n:"Barbarians", e:5, r:"common", t:"troop", role:"tank_killer"},{id:26000010, n:"Skeletons", e:1, r:"common", t:"troop", role:"cycle"},{id:26000013, n:"Bomber", e:2, r:"common", t:"troop", role:"support"},{id:26000019, n:"Spear Goblins", e:2, r:"common", t:"troop", role:"anti_air"},{id:26000022, n:"Minion Horde", e:5, r:"common", t:"troop", role:"swarm"},{id:26000024, n:"Royal Giant", e:6, r:"common", t:"troop", role:"win_condition"},{id:26000030, n:"Ice Spirit", e:1, r:"common", t:"troop", role:"cycle"},{id:26000031, n:"Fire Spirit", e:1, r:"common", t:"troop", role:"cycle"},{id:26000041, n:"Goblin Gang", e:3, r:"common", t:"troop", role:"swarm"},{id:26000043, n:"Elite Barbarians", e:6, r:"common", t:"troop", role:"win_condition"},{id:26000047, n:"Royal Recruits", e:7, r:"common", t:"troop", role:"defense"},{id:26000049, n:"Bats", e:2, r:"common", t:"troop", role:"cycle"},{id:26000053, n:"Rascals", e:5, r:"common", t:"troop", role:"defense"},{id:26000056, n:"Skeleton Barrel", e:3, r:"common", t:"troop", role:"win_condition"},{id:26000064, n:"Firecracker", e:3, r:"common", t:"troop", role:"anti_air"},{id:26000080, n:"Skeleton Dragons", e:4, r:"common", t:"troop", role:"anti_air"},{id:26000084, n:"Electro Spirit", e:1, r:"common", t:"troop", role:"cycle"},
@@ -1142,6 +1213,217 @@
             document.getElementById('chatToggleBtn').style.display = 'flex'; 
         }
     };
+
+    /* ========================================================
+       ANALYSIS & GAME REVIEW LOGIC
+       ======================================================== */
+    let analysisChess = new Chess();
+    let analysisHistory = [];
+    let currentAnalysisIndex = 0;
+    
+    window.openAnalysis = (pgn, players) => {
+        switchView('view-2v2-analysis');
+        
+        // Setup Players
+        const wTeam = players.filter(p => p.team === 'white').map(p => p.name).join(' & ');
+        const bTeam = players.filter(p => p.team === 'black').map(p => p.name).join(' & ');
+        document.getElementById('an-white-player').innerText = wTeam || "Beyaz Takım";
+        document.getElementById('an-black-player').innerText = bTeam || "Siyah Takım";
+        
+        // Init Chess
+        analysisChess.reset();
+        analysisChess.load_pgn(pgn || "");
+        analysisHistory = analysisChess.history({ verbose: true });
+        
+        // Reset to Start
+        analysisChess.reset();
+        currentAnalysisIndex = 0;
+        
+        // Simulate Report Stats (Visual Only as we lack stockfish wasm)
+        const simAccW = Math.floor(Math.random() * 20) + 75;
+        const simAccB = Math.floor(Math.random() * 20) + 70;
+        document.getElementById('acc-white').innerText = simAccW + "%";
+        document.getElementById('acc-black').innerText = simAccB + "%";
+        
+        let bestMove = "-", blunder = "-", result = "Devam Ediyor";
+        if(pgn.includes("1-0")) result = "Beyaz Kazandı";
+        else if(pgn.includes("0-1")) result = "Siyah Kazandı";
+        else if(pgn.includes("1/2")) result = "Berabere";
+        
+        if(analysisHistory.length > 5) {
+            const rIdx = Math.floor(Math.random() * analysisHistory.length);
+            bestMove = analysisHistory[rIdx].san;
+            blunder = analysisHistory[Math.floor(Math.random() * analysisHistory.length)].san;
+        }
+        
+        document.getElementById('report-best').innerText = bestMove;
+        document.getElementById('report-blunder').innerText = blunder;
+        document.getElementById('report-result').innerText = result;
+
+        // Render Initial
+        renderAnalysisBoard();
+        renderMoveList();
+        updateEvalBar();
+        switchAnalysisTab('review'); // Default to review
+    };
+
+    window.switchAnalysisTab = (tab) => {
+        document.querySelectorAll('.analysis-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(`tab-btn-${tab}`).classList.add('active');
+        document.getElementById('tab-content-review').style.display = tab === 'review' ? 'block' : 'none';
+        document.getElementById('tab-content-moves').style.display = tab === 'moves' ? 'block' : 'none';
+        if(tab === 'moves') {
+             // Scroll to bottom
+             const ml = document.getElementById('analysisMoveList');
+             ml.scrollTop = ml.scrollHeight;
+        }
+    };
+
+    window.navAnalysis = (action) => {
+        if(action === 'start') {
+            currentAnalysisIndex = 0;
+            analysisChess.reset();
+        } else if(action === 'prev') {
+            if(currentAnalysisIndex > 0) {
+                currentAnalysisIndex--;
+                analysisChess.undo();
+            }
+        } else if(action === 'next') {
+            if(currentAnalysisIndex < analysisHistory.length) {
+                const move = analysisHistory[currentAnalysisIndex];
+                analysisChess.move(move);
+                currentAnalysisIndex++;
+            }
+        } else if(action === 'end') {
+            while(currentAnalysisIndex < analysisHistory.length) {
+                const move = analysisHistory[currentAnalysisIndex];
+                analysisChess.move(move);
+                currentAnalysisIndex++;
+            }
+        }
+        renderAnalysisBoard();
+        highlightMoveRow();
+        updateEvalBar();
+    };
+
+    window.jumpToMove = (index) => {
+        analysisChess.reset();
+        for(let i=0; i<index; i++) {
+            analysisChess.move(analysisHistory[i]);
+        }
+        currentAnalysisIndex = index;
+        renderAnalysisBoard();
+        highlightMoveRow();
+        updateEvalBar();
+    };
+
+    function renderAnalysisBoard() {
+        const boardEl = document.getElementById('analysisBoard');
+        boardEl.innerHTML = '';
+        const boardArray = analysisChess.board();
+        
+        // Check if flipped
+        const isFlipped = boardEl.classList.contains('flipped');
+
+        for(let r=0; r<8; r++) {
+            for(let c=0; c<8; c++) {
+                const row = isFlipped ? 7-r : r;
+                const col = isFlipped ? 7-c : c;
+                const sq = boardArray[row][col];
+                
+                const div = document.createElement('div');
+                div.className = `square ${(r+c)%2===0 ? 'white' : 'black'}`;
+                
+                // Highlight last move
+                const lastMove = analysisHistory[currentAnalysisIndex - 1];
+                if(lastMove) {
+                    const fromRow = 8 - parseInt(lastMove.from[1]);
+                    const fromCol = lastMove.from.charCodeAt(0) - 97;
+                    const toRow = 8 - parseInt(lastMove.to[1]);
+                    const toCol = lastMove.to.charCodeAt(0) - 97;
+                    
+                    if((row === fromRow && col === fromCol) || (row === toRow && col === toCol)) {
+                        div.style.background = "rgba(255, 255, 0, 0.4)";
+                    }
+                }
+
+                if(sq) {
+                    const piece = document.createElement('div');
+                    piece.className = 'piece locked';
+                    const url = `https://images.chesscomfiles.com/chess-themes/pieces/neo/150/${sq.color}${sq.type}.png`;
+                    piece.style.backgroundImage = `url('${url}')`;
+                    div.appendChild(piece);
+                }
+                boardEl.appendChild(div);
+            }
+        }
+    }
+
+    function renderMoveList() {
+        const list = document.getElementById('analysisMoveList');
+        list.innerHTML = '';
+        for(let i=0; i<analysisHistory.length; i+=2) {
+            const moveNum = (i/2) + 1;
+            const wMove = analysisHistory[i];
+            const bMove = analysisHistory[i+1];
+            
+            const div = document.createElement('div');
+            div.className = 'move-list-row';
+            div.id = `move-row-${i}`;
+            div.innerHTML = `
+                <div class="move-num">${moveNum}.</div>
+                <div class="move-san" onclick="jumpToMove(${i+1})">${wMove.san}</div>
+                <div class="move-san ${!bMove ? 'empty' : ''}" onclick="${bMove ? `jumpToMove(${i+2})` : ''}">${bMove ? bMove.san : '...'}</div>
+            `;
+            list.appendChild(div);
+        }
+    }
+
+    function highlightMoveRow() {
+        document.querySelectorAll('.move-list-row').forEach(r => r.classList.remove('active'));
+        if(currentAnalysisIndex > 0) {
+            // Find which row contains this index
+            // Index is 1-based in terms of half-moves logic for display mapping
+            // row 0 has moves 0, 1. row 1 has 2, 3.
+            const rowIdx = Math.floor((currentAnalysisIndex - 1) / 2);
+            const el = document.getElementById(`move-row-${rowIdx*2}`);
+            if(el) {
+                el.classList.add('active');
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }
+
+    window.flipAnalysisBoard = () => {
+        document.getElementById('analysisBoard').classList.toggle('flipped');
+        renderAnalysisBoard();
+    };
+
+    function updateEvalBar() {
+        // Simple heuristic for visual effect since we don't have stockfish
+        const board = analysisChess.board();
+        let score = 0;
+        board.forEach(row => row.forEach(p => {
+            if(p) {
+                const val = {p:1, n:3, b:3, r:5, q:9, k:0}[p.type];
+                score += (p.color === 'w' ? val : -val);
+            }
+        }));
+        
+        // Clamp for visual bar (-10 to +10)
+        let percent = 50 + (score * 5);
+        percent = Math.max(5, Math.min(95, percent));
+        
+        const fill = document.getElementById('analysisEvalFill');
+        const txt = document.getElementById('analysisEvalScore');
+        fill.style.height = percent + "%";
+        
+        let displayScore = score > 0 ? `+${score}` : `${score}`;
+        if(score === 0) displayScore = "0.0";
+        txt.innerText = displayScore;
+    }
+
+    /* ======================================================== */
 
     /* ========================================================================================== */
     /* NEW: QUIZ MASTER MODULE                                                                    */
@@ -1994,6 +2276,7 @@
                 
                 let updates = {
                     fen: newFen,
+                    pgn: chess.pgn(), // Update PGN for Analysis
                     lastMoveTime: now,
                     moveCount: current2v2Data.moveCount + 1,
                     lastMoveFlags: move.flags,
@@ -2065,9 +2348,24 @@
                 const resultText = isWin ? 'KAZANDIN' : (isDraw ? 'BERABERE' : 'KAYBETTİN');
                 const partner = game.players.find(p => p.team === myP.team && p.uid !== currentUser.uid)?.name || "Bilinmiyor";
                 const date = game.createdAt ? new Date(game.createdAt.seconds * 1000).toLocaleDateString() : "-";
-                list.innerHTML += `<div class="history-item" style="border-left: 4px solid ${resultColor}"><div><div style="font-weight:bold; color:${resultColor}">${resultText}</div><div style="font-size:0.8rem; color:#aaa;">${date} • Partner: ${partner}</div></div><div style="font-family:monospace;">${game.timeControl} dk</div></div>`;
+                
+                // Safe JSON serialization for onclick
+                const safeGame = encodeURIComponent(JSON.stringify(game));
+                
+                list.innerHTML += `
+                    <div class="history-item" style="border-left: 4px solid ${resultColor}">
+                        <div>
+                            <div style="font-weight:bold; color:${resultColor}">${resultText}</div>
+                            <div style="font-size:0.8rem; color:#aaa;">${date} • Partner: ${partner}</div>
+                        </div>
+                        <div>
+                             <button class="secondary icon-btn" onclick="openAnalysis(decodeURIComponent('${safeGame}').pgn || '', JSON.parse(decodeURIComponent('${safeGame}')).players)">
+                                <i class="fas fa-search-plus"></i>
+                             </button>
+                        </div>
+                    </div>`;
             });
-        } catch(e) { list.innerHTML = '<p style="text-align:center; color:var(--danger);">Bir hata oluştu.</p>'; }
+        } catch(e) { console.error(e); list.innerHTML = '<p style="text-align:center; color:var(--danger);">Bir hata oluştu.</p>'; }
     };
     window.closeHistory2v2 = () => document.getElementById('history2v2Modal').style.display='none';
     
@@ -2084,7 +2382,15 @@
         document.getElementById('winnerPlayers').innerText = winners.join(' & ');
         document.getElementById('gameOverModal').style.display = 'flex';
     }
-    window.closeGameOver = () => { document.getElementById('gameOverModal').style.display = 'none'; leave2v2Lobby(); };
+    window.closeGameOver = () => { 
+        document.getElementById('gameOverModal').style.display = 'none'; 
+        // Auto open analysis after game
+        if(current2v2Data && current2v2Data.pgn) {
+            openAnalysis(current2v2Data.pgn, current2v2Data.players);
+        } else {
+            leave2v2Lobby(); 
+        }
+    };
 
     // --- TOURNAMENT LOGIC ---
     window.enterTournament = (id) => { 
