@@ -401,6 +401,23 @@
             </div>
         </div>
 
+        <!-- IDRIS CLICKER SECTION -->
+        <div class="dash-card" style="margin-bottom:20px; background: linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%); border:none; position:relative; overflow:hidden;">
+             <div style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:rgba(255,255,255,0.1); border-radius:50%;"></div>
+             <div style="position:absolute; bottom:-50px; right:-50px; width:150px; height:150px; background:rgba(255,255,255,0.1); border-radius:50%;"></div>
+             
+             <div style="display:flex; flex-direction:column; align-items:center; position:relative; z-index:2;">
+                 <h3 style="color:white; margin:0; text-shadow:0 2px 5px rgba(0,0,0,0.3);"><i class="fas fa-hand-pointer"></i> İDRİS'E BAS!</h3>
+                 <div id="idrisGlobalCounter" style="font-size:3.5rem; font-weight:800; color:#fff; text-shadow:0 0 20px rgba(255,255,255,0.6); margin:10px 0;">0</div>
+                 <p style="color:rgba(255,255,255,0.8); font-size:0.9rem; margin-top:-10px; margin-bottom:20px;">Kez İdris'e Basıldı</p>
+                 
+                 <button id="btnIdrisClick" onclick="clickIdris()" style="background:white; color:#4A00E0; font-size:1.2rem; padding:15px 50px; border-radius:50px; border:none; box-shadow:0 10px 20px rgba(0,0,0,0.3); transition:all 0.2s;">
+                    <i class="fas fa-fingerprint"></i> BAS
+                 </button>
+                 <div id="idrisCooldownText" style="margin-top:10px; height:20px; font-size:0.8rem; color:rgba(255,255,255,0.8);"></div>
+             </div>
+        </div>
+
         <div class="sub-grid">
             <div class="dash-card">
                 <div>
@@ -962,7 +979,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, setDoc, doc, onSnapshot, updateDoc, query, orderBy, serverTimestamp, deleteDoc, where, arrayUnion, arrayRemove, getDocs } 
+    import { getFirestore, collection, addDoc, setDoc, doc, onSnapshot, updateDoc, query, orderBy, serverTimestamp, deleteDoc, where, arrayUnion, arrayRemove, getDocs, increment, getDoc } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -1006,6 +1023,79 @@
     let gameTimerInterval = null;
     let lastPlayedMoveCount = -1; 
     
+    /* ----------------------------------------------------------------------- */
+    /* IDRIS CLICKER LOGIC                                                     */
+    /* ----------------------------------------------------------------------- */
+    let idrisCooldown = false;
+    let idrisTimer = null;
+    
+    window.initIdrisListener = () => {
+        // Listen to global stats
+        const docRef = doc(db, "global_stats", "idris_clicker");
+        onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                // Animate counter logic could go here, but simple assignment for now
+                document.getElementById('idrisGlobalCounter').innerText = data.count || 0;
+            } else {
+                // If not exists, create it safely (only if admin/first run)
+                setDoc(docRef, { count: 0 }, { merge: true });
+            }
+        });
+    };
+
+    window.clickIdris = async () => {
+        if(idrisCooldown) return;
+        
+        // 1. UI Feedback
+        window.playGameSound('capture');
+        confetti({
+            particleCount: 50,
+            spread: 60,
+            origin: { y: 0.7 },
+            colors: ['#8E2DE2', '#4A00E0', '#ffffff']
+        });
+        
+        // 2. Cooldown Logic (5 Seconds)
+        idrisCooldown = true;
+        const btn = document.getElementById('btnIdrisClick');
+        const txt = document.getElementById('idrisCooldownText');
+        
+        btn.disabled = true;
+        btn.style.filter = "grayscale(1)";
+        btn.innerHTML = `<i class="fas fa-hourglass-half"></i> BEKLE`;
+        
+        let timeLeft = 5;
+        txt.innerText = `Sonraki basış: ${timeLeft}s`;
+        
+        idrisTimer = setInterval(() => {
+            timeLeft--;
+            txt.innerText = `Sonraki basış: ${timeLeft}s`;
+            if(timeLeft <= 0) {
+                clearInterval(idrisTimer);
+                idrisCooldown = false;
+                btn.disabled = false;
+                btn.style.filter = "none";
+                btn.innerHTML = `<i class="fas fa-fingerprint"></i> BAS`;
+                txt.innerText = "";
+            }
+        }, 1000);
+
+        // 3. Update Firebase
+        try {
+            const docRef = doc(db, "global_stats", "idris_clicker");
+            await updateDoc(docRef, {
+                count: increment(1)
+            });
+        } catch(e) {
+            console.error("Idris Update Error:", e);
+            // Fallback create if missing
+            await setDoc(doc(db, "global_stats", "idris_clicker"), { count: 1 }, { merge: true });
+        }
+    };
+
+    /* ----------------------------------------------------------------------- */
+
     const crData = [
         {id:26000000, n:"Knight", e:3, r:"common", t:"troop", role:"mini_tank"},{id:26000001, n:"Archers", e:3, r:"common", t:"troop", role:"anti_air"},{id:26000002, n:"Goblins", e:2, r:"common", t:"troop", role:"cycle"},{id:26000005, n:"Minions", e:3, r:"common", t:"troop", role:"anti_air"},{id:26000008, n:"Barbarians", e:5, r:"common", t:"troop", role:"tank_killer"},{id:26000010, n:"Skeletons", e:1, r:"common", t:"troop", role:"cycle"},{id:26000013, n:"Bomber", e:2, r:"common", t:"troop", role:"support"},{id:26000019, n:"Spear Goblins", e:2, r:"common", t:"troop", role:"anti_air"},{id:26000022, n:"Minion Horde", e:5, r:"common", t:"troop", role:"swarm"},{id:26000024, n:"Royal Giant", e:6, r:"common", t:"troop", role:"win_condition"},{id:26000030, n:"Ice Spirit", e:1, r:"common", t:"troop", role:"cycle"},{id:26000031, n:"Fire Spirit", e:1, r:"common", t:"troop", role:"cycle"},{id:26000041, n:"Goblin Gang", e:3, r:"common", t:"troop", role:"swarm"},{id:26000043, n:"Elite Barbarians", e:6, r:"common", t:"troop", role:"win_condition"},{id:26000047, n:"Royal Recruits", e:7, r:"common", t:"troop", role:"defense"},{id:26000049, n:"Bats", e:2, r:"common", t:"troop", role:"cycle"},{id:26000053, n:"Rascals", e:5, r:"common", t:"troop", role:"defense"},{id:26000056, n:"Skeleton Barrel", e:3, r:"common", t:"troop", role:"win_condition"},{id:26000064, n:"Firecracker", e:3, r:"common", t:"troop", role:"anti_air"},{id:26000080, n:"Skeleton Dragons", e:4, r:"common", t:"troop", role:"anti_air"},{id:26000084, n:"Electro Spirit", e:1, r:"common", t:"troop", role:"cycle"},
         {id:26000003, n:"Giant", e:5, r:"rare", t:"troop", role:"win_condition"},{id:26000011, n:"Valkyrie", e:4, r:"rare", t:"troop", role:"mini_tank"},{id:26000014, n:"Musketeer", e:4, r:"rare", t:"troop", role:"anti_air"},{id:26000017, n:"Wizard", e:5, r:"rare", t:"troop", role:"anti_air"},{id:26000018, n:"Mini P.E.K.K.A", e:4, r:"rare", t:"troop", role:"tank_killer"},{id:26000021, n:"Hog Rider", e:4, r:"rare", t:"troop", role:"win_condition"},{id:26000028, n:"Three Musketeers", e:9, r:"rare", t:"troop", role:"win_condition"},{id:26000036, n:"Battle Ram", e:4, r:"rare", t:"troop", role:"win_condition"},{id:26000038, n:"Ice Golem", e:2, r:"rare", t:"troop", role:"mini_tank"},{id:26000039, n:"Mega Minion", e:3, r:"rare", t:"troop", role:"anti_air"},{id:26000040, n:"Dart Goblin", e:3, r:"rare", t:"troop", role:"anti_air"},{id:26000052, n:"Zappies", e:4, r:"rare", t:"troop", role:"defense"},{id:26000057, n:"Flying Machine", e:4, r:"rare", t:"troop", role:"anti_air"},{id:26000059, n:"Royal Hogs", e:5, r:"rare", t:"troop", role:"win_condition"},{id:26000065, n:"Elixir Golem", e:3, r:"rare", t:"troop", role:"win_condition"},{id:26000066, n:"Battle Healer", e:4, r:"rare", t:"troop", role:"mini_tank"},{id:26000068, n:"Heal Spirit", e:1, r:"rare", t:"troop", role:"cycle"},
@@ -1029,7 +1119,7 @@
     function toggleAuth(){ window.playGameSound('nav'); document.getElementById('registerFields').style.display=isReg?'block':'none'; document.getElementById('btnAuthAction').innerText=isReg?'HESAP OLUŞTUR & GİR':'GİRİŞ YAP'; document.getElementById('btnSwitchLogin').classList.toggle('secondary', isReg); document.getElementById('btnSwitchRegister').classList.toggle('secondary', !isReg); }
     document.getElementById('btnAuthAction').onclick=async()=>{ window.playGameSound('nav'); const btn = document.getElementById('btnAuthAction'); const e=document.getElementById('emailInput').value.trim(), p=document.getElementById('passwordInput').value.trim(), n=document.getElementById('displayNameInput').value.trim(), a=document.getElementById('selectedAvatar').value; if (!e || !p || (isReg && !n)) { return showToast("Lütfen tüm alanları doldurun.", "error"); } btn.disabled = true; btn.innerText = "İŞLENİYOR..."; try { if(isReg){ const c=await createUserWithEmailAndPassword(auth,e,p); await updateProfile(c.user,{displayName:n, photoURL:a}); showToast("Kayıt başarılı! Hoş geldin.", "success"); } else { await signInWithEmailAndPassword(auth,e,p); showToast("Giriş yapıldı.", "success"); } } catch(err){ showToast(err.message, "error"); } finally { btn.disabled = false; toggleAuth(); } };
     document.getElementById('btnLogout').onclick=()=>{ window.playGameSound('nav'); Swal.fire({ title: 'Çıkış Yap', text: "Oturumu kapatmak istiyor musun?", icon: 'question', showCancelButton: true, confirmButtonColor: '#d4af37', cancelButtonColor: '#555', confirmButtonText: 'Evet, Çık', cancelButtonText: 'İptal', background: 'rgba(30,30,35,0.95)', color: '#fff' }).then((result) => { if (result.isConfirmed) signOut(auth); }); };
-    onAuthStateChanged(auth, u=>{ if(u){ currentUser=u; document.getElementById('userInfoSection').style.display='flex'; document.getElementById('btnLogout').style.display='inline-block'; document.getElementById('currentUserDisplay').innerText=u.displayName; document.getElementById('currentUserIcon').innerHTML=`<i class="fas ${u.photoURL||'fa-chess-pawn'}" style="color:var(--primary)"></i>`; switchView('view-dashboard'); loadMyTournaments(); } else { currentUser=null; document.getElementById('userInfoSection').style.display='none'; document.getElementById('btnLogout').style.display='none'; switchView('view-auth'); } });
+    onAuthStateChanged(auth, u=>{ if(u){ currentUser=u; document.getElementById('userInfoSection').style.display='flex'; document.getElementById('btnLogout').style.display='inline-block'; document.getElementById('currentUserDisplay').innerText=u.displayName; document.getElementById('currentUserIcon').innerHTML=`<i class="fas ${u.photoURL||'fa-chess-pawn'}" style="color:var(--primary)"></i>`; switchView('view-dashboard'); loadMyTournaments(); initIdrisListener(); } else { currentUser=null; document.getElementById('userInfoSection').style.display='none'; document.getElementById('btnLogout').style.display='none'; switchView('view-auth'); } });
     function loadMyTournaments(){ if(!currentUser) return; const q = query(collection(db,"tournaments"), where("participantIds","array-contains",currentUser.uid)); onSnapshot(q, snap=>{ const l = document.getElementById('myTournamentsList'); l.innerHTML=''; if(snap.empty) l.innerHTML='<p style="text-align:center; color:var(--text-muted)">Kayıtlı turnuva yok.</p>'; snap.forEach(d=>{ const t=d.data(); const isFin = t.status==='finished'; let actionBtn = ''; if(isFin) { actionBtn += `<button class="secondary" style="margin-right:5px; font-size:0.7rem;" onclick="enterTournament('${d.id}')">Görüntüle</button>`; actionBtn += `<button class="secondary" style="font-size:0.7rem; color:var(--danger); border-color:var(--danger);" onclick="removeTournament('${d.id}')">Sil</button>`; } else { actionBtn = `<button class="icon-btn secondary" style="border:none" onclick="enterTournament('${d.id}')"><i class="fas fa-chevron-right"></i></button>`; } l.innerHTML += `<div class="history-item"><div><div style="font-weight:bold; ${isFin?'color:var(--text-muted); text-decoration:line-through;':''}">${t.name}</div><div style="font-size:0.8rem; color:var(--text-muted);">${isFin?'Tamamlandı':(t.status==='active'?'Oynanıyor':'Lobi')} #${d.id}</div></div><div>${actionBtn}</div></div>`; }); }); }
     window.removeTournament = async(tid) => { window.playGameSound('nav'); const res = await Swal.fire({title:'Listeden Kaldır?', text:"Geçmişten silinecek.", icon:'warning', showCancelButton:true, confirmButtonColor:'#d33', background:'rgba(30,30,35,0.95)', color:'#fff'}); if(res.isConfirmed) { await updateDoc(doc(db,"tournaments",tid), { participantIds: arrayRemove(currentUser.uid) }); showToast("Listeden kaldırıldı", "info"); } };
     document.getElementById('btnCreateTournament').onclick=async()=>{ window.playGameSound('nav'); const btn = document.getElementById('btnCreateTournament'); const n=document.getElementById('newTournamentName').value.trim(), c=parseInt(document.getElementById('playerCount').value); if(!n) return showToast("Lütfen bir turnuva adı girin.", "error"); btn.disabled = true; btn.innerText = "OLUŞTURULUYOR..."; const shortId = makeId(5); const slots=[]; for(let i=0;i<c;i++) slots.push({index:i, name:`Masa ${i+1}`, ownerId:null, avatar:'fa-chair', status:'open'}); await setDoc(doc(db,"tournaments",shortId),{ name:n, creatorId:currentUser.uid, status:'lobby', slots, matches:[], participantIds:[currentUser.uid], rules:"", createdAt:new Date() }); btn.disabled = false; btn.innerText = "OLUŞTUR"; showToast("Turnuva oluşturuldu!", "success"); enterTournament(shortId); };
