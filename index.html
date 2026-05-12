@@ -339,26 +339,26 @@
 <body>
 
     <div id="audio-container" style="display:none;">
-        <audio id="audio-move" preload="auto" crossorigin="anonymous">
+        <audio id="audio-move" preload="auto">
             <source src="https://images.chesscomfiles.com/chess-themes/sounds/_common/default/move-self.mp3" type="audio/mp3">
         </audio>
-        <audio id="audio-capture" preload="auto" crossorigin="anonymous">
+        <audio id="audio-capture" preload="auto">
             <source src="https://images.chesscomfiles.com/chess-themes/sounds/_common/default/capture.mp3" type="audio/mp3">
         </audio>
-        <audio id="audio-check" preload="auto" crossorigin="anonymous">
+        <audio id="audio-check" preload="auto">
             <source src="https://images.chesscomfiles.com/chess-themes/sounds/_common/default/move-check.mp3" type="audio/mp3">
         </audio>
-        <audio id="audio-castle" preload="auto" crossorigin="anonymous">
+        <audio id="audio-castle" preload="auto">
             <source src="https://images.chesscomfiles.com/chess-themes/sounds/_common/default/castle.mp3" type="audio/mp3">
         </audio>
-        <audio id="audio-notify" preload="auto" crossorigin="anonymous">
+        <audio id="audio-notify" preload="auto">
             <source src="https://images.chesscomfiles.com/chess-themes/sounds/_common/default/notify.mp3" type="audio/mp3">
         </audio>
-        <audio id="audio-game-end" preload="auto" crossorigin="anonymous">
+        <audio id="audio-game-end" preload="auto">
             <source src="https://images.chesscomfiles.com/chess-themes/sounds/_common/default/game-end.mp3" type="audio/mp3">
         </audio>
-        <audio id="audio-nav" preload="auto" crossorigin="anonymous">
-            <source src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" type="audio/mp3">
+        <audio id="audio-nav" preload="auto">
+            <source src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3" type="audio/mp3">
         </audio>
     </div>
 
@@ -1057,6 +1057,15 @@
             if (playPromise !== undefined) { playPromise.catch(error => { console.error("Sound play failed:", error); }); }
         }
     };
+
+    // Global click sound for UI elements
+    document.body.addEventListener('click', function(e) {
+        if (e.target.closest('button') || e.target.closest('.avatar-option') || e.target.closest('.theme-btn') || e.target.closest('.quiz-btn') || e.target.closest('.cr-card') || e.target.closest('.team-slot') || e.target.closest('.analysis-tab')) {
+            if (!e.target.closest('#btnIdrisClick')) {
+                window.playGameSound('nav');
+            }
+        }
+    });
 </script>
 
 <script type="module">
