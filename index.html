@@ -25,6 +25,7 @@
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 
+    <link rel="icon" href="./sitelogo.png" type="image/png">
     <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -34,21 +35,35 @@
 <div class="app-container glass-panel">
     
     <div class="top-bar">
-        <div class="user-info" id="userInfoSection" style="display:none;">
-            <span id="currentUserIcon"></span> 
-            <span id="currentUserDisplay" style="font-weight:bold;">...</span>
+        <div class="top-brand">
+            <img src="./sitelogo.jpg" alt="Grandmaster logosu" class="site-logo">
+            <div class="top-brand-copy">
+                <strong>Grandmaster</strong>
+                <span>Live Chess Platform</span>
+            </div>
         </div>
-        <div style="display:flex; align-items:center; gap:5px;">
-            <div class="theme-btn" onclick="setTheme('dark')" style="background:#1b1d24;" title="Karanlık"></div>
-            <div class="theme-btn" onclick="setTheme('light')" style="background:#f0f2f5;" title="Aydınlık"></div>
-            <div class="theme-btn" onclick="setTheme('wood')" style="background:#5d4037;" title="Ahşap"></div>
-            <div class="theme-btn" onclick="setTheme('cyber')" style="background:#ff00ff;" title="Cyber"></div>
+        <div class="top-bar-actions">
+            <div class="user-info" id="userInfoSection" style="display:none;">
+                <span id="currentUserIcon"></span> 
+                <span id="currentUserDisplay" style="font-weight:bold;">...</span>
+            </div>
+            <button class="secondary icon-btn notif-btn" id="btnNotifications" style="display:none;" onclick="openNotificationsCenter()" title="Bildirimler">
+                <i class="fas fa-bell"></i>
+                <span id="notificationBadge" class="notif-badge" style="display:none;">0</span>
+            </button>
+            <div class="theme-picker">
+                <div class="theme-btn" onclick="setTheme('dark')" style="background:#1b1d24;" title="Karanlık"></div>
+                <div class="theme-btn" onclick="setTheme('light')" style="background:#f0f2f5;" title="Aydınlık"></div>
+                <div class="theme-btn" onclick="setTheme('wood')" style="background:#5d4037;" title="Ahşap"></div>
+                <div class="theme-btn" onclick="setTheme('cyber')" style="background:#ff00ff;" title="Cyber"></div>
+            </div>
             <button class="secondary icon-btn" id="btnLogout" style="display:none; margin-left:10px;"><i class="fas fa-sign-out-alt"></i></button>
         </div>
     </div>
 
     <div id="view-auth" class="view active">
         <div style="max-width: 400px; margin: 30px auto; text-align: center;">
+            <img src="./sitelogo.jpg" alt="Grandmaster logosu" class="auth-logo">
             <h1 style="font-size: 2.5rem; text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);">Grandmaster</h1>
             <p style="color:var(--text-muted); margin-bottom:30px;">Professional Game Manager</p>
             
@@ -198,6 +213,23 @@
             </div>
         </div>
 
+        <div class="dash-card live-card" style="margin-bottom:20px;">
+            <div>
+                <h3><i class="fas fa-satellite-dish"></i> Canlı İzleme ve Reconnect</h3>
+                <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:16px;">
+                    Aktif 1v1 ve 2v2 masalarına izleyici olarak bağlan. Açık maçın varsa 30 saniyelik reconnect penceresinden geri dön.
+                </p>
+            </div>
+            <div class="live-actions">
+                <button onclick="watchLiveGamePrompt()" style="background:linear-gradient(90deg, #38bdf8, #0ea5e9); color:#082f49;">
+                    <i class="fas fa-eye"></i> CANLI İZLE
+                </button>
+                <button class="secondary" onclick="tryReconnectFromDashboard()">
+                    <i class="fas fa-rotate-left"></i> MAÇA DÖN
+                </button>
+            </div>
+        </div>
+
         <div style="margin-top:30px;">
             <h3 style="font-size:1rem; border-bottom:1px solid var(--glass-border); padding-bottom:5px;">Turnuvalarım</h3>
             <div id="myTournamentsList" class="history-list"></div>
@@ -212,6 +244,9 @@
                 <div id="sfStatusBadge" style="font-size:0.75rem; padding:3px 10px; border-radius:20px; background:rgba(255,165,0,0.2); color:orange; border:1px solid orange;">
                     <i class="fas fa-spinner fa-spin"></i> Motor Yükleniyor
                 </div>
+                <button class="secondary icon-btn" id="btnShareAnalysis" onclick="shareCurrentAnalysisReport()" title="Analiz raporunu paylaş">
+                    <i class="fas fa-share-nodes"></i>
+                </button>
                 <button class="secondary icon-btn" onclick="switchView('view-dashboard')"><i class="fas fa-times"></i></button>
             </div>
         </div>
@@ -490,6 +525,14 @@
             <i class="fas fa-user-plus"></i> AKTİF ARKADAŞ DAVET ET
         </button>
 
+        <div class="mode-utility-row">
+            <button class="secondary" onclick="copySpectatorLink('2v2')" style="flex:1;">
+                <i class="fas fa-link"></i> İZLEYİCİ LİNKİ
+            </button>
+            <div class="live-presence-pill"><i class="fas fa-eye"></i> <span id="spectatorCount2v2Lobby">0</span> izleyici</div>
+        </div>
+        <div id="reconnectBanner2v2Lobby" class="status-banner" style="display:none;"></div>
+
         <div id="hostControls2v2" style="display:none; text-align:center; background:rgba(0,0,0,0.2); padding:15px; border-radius:8px; margin-bottom:20px;">
             <div style="display:flex; justify-content:center; gap:15px; margin-bottom:10px;">
                 <div>
@@ -555,6 +598,14 @@
             <i class="fas fa-user-plus"></i> AKTİF ARKADAŞ DAVET ET
         </button>
 
+        <div class="mode-utility-row">
+            <button class="secondary" onclick="copySpectatorLink('1v1')" style="flex:1; border-color:#4ade80; color:#4ade80;">
+                <i class="fas fa-link"></i> İZLEYİCİ LİNKİ
+            </button>
+            <div class="live-presence-pill"><i class="fas fa-eye"></i> <span id="spectatorCount1v1Lobby">0</span> izleyici</div>
+        </div>
+        <div id="reconnectBanner1v1Lobby" class="status-banner" style="display:none;"></div>
+
         <div id="hostControls1v1" style="display:none; text-align:center; background:rgba(0,0,0,0.2); padding:15px; border-radius:8px; margin-bottom:20px;">
             <div style="max-width:160px; margin:0 auto 10px auto;">
                 <label style="color:var(--text-main); font-size:0.8rem; display:block; margin-bottom:5px;">Süre (Dakika)</label>
@@ -588,6 +639,11 @@
             </div>
             <div class="timer-box white" id="timer1v1White">5:00</div>
         </div>
+        <div class="game-utility-bar">
+            <div class="live-presence-pill"><i class="fas fa-eye"></i> <span id="spectatorCount1v1Game">0</span> izleyici</div>
+            <div id="reconnectBanner1v1" class="status-banner compact" style="display:none;"></div>
+            <button class="secondary utility-btn" onclick="copySpectatorLink('1v1')"><i class="fas fa-share-alt"></i> İzleyici Linki</button>
+        </div>
 
         <div style="display:flex; justify-content:center; margin-bottom:10px;">
             <div id="p1v1-black" class="player-tag"><i class="fas fa-user"></i> <span>Siyah</span></div>
@@ -615,6 +671,11 @@
                 <div id="turnIndicator" style="font-weight:bold; color:var(--primary);">Oyun Başlıyor...</div>
             </div>
             <div class="timer-box white" id="timerWhite">10:00</div>
+        </div>
+        <div class="game-utility-bar">
+            <div class="live-presence-pill"><i class="fas fa-eye"></i> <span id="spectatorCount2v2Game">0</span> izleyici</div>
+            <div id="reconnectBanner2v2" class="status-banner compact" style="display:none;"></div>
+            <button class="secondary utility-btn" onclick="copySpectatorLink('2v2')"><i class="fas fa-share-alt"></i> İzleyici Linki</button>
         </div>
 
         <div style="display:flex; justify-content:space-around; margin-bottom:10px;">
@@ -742,9 +803,14 @@
                             <div id="dmCurrentName" style="font-weight:800; font-size:1.1rem;">Arkadaş</div>
                             <div id="dmCurrentStatus" style="font-size:0.8rem; color:var(--text-muted);">Çevrim dışı</div>
                         </div>
-                        <button class="secondary" onclick="inviteSelectedFriendToCurrentLobby()" style="font-size:0.72rem; padding:9px 12px;">
-                            <i class="fas fa-paper-plane"></i> DAVET ET
-                        </button>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                            <button class="secondary" onclick="openSelectedFriendProfile()" style="font-size:0.72rem; padding:9px 12px;">
+                                <i class="fas fa-id-card"></i> PROFİL
+                            </button>
+                            <button class="secondary" onclick="inviteSelectedFriendToCurrentLobby()" style="font-size:0.72rem; padding:9px 12px;">
+                                <i class="fas fa-paper-plane"></i> DAVET ET
+                            </button>
+                        </div>
                     </div>
                     <div id="dmThread" class="dm-thread"></div>
                     <form id="dmInputArea" class="dm-form">
@@ -909,6 +975,27 @@
         <div style="font-size:0.9rem; color:var(--text-muted); background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
             Toplam Puan: <span id="statPoints" style="color:var(--primary); font-weight:bold;">0</span> • SB: <span id="statSB">0</span>
         </div>
+    </div>
+</div>
+
+<div id="notificationsModal" class="modal-overlay">
+    <div class="modal-content glass-panel modal-wide" style="max-width:680px; text-align:left;">
+        <span class="close-modal" onclick="closeNotificationsCenter()">×</span>
+        <div class="modal-head-row">
+            <div>
+                <h3 style="margin-bottom:6px;"><i class="fas fa-bell" style="color:var(--accent);"></i> Bildirim Merkezi</h3>
+                <div style="font-size:0.82rem; color:var(--text-muted);">Arkadaş istekleri, davetler, DM uyarıları ve maç hareketleri burada toplanır.</div>
+            </div>
+            <button class="secondary" onclick="markAllNotificationsRead()" style="font-size:0.72rem; padding:8px 12px;">HEPSİNİ OKUNDU YAP</button>
+        </div>
+        <div id="notificationsList" class="notification-list"></div>
+    </div>
+</div>
+
+<div id="friendProfileModal" class="modal-overlay">
+    <div class="modal-content glass-panel modal-wide" style="max-width:760px; text-align:left;">
+        <span class="close-modal" onclick="closeFriendProfile()">×</span>
+        <div id="friendProfileBody"></div>
     </div>
 </div>
 

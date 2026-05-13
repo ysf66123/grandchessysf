@@ -3,7 +3,7 @@ const [
     { default: autoAnimate },
     { initializeApp },
     { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile },
-    { getFirestore, collection, addDoc, setDoc, doc, onSnapshot, updateDoc, query, orderBy, serverTimestamp, deleteDoc, where, arrayUnion, arrayRemove, getDocs, increment, getDoc }
+    { getFirestore, collection, addDoc, setDoc, doc, onSnapshot, updateDoc, query, orderBy, serverTimestamp, deleteDoc, where, arrayUnion, arrayRemove, getDocs, increment, getDoc, deleteField }
 ] = await Promise.all([
     import('https://cdn.jsdelivr.net/npm/@formkit/auto-animate@0.8.2/index.mjs'),
     import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),
@@ -162,16 +162,31 @@ const [
     let profileHeartbeatInterval = null;
     let friendRequestsUnsubscribe = null;
     let friendInvitesUnsubscribe = null;
+    let notificationUnsubscribe = null;
     let dmThreadUnsubscribe = null;
     let selectedFriendUid = null;
     let friendProfileUnsubscribers = {};
     let friendProfilesCache = {};
     let friendRequestsCache = [];
     let friendInvitesCache = [];
+    let notificationsCache = [];
+    let notificationsLoaded = false;
     let currentDmMessages = [];
+    let current1v1Role = 'player';
+    let current2v2Role = 'player';
+    let currentSharedAnalysisPayload = null;
+    let pendingSharedAnalysisId = null;
+    let activeChatThreadId = null;
+    let reconnectPromptShownFor = null;
+    let actionRateState = {};
 
     const PROFILE_HEARTBEAT_MS = 25000;
     const ONLINE_GRACE_MS = 70000;
+    const RECONNECT_GRACE_MS = 30000;
+    const LAST_ACTIVE_GAME_KEY = 'gm_last_active_match';
+    const MAX_DM_LENGTH = 220;
+    const MAX_CHAT_LENGTH = 220;
+    const MAX_NOTIFICATION_COUNT = 50;
     
     // 1v1 Globals
     let current1v1Id = null;
@@ -191,16 +206,20 @@ const [
             currentQuizData = null;
         }
         if (exceptMode !== '1v1' && unsubscribe1v1) {
+            removeSpectatorMembership('1v1', current1v1Id, current1v1Data, current1v1Role);
             unsubscribe1v1();
             unsubscribe1v1 = null;
             current1v1Id = null;
             current1v1Data = null;
+            current1v1Role = 'player';
         }
         if (exceptMode !== '2v2' && unsubscribe2v2) {
+            removeSpectatorMembership('2v2', current2v2Id, current2v2Data, current2v2Role);
             unsubscribe2v2();
             unsubscribe2v2 = null;
             current2v2Id = null;
             current2v2Data = null;
+            current2v2Role = 'player';
         }
         if (exceptMode !== 'tournament' && unsubscribeTournament) {
             unsubscribeTournament();
@@ -476,6 +495,178 @@ const [
     renderAvatars('authAvatarGrid','selectedAvatar');
     function makeId(length) { let result = ''; const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; for (let i = 0; i < length; i++) result += characters.charAt(Math.floor(Math.random() * characters.length)); return result; }
 
+    function sanitizeUserText(value, maxLength) {
+        var text = String(value || '').replace(/\s+/g, ' ').trim();
+        if (maxLength && text.length > maxLength) text = text.slice(0, maxLength);
+        return text;
+    }
+
+    function formatTimeAgo(timestamp) {
+        if (!timestamp) return 'Simdi';
+        var diff = Math.max(0, Date.now() - timestamp);
+        if (diff < 45000) return 'Az once';
+        var minutes = Math.floor(diff / 60000);
+        if (minutes < 60) return minutes + ' dk once';
+        var hours = Math.floor(minutes / 60);
+        if (hours < 24) return hours + ' sa once';
+        var days = Math.floor(hours / 24);
+        return days + ' gun once';
+    }
+
+    function getModeLabel(mode) {
+        if (mode === '1v1') return '1v1';
+        if (mode === '2v2') return '2v2';
+        if (mode === 'quiz') return 'Quiz';
+        if (mode === 'tournament') return 'Turnuva';
+        return 'Oyun';
+    }
+
+    function buildLocalActiveGamePayload(mode, code) {
+        return JSON.stringify({
+            mode: mode,
+            code: code,
+            ts: Date.now()
+        });
+    }
+
+    function readLocalActiveGame() {
+        try {
+            var raw = localStorage.getItem(LAST_ACTIVE_GAME_KEY);
+            if (!raw) return null;
+            return JSON.parse(raw);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function rememberLocalActiveGame(mode, code) {
+        if (!mode || !code) return;
+        try {
+            localStorage.setItem(LAST_ACTIVE_GAME_KEY, buildLocalActiveGamePayload(mode, code));
+        } catch (e) {}
+    }
+
+    function clearLocalActiveGame(mode) {
+        try {
+            if (!mode) {
+                localStorage.removeItem(LAST_ACTIVE_GAME_KEY);
+                return;
+            }
+            var saved = readLocalActiveGame();
+            if (!saved || saved.mode === mode) {
+                localStorage.removeItem(LAST_ACTIVE_GAME_KEY);
+            }
+        } catch (e) {}
+    }
+
+    function throttleAction(bucket, key, maxCount, windowMs) {
+        var stateKey = bucket + ':' + (key || 'global');
+        var now = Date.now();
+        var recent = (actionRateState[stateKey] || []).filter(function(ts) {
+            return (now - ts) < windowMs;
+        });
+        if (recent.length >= maxCount) return false;
+        recent.push(now);
+        actionRateState[stateKey] = recent;
+        return true;
+    }
+
+    function getCurrentPresenceActivity() {
+        if (current1v1Id && current1v1Data) {
+            return {
+                activeMode: '1v1',
+                activeRoomId: current1v1Id,
+                activeRoomCode: current1v1Data.code || current1v1Id,
+                activeGameStatus: current1v1Data.status || 'lobby',
+                activeRole: current1v1Role
+            };
+        }
+        if (current2v2Id && current2v2Data) {
+            return {
+                activeMode: '2v2',
+                activeRoomId: current2v2Id,
+                activeRoomCode: current2v2Data.code || current2v2Id,
+                activeGameStatus: current2v2Data.status || 'lobby',
+                activeRole: current2v2Role
+            };
+        }
+        return {
+            activeMode: null,
+            activeRoomId: null,
+            activeRoomCode: null,
+            activeGameStatus: null,
+            activeRole: null
+        };
+    }
+
+    function getCurrentReconnectContext() {
+        if (current1v1Id && current1v1Data && current1v1Data.status === 'active' && current1v1Role === 'player') {
+            return { mode: '1v1', id: current1v1Id, data: current1v1Data };
+        }
+        if (current2v2Id && current2v2Data && current2v2Data.status === 'active' && current2v2Role === 'player') {
+            return { mode: '2v2', id: current2v2Id, data: current2v2Data };
+        }
+        return null;
+    }
+
+    function getNotificationTypeMeta(type) {
+        if (type === 'friend_request') return { icon: 'fa-user-plus', accent: '#38bdf8' };
+        if (type === 'friend_accept') return { icon: 'fa-user-check', accent: '#4ade80' };
+        if (type === 'lobby_invite') return { icon: 'fa-paper-plane', accent: '#facc15' };
+        if (type === 'dm') return { icon: 'fa-comment-dots', accent: '#a78bfa' };
+        if (type === 'match_update') return { icon: 'fa-chess-board', accent: '#fb7185' };
+        return { icon: 'fa-bell', accent: '#38bdf8' };
+    }
+
+    function buildNotificationSkeletonHtml() {
+        return [
+            '<div class="skeleton-card"><div class="skeleton-line medium"></div><div class="skeleton-line long"></div><div class="skeleton-line short"></div></div>',
+            '<div class="skeleton-card"><div class="skeleton-line medium"></div><div class="skeleton-line long"></div><div class="skeleton-line short"></div></div>',
+            '<div class="skeleton-card"><div class="skeleton-line medium"></div><div class="skeleton-line long"></div><div class="skeleton-line short"></div></div>'
+        ].join('');
+    }
+
+    function buildFriendProfileSkeletonHtml() {
+        return [
+            '<div class="friend-profile-shell">',
+                '<div class="friend-profile-hero">',
+                    '<div class="friend-profile-avatar skeleton-block"></div>',
+                    '<div class="profile-stack">',
+                        '<div class="skeleton-line medium"></div>',
+                        '<div class="skeleton-line long"></div>',
+                    '</div>',
+                    '<div class="profile-stack">',
+                        '<div class="skeleton-line short"></div>',
+                        '<div class="skeleton-line medium"></div>',
+                    '</div>',
+                '</div>',
+                '<div class="friend-profile-grid">',
+                    '<div class="skeleton-card"><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div>',
+                    '<div class="skeleton-card"><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div>',
+                    '<div class="skeleton-card"><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div>',
+                    '<div class="skeleton-card"><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div>',
+                '</div>',
+            '</div>'
+        ].join('');
+    }
+
+    async function pushNotificationToUser(toUid, payload) {
+        if (!toUid || !payload || !payload.title) return;
+        var notificationId = [toUid, Date.now(), makeId(4)].join('_');
+        try {
+            await setDoc(doc(db, 'notifications', notificationId), {
+                toUid: toUid,
+                type: payload.type || 'generic',
+                title: sanitizeUserText(payload.title, 80),
+                body: sanitizeUserText(payload.body || '', 220),
+                action: payload.action || null,
+                createdAt: serverTimestamp(),
+                createdAtMs: Date.now(),
+                read: false
+            }, { merge: true });
+        } catch (e) {}
+    }
+
     async function generateUniqueFriendCode() {
         for (var attempt = 0; attempt < 8; attempt++) {
             var code = makeId(6);
@@ -501,11 +692,13 @@ const [
         if (profileUnsubscribe) profileUnsubscribe();
         if (friendRequestsUnsubscribe) friendRequestsUnsubscribe();
         if (friendInvitesUnsubscribe) friendInvitesUnsubscribe();
+        if (notificationUnsubscribe) notificationUnsubscribe();
         if (dmThreadUnsubscribe) dmThreadUnsubscribe();
         if (profileHeartbeatInterval) clearInterval(profileHeartbeatInterval);
         profileUnsubscribe = null;
         friendRequestsUnsubscribe = null;
         friendInvitesUnsubscribe = null;
+        notificationUnsubscribe = null;
         dmThreadUnsubscribe = null;
         profileHeartbeatInterval = null;
         selectedFriendUid = null;
@@ -513,8 +706,11 @@ const [
         currentProfileData = null;
         friendRequestsCache = [];
         friendInvitesCache = [];
+        notificationsCache = [];
+        notificationsLoaded = false;
         stopFriendProfileSubscriptions();
         updateFriendsSummary();
+        updateNotificationSummary();
     }
 
     async function ensureUserProfile() {
@@ -523,6 +719,7 @@ const [
         var snap = await getDoc(profileRef);
         var existing = snap.exists() ? (snap.data() || {}) : {};
         var friendCode = existing.friendCode || await generateUniqueFriendCode();
+        var activity = getCurrentPresenceActivity();
         await setDoc(profileRef, {
             uid: currentUser.uid,
             displayName: currentUser.displayName || existing.displayName || 'Oyuncu',
@@ -531,7 +728,12 @@ const [
             friendCode: friendCode,
             friends: Array.isArray(existing.friends) ? existing.friends : [],
             lastActiveAt: Date.now(),
-            lastView: currentViewId
+            lastView: currentViewId,
+            activeMode: activity.activeMode,
+            activeRoomId: activity.activeRoomId,
+            activeRoomCode: activity.activeRoomCode,
+            activeGameStatus: activity.activeGameStatus,
+            activeRole: activity.activeRole
         }, { merge: true });
 
         if (profileUnsubscribe) profileUnsubscribe();
@@ -546,11 +748,17 @@ const [
     async function pushProfilePresence() {
         if (!currentUser) return;
         try {
+            var activity = getCurrentPresenceActivity();
             await setDoc(doc(db, 'profiles', currentUser.uid), {
                 displayName: currentUser.displayName || 'Oyuncu',
                 avatar: currentUser.photoURL || 'fa-chess-pawn',
                 lastActiveAt: Date.now(),
-                lastView: currentViewId
+                lastView: currentViewId,
+                activeMode: activity.activeMode,
+                activeRoomId: activity.activeRoomId,
+                activeRoomCode: activity.activeRoomCode,
+                activeGameStatus: activity.activeGameStatus,
+                activeRole: activity.activeRole
             }, { merge: true });
         } catch (e) {}
     }
@@ -603,7 +811,166 @@ const [
         if (inviteEl) inviteEl.innerText = inviteCount;
         var friendCodeEl = document.getElementById('friendCodeDisplay');
         if (friendCodeEl) friendCodeEl.innerText = (currentProfileData && currentProfileData.friendCode) ? currentProfileData.friendCode : '......';
+        updateNotificationSummary();
     }
+
+    function updateNotificationSummary() {
+        var btn = document.getElementById('btnNotifications');
+        var badge = document.getElementById('notificationBadge');
+        if (btn) btn.style.display = currentUser ? 'inline-flex' : 'none';
+        if (!badge) return;
+        var unread = getNotificationFeedItems().filter(function(item) { return !item.read; }).length;
+        if (unread > 0) {
+            badge.style.display = 'flex';
+            badge.innerText = unread > 99 ? '99+' : String(unread);
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    function getNotificationFeedItems() {
+        var derivedFriendRequests = friendRequestsCache.filter(function(req) { return req.status === 'pending'; }).map(function(req) {
+            return {
+                id: 'friend_request_' + req.id,
+                type: 'friend_request',
+                title: (req.fromName || 'Oyuncu') + ' senden arkadaslik istiyor',
+                body: 'Kodu: ' + (req.fromCode || '------'),
+                createdAtMs: req.createdAtMs || 0,
+                read: false,
+                action: { type: 'open_friends' },
+                isDerived: true
+            };
+        });
+        var derivedInvites = friendInvitesCache.filter(function(inv) { return inv.status === 'pending'; }).map(function(inv) {
+            return {
+                id: 'social_invite_' + inv.id,
+                type: 'lobby_invite',
+                title: (inv.fromName || 'Oyuncu') + ' seni davet etti',
+                body: (inv.roomLabel || inv.type || 'Lobi') + ' • ' + (inv.roomCode || inv.roomId || ''),
+                createdAtMs: inv.createdAtMs || 0,
+                read: false,
+                action: { type: 'open_friends' },
+                isDerived: true
+            };
+        });
+        return notificationsCache.concat(derivedFriendRequests, derivedInvites).sort(function(a, b) {
+            return (b.createdAtMs || 0) - (a.createdAtMs || 0);
+        });
+    }
+
+    function renderNotificationsCenter() {
+        var list = document.getElementById('notificationsList');
+        if (!list) return;
+        if (!notificationsLoaded) {
+            list.innerHTML = buildNotificationSkeletonHtml();
+            return;
+        }
+        var items = getNotificationFeedItems();
+        if (!items.length) {
+            list.innerHTML = '<div class="friend-empty">Bildirim yok. Yeni istekler, davetler ve DM uyarilari burada gorunur.</div>';
+            return;
+        }
+        list.innerHTML = '';
+        items.slice(0, MAX_NOTIFICATION_COUNT).forEach(function(item) {
+            var meta = getNotificationTypeMeta(item.type);
+            var card = document.createElement('div');
+            card.className = 'notification-card' + (!item.read ? ' unread' : '');
+            card.innerHTML = ''
+                + '<div class="notification-icon" style="color:' + meta.accent + ';"><i class="fas ' + meta.icon + '"></i></div>'
+                + '<div>'
+                    + '<div class="notification-title">' + escapeHtml(item.title || 'Bildirim') + '</div>'
+                    + '<div class="notification-body">' + escapeHtml(item.body || '') + '</div>'
+                    + '<div class="notification-actions">'
+                        + '<button class="secondary" style="padding:8px 12px; font-size:0.72rem;" onclick="openNotificationAction(\'' + item.id + '\')">AC</button>'
+                        + '<button class="secondary" style="padding:8px 12px; font-size:0.72rem;" onclick="markNotificationRead(\'' + item.id + '\')">OKUNDU</button>'
+                    + '</div>'
+                + '</div>'
+                + '<div class="notification-meta">' + escapeHtml(formatTimeAgo(item.createdAtMs)) + '</div>';
+            list.appendChild(card);
+        });
+    }
+
+    function subscribeNotificationCollection() {
+        if (!currentUser) return;
+        if (notificationUnsubscribe) notificationUnsubscribe();
+        notificationsLoaded = false;
+        renderNotificationsCenter();
+        notificationUnsubscribe = onSnapshot(
+            query(collection(db, 'notifications'), where('toUid', '==', currentUser.uid)),
+            function(snapshot) {
+                notificationsCache = snapshot.docs.map(function(docSnap) {
+                    return Object.assign({ id: docSnap.id }, docSnap.data());
+                }).sort(function(a, b) {
+                    return (b.createdAtMs || 0) - (a.createdAtMs || 0);
+                });
+                notificationsLoaded = true;
+                updateNotificationSummary();
+                renderNotificationsCenter();
+            }
+        );
+    }
+
+    window.openNotificationsCenter = function() {
+        var modal = document.getElementById('notificationsModal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        renderNotificationsCenter();
+        window.markAllNotificationsRead();
+    };
+
+    window.closeNotificationsCenter = function() {
+        var modal = document.getElementById('notificationsModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    window.markNotificationRead = async function(notificationId) {
+        if (String(notificationId || '').indexOf('friend_request_') === 0 || String(notificationId || '').indexOf('social_invite_') === 0) return;
+        var item = notificationsCache.find(function(entry) { return entry.id === notificationId; });
+        if (!item || item.read) return;
+        try {
+            await updateDoc(doc(db, 'notifications', notificationId), { read: true, readAtMs: Date.now() });
+        } catch (e) {}
+    };
+
+    window.markAllNotificationsRead = async function() {
+        var unread = notificationsCache.filter(function(item) { return !item.read; });
+        if (!unread.length) return;
+        await Promise.all(unread.slice(0, 12).map(function(item) {
+            return updateDoc(doc(db, 'notifications', item.id), { read: true, readAtMs: Date.now() }).catch(function() {});
+        }));
+    };
+
+    window.openNotificationAction = async function(notificationId) {
+        var item = getNotificationFeedItems().find(function(entry) { return entry.id === notificationId; });
+        if (!item) return;
+        await window.markNotificationRead(notificationId);
+        var action = item.action || {};
+        if (action.type === 'friend_dm' && action.uid) {
+            openFriendsView();
+            selectFriend(action.uid);
+            closeNotificationsCenter();
+            return;
+        }
+        if (action.type === 'analysis_share' && action.shareId) {
+            closeNotificationsCenter();
+            openSharedAnalysisById(action.shareId);
+            return;
+        }
+        if (action.type === 'watch_game' && action.mode && action.code) {
+            closeNotificationsCenter();
+            if (action.mode === '1v1') enter1v1Game(action.code);
+            else if (action.mode === '2v2') enter2v2Game(action.code);
+            return;
+        }
+        if (action.type === 'reconnect' && action.mode && action.code) {
+            closeNotificationsCenter();
+            if (action.mode === '1v1') enter1v1Game(action.code);
+            else if (action.mode === '2v2') enter2v2Game(action.code);
+            return;
+        }
+        openFriendsView();
+        closeNotificationsCenter();
+    };
 
     function renderFriendsView() {
         renderFriendRequests();
@@ -615,6 +982,14 @@ const [
     function isUserFriend(targetUid) {
         var friendIds = (currentProfileData && Array.isArray(currentProfileData.friends)) ? currentProfileData.friends : [];
         return !!targetUid && friendIds.indexOf(targetUid) !== -1;
+    }
+
+    function getProfileActivityText(profile) {
+        if (!profile || !profile.activeMode || !profile.activeGameStatus) return 'Aktif mac yok';
+        var modeLabel = getModeLabel(profile.activeMode);
+        if (profile.activeGameStatus === 'active') return modeLabel + ' macinda';
+        if (profile.activeGameStatus === 'lobby') return modeLabel + ' lobisinde';
+        return modeLabel + ' ekraninda';
     }
 
     function getPendingIncomingFriendRequest(targetUid) {
@@ -788,6 +1163,13 @@ const [
             var row = document.createElement('div');
             row.className = 'friend-card-row';
             row.style.borderColor = isSelected ? 'rgba(0, 242, 255, 0.35)' : 'rgba(255,255,255,0.06)';
+            row.onclick = function() {
+                openFriendProfile(uid);
+            };
+            var watchBtn = '';
+            if (profile.activeMode && profile.activeGameStatus === 'active') {
+                watchBtn = `<button class="secondary" style="padding:8px 12px; font-size:0.7rem;" onclick="event.stopPropagation(); watchFriendGame('${uid}')">IZLE</button>`;
+            }
             row.innerHTML = `
                 <div class="friend-avatar"><i class="fas ${escapeHtml(profile.avatar || 'fa-user')}"></i></div>
                 <div class="friend-meta">
@@ -795,11 +1177,14 @@ const [
                     <div class="friend-sub">
                         <span class="status-dot ${isUserOnline(profile) ? 'online' : 'offline'}"></span>
                         <span>${escapeHtml(formatPresence(profile))}</span>
+                        <span>•</span>
+                        <span>${escapeHtml(getProfileActivityText(profile))}</span>
                     </div>
                 </div>
                 <div class="friend-actions">
-                    <button class="secondary" style="padding:8px 12px; font-size:0.7rem;" onclick="selectFriend('${uid}')">DM</button>
-                    <button style="padding:8px 12px; font-size:0.7rem;" onclick="quickInviteFriend('${uid}')">DAVET</button>
+                    ${watchBtn}
+                    <button class="secondary" style="padding:8px 12px; font-size:0.7rem;" onclick="event.stopPropagation(); selectFriend('${uid}')">DM</button>
+                    <button style="padding:8px 12px; font-size:0.7rem;" onclick="event.stopPropagation(); quickInviteFriend('${uid}')">DAVET</button>
                 </div>`;
             container.appendChild(row);
         });
@@ -840,6 +1225,145 @@ const [
         });
         thread.scrollTop = thread.scrollHeight;
     }
+
+    async function loadFriendProfileStats(uid) {
+        var profile = friendProfilesCache[uid] || {};
+        var results = {
+            totalFriends: Array.isArray(profile.friends) ? profile.friends.length : 0,
+            totalMatches: 0,
+            wins1v1: 0,
+            draws1v1: 0,
+            losses1v1: 0,
+            wins2v2: 0,
+            draws2v2: 0,
+            losses2v2: 0,
+            lastMatches: []
+        };
+
+        var queries = await Promise.all([
+            getDocs(query(collection(db, 'games_1v1'), where('participantIds', 'array-contains', uid))).catch(function() { return null; }),
+            getDocs(query(collection(db, 'games_2v2'), where('participantIds', 'array-contains', uid))).catch(function() { return null; })
+        ]);
+
+        queries.forEach(function(snapshot, index) {
+            if (!snapshot) return;
+            snapshot.forEach(function(docSnap) {
+                var game = docSnap.data() || {};
+                if (game.status !== 'finished') return;
+                var player = Array.isArray(game.players) ? game.players.find(function(item) { return item.uid === uid; }) : null;
+                if (!player) return;
+                results.totalMatches += 1;
+                var isDraw = game.winner === 'draw';
+                var isWin = !isDraw && game.winner === player.team;
+                var bucket = index === 0 ? '1v1' : '2v2';
+                if (isDraw) results['draws' + bucket] += 1;
+                else if (isWin) results['wins' + bucket] += 1;
+                else results['losses' + bucket] += 1;
+                results.lastMatches.push({
+                    bucket: bucket,
+                    result: isDraw ? 'Berabere' : (isWin ? 'Galibiyet' : 'Maglubiyet'),
+                    createdAtMs: game.createdAt && game.createdAt.seconds ? (game.createdAt.seconds * 1000) : 0
+                });
+            });
+        });
+
+        results.lastMatches.sort(function(a, b) {
+            return (b.createdAtMs || 0) - (a.createdAtMs || 0);
+        });
+        results.lastMatches = results.lastMatches.slice(0, 5);
+        return results;
+    }
+
+    function renderFriendProfile(uid, profile, stats) {
+        var body = document.getElementById('friendProfileBody');
+        if (!body) return;
+        var activityText = getProfileActivityText(profile);
+        var canWatch = profile && profile.activeMode && profile.activeGameStatus === 'active' && (profile.activeMode === '1v1' || profile.activeMode === '2v2');
+        var lastMatchesHtml = stats.lastMatches.length
+            ? stats.lastMatches.map(function(item) {
+                return '<div class="profile-line"><span>' + escapeHtml(item.bucket + ' maci') + '</span><strong>' + escapeHtml(item.result) + '</strong></div>';
+            }).join('')
+            : '<div class="friend-empty">Kayitli son mac bulunamadi.</div>';
+        body.innerHTML = ''
+            + '<div class="friend-profile-shell">'
+                + '<div class="friend-profile-hero">'
+                    + '<div class="friend-profile-avatar"><i class="fas ' + escapeHtml(profile.avatar || 'fa-user') + '"></i></div>'
+                    + '<div>'
+                        + '<div class="friend-profile-name">' + escapeHtml(profile.displayName || 'Arkadas') + '</div>'
+                        + '<div class="friend-profile-sub">'
+                            + '<span class="status-dot ' + (isUserOnline(profile) ? 'online' : 'offline') + '"></span>'
+                            + '<span>' + escapeHtml(formatPresence(profile)) + '</span>'
+                            + '<span>•</span>'
+                            + '<span>' + escapeHtml(activityText) + '</span>'
+                        + '</div>'
+                    + '</div>'
+                    + '<div class="friend-profile-actions">'
+                        + (canWatch ? '<button class="secondary" onclick="watchFriendGame(\'' + uid + '\')"><i class="fas fa-eye"></i> Izle</button>' : '')
+                        + '<button class="secondary" onclick="selectFriend(\'' + uid + '\'); closeFriendProfile();"><i class="fas fa-comment-dots"></i> DM</button>'
+                        + '<button onclick="quickInviteFriend(\'' + uid + '\')"><i class="fas fa-paper-plane"></i> Davet</button>'
+                    + '</div>'
+                + '</div>'
+                + '<div class="friend-profile-grid">'
+                    + '<div class="profile-stat-card"><strong>' + stats.totalMatches + '</strong><span>Toplam Mac</span></div>'
+                    + '<div class="profile-stat-card"><strong>' + (stats.wins1v1 + stats.wins2v2) + '</strong><span>Galibiyet</span></div>'
+                    + '<div class="profile-stat-card"><strong>' + (stats.draws1v1 + stats.draws2v2) + '</strong><span>Berabere</span></div>'
+                    + '<div class="profile-stat-card"><strong>' + stats.totalFriends + '</strong><span>Arkadas</span></div>'
+                + '</div>'
+                + '<div class="profile-section">'
+                    + '<h4>Oyuncu Karti</h4>'
+                    + '<div class="profile-stack">'
+                        + '<div class="profile-line"><span>Arkadaslik Kodu</span><strong>' + escapeHtml(profile.friendCode || '------') + '</strong></div>'
+                        + '<div class="profile-line"><span>Aktif Mod</span><strong>' + escapeHtml(profile.activeMode ? getModeLabel(profile.activeMode) : 'Bos') + '</strong></div>'
+                        + '<div class="profile-line"><span>1v1 Skoru</span><strong>' + stats.wins1v1 + 'G / ' + stats.draws1v1 + 'B / ' + stats.losses1v1 + 'M</strong></div>'
+                        + '<div class="profile-line"><span>2v2 Skoru</span><strong>' + stats.wins2v2 + 'G / ' + stats.draws2v2 + 'B / ' + stats.losses2v2 + 'M</strong></div>'
+                    + '</div>'
+                + '</div>'
+                + '<div class="profile-section">'
+                    + '<h4>Son Maclar</h4>'
+                    + '<div class="profile-stack">' + lastMatchesHtml + '</div>'
+                + '</div>'
+            + '</div>';
+    }
+
+    window.openFriendProfile = async function(uid) {
+        if (!uid) return;
+        var modal = document.getElementById('friendProfileModal');
+        var body = document.getElementById('friendProfileBody');
+        if (!modal || !body) return;
+        modal.style.display = 'flex';
+        body.innerHTML = buildFriendProfileSkeletonHtml();
+        var profile = friendProfilesCache[uid];
+        if (!profile) {
+            try {
+                var snap = await getDoc(doc(db, 'profiles', uid));
+                if (snap.exists()) profile = Object.assign({ uid: uid }, snap.data());
+            } catch (e) {}
+        }
+        profile = profile || { uid: uid, displayName: 'Oyuncu', avatar: 'fa-user' };
+        var stats = await loadFriendProfileStats(uid);
+        renderFriendProfile(uid, profile, stats);
+    };
+
+    window.closeFriendProfile = function() {
+        var modal = document.getElementById('friendProfileModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    window.openSelectedFriendProfile = function() {
+        if (!selectedFriendUid) return showToast('Once bir arkadas sec.', 'error');
+        openFriendProfile(selectedFriendUid);
+    };
+
+    window.watchFriendGame = function(uid) {
+        var profile = friendProfilesCache[uid];
+        if (!profile || profile.activeGameStatus !== 'active') {
+            return showToast('Bu oyuncunun aktif maci gorunmuyor.', 'info');
+        }
+        closeFriendProfile();
+        if (profile.activeMode === '1v1') enter1v1Game(profile.activeRoomCode || profile.activeRoomId);
+        else if (profile.activeMode === '2v2') enter2v2Game(profile.activeRoomCode || profile.activeRoomId);
+        else showToast('Bu mod su an izlenemiyor.', 'info');
+    };
 
     function subscribeSocialCollections() {
         if (!currentUser) return;
@@ -958,8 +1482,11 @@ const [
             e.preventDefault();
             if (!selectedFriendUid || !currentUser) return;
             var input = document.getElementById('dmInput');
-            var text = (input && input.value ? input.value : '').trim();
+            var text = sanitizeUserText(input && input.value ? input.value : '', MAX_DM_LENGTH);
             if (!text) return;
+            if (!throttleAction('dm_send', selectedFriendUid, 4, 12000)) {
+                return showToast('DM gonderme limiti doldu. Biraz bekle.', 'error');
+            }
             try {
                 var threadId = getFriendThreadId(currentUser.uid, selectedFriendUid);
                 await addDoc(collection(db, 'friend_threads', threadId, 'messages'), {
@@ -969,6 +1496,12 @@ const [
                     text: text,
                     createdAt: serverTimestamp(),
                     createdAtMs: Date.now()
+                });
+                pushNotificationToUser(selectedFriendUid, {
+                    type: 'dm',
+                    title: (currentUser.displayName || 'Oyuncu') + ' sana mesaj gonderdi',
+                    body: text,
+                    action: { type: 'friend_dm', uid: currentUser.uid }
                 });
                 input.value = '';
             } catch (err) {
@@ -1105,11 +1638,18 @@ const [
     document.getElementById('btnLogout').onclick=()=>{ window.playGameSound('nav'); Swal.fire({ title: 'Çıkış Yap', text: "Oturumu kapatmak istiyor musun?", icon: 'question', showCancelButton: true, confirmButtonColor: '#d4af37', cancelButtonColor: '#555', confirmButtonText: 'Evet, Çık', cancelButtonText: 'İptal', background: 'rgba(30,30,35,0.95)', color: '#fff' }).then((result) => { if (result.isConfirmed) signOut(auth); }); };
     document.addEventListener('visibilitychange', function() {
         if (!currentUser) return;
+        if (document.hidden) setCurrentReconnectState(false);
+        else setCurrentReconnectState(true);
         pushProfilePresence();
     });
     window.addEventListener('focus', function() {
         if (!currentUser) return;
+        setCurrentReconnectState(true);
         pushProfilePresence();
+    });
+    window.addEventListener('beforeunload', function() {
+        if (!currentUser) return;
+        setCurrentReconnectState(false);
     });
 
     onAuthStateChanged(auth, async u => {
@@ -1117,19 +1657,27 @@ const [
             currentUser=u;
             document.getElementById('userInfoSection').style.display='flex';
             document.getElementById('btnLogout').style.display='inline-block';
+            document.getElementById('btnNotifications').style.display='inline-flex';
             document.getElementById('currentUserDisplay').innerText=u.displayName;
             document.getElementById('currentUserIcon').innerHTML=`<i class="fas ${u.photoURL||'fa-chess-pawn'}" style="color:var(--primary)"></i>`;
             window.switchView('view-dashboard');
             await ensureUserProfile();
             startProfileHeartbeat();
             subscribeSocialCollections();
+            subscribeNotificationCollection();
             loadMyTournaments();
             initIdrisListener();
+            setTimeout(function() {
+                if (!maybeOpenSharedAnalysisFromUrl()) {
+                    tryReconnectFromDashboard(true);
+                }
+            }, 120);
         } else {
             stopSocialListeners();
             currentUser=null;
             document.getElementById('userInfoSection').style.display='none';
             document.getElementById('btnLogout').style.display='none';
+            document.getElementById('btnNotifications').style.display='none';
             window.switchView('view-auth');
         }
     });
@@ -1167,6 +1715,288 @@ const [
             document.getElementById('chatToggleBtn').style.display = 'flex'; 
         }
         if (currentUser) pushProfilePresence();
+    };
+
+    function getGameCollectionName(mode) {
+        return mode === '1v1' ? 'games_1v1' : 'games_2v2';
+    }
+
+    function getGameDocRef(mode, id) {
+        return doc(db, getGameCollectionName(mode), id);
+    }
+
+    function getGameSpectatorCount(data) {
+        return Array.isArray(data && data.spectatorIds) ? data.spectatorIds.length : 0;
+    }
+
+    function updateSpectatorCountUI(mode, data) {
+        var count = String(getGameSpectatorCount(data));
+        var ids = mode === '1v1'
+            ? ['spectatorCount1v1Lobby', 'spectatorCount1v1Game']
+            : ['spectatorCount2v2Lobby', 'spectatorCount2v2Game'];
+        ids.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.innerText = count;
+        });
+    }
+
+    function getDisconnectedPlayers(data) {
+        var disconnectState = Object.assign({}, (data && data.disconnectState) || {});
+        return (Array.isArray(data && data.players) ? data.players : []).filter(function(player) {
+            return !!(player && player.uid && disconnectState[player.uid]);
+        }).map(function(player) {
+            var disconnectedAt = disconnectState[player.uid];
+            return {
+                player: player,
+                disconnectedAt: disconnectedAt,
+                remainingMs: Math.max(0, RECONNECT_GRACE_MS - (Date.now() - disconnectedAt))
+            };
+        });
+    }
+
+    function renderReconnectBanner(mode, data) {
+        var ids = mode === '1v1'
+            ? ['reconnectBanner1v1Lobby', 'reconnectBanner1v1']
+            : ['reconnectBanner2v2Lobby', 'reconnectBanner2v2'];
+        var disconnected = getDisconnectedPlayers(data);
+        ids.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (!disconnected.length || data.status === 'finished') {
+                el.style.display = 'none';
+                el.innerText = '';
+                return;
+            }
+            var message = disconnected.map(function(item) {
+                var name = item.player.name || 'Oyuncu';
+                var left = Math.max(1, Math.ceil(item.remainingMs / 1000));
+                return name + ' baglantiyi kaybetti. ' + left + ' sn icinde donmezse mac sonuclanacak.';
+            }).join(' ');
+            el.innerText = message;
+            el.style.display = 'block';
+        });
+    }
+
+    function maybeResolveReconnectForfeit(mode, gameId, data) {
+        if (!data || data.status !== 'active') return;
+        var disconnected = getDisconnectedPlayers(data).filter(function(item) {
+            return item.remainingMs <= 0;
+        });
+        if (!disconnected.length) return;
+        if (!throttleAction('reconnect_forfeit', mode + ':' + gameId, 1, 1800)) return;
+        var winner = null;
+        if (mode === '1v1') {
+            if (disconnected.length >= 2) winner = 'draw';
+            else winner = disconnected[0].player.team === 'white' ? 'black' : 'white';
+        } else {
+            winner = disconnected[0].player.team === 'white' ? 'black' : 'white';
+        }
+        updateDoc(getGameDocRef(mode, gameId), {
+            status: 'finished',
+            winner: winner,
+            finishReason: 'disconnect',
+            finishedAtMs: Date.now()
+        }).catch(function() {});
+    }
+
+    function syncGamePresence(mode, code, data, role) {
+        if (!data) return;
+        updateSpectatorCountUI(mode, data);
+        renderReconnectBanner(mode, data);
+        var saved = readLocalActiveGame();
+        if (role === 'player' && data.status === 'active') rememberLocalActiveGame(mode, code);
+        else if (saved && saved.mode === mode && saved.code === code) clearLocalActiveGame(mode);
+        if (data.status === 'finished') clearLocalActiveGame(mode);
+        pushProfilePresence();
+    }
+
+    function syncSpectatorMembership(mode, code, data, role) {
+        if (!currentUser || !data) return;
+        var spectatorIds = Array.isArray(data.spectatorIds) ? data.spectatorIds.slice() : [];
+        var isSpectator = role === 'spectator';
+        var hasMe = spectatorIds.indexOf(currentUser.uid) !== -1;
+        if (isSpectator && !hasMe) {
+            updateDoc(getGameDocRef(mode, code), { spectatorIds: arrayUnion(currentUser.uid) }).catch(function() {});
+        } else if (!isSpectator && hasMe) {
+            updateDoc(getGameDocRef(mode, code), { spectatorIds: arrayRemove(currentUser.uid) }).catch(function() {});
+        }
+    }
+
+    function removeSpectatorMembership(mode, code, data, role) {
+        if (!currentUser || !code || role !== 'spectator') return;
+        var spectatorIds = Array.isArray(data && data.spectatorIds) ? data.spectatorIds : [];
+        if (spectatorIds.indexOf(currentUser.uid) === -1) return;
+        updateDoc(getGameDocRef(mode, code), { spectatorIds: arrayRemove(currentUser.uid) }).catch(function() {});
+    }
+
+    function setCurrentReconnectState(isConnected) {
+        var ctx = getCurrentReconnectContext();
+        if (!ctx || !currentUser) return;
+        var path = 'disconnectState.' + currentUser.uid;
+        var updates = {};
+        if (isConnected) {
+            if (!(ctx.data.disconnectState && ctx.data.disconnectState[currentUser.uid])) return;
+            updates[path] = deleteField();
+        } else {
+            if (ctx.data.disconnectState && ctx.data.disconnectState[currentUser.uid]) return;
+            updates[path] = Date.now();
+        }
+        updateDoc(getGameDocRef(ctx.mode, ctx.id), updates).catch(function() {});
+    }
+
+    function getBaseShareUrl() {
+        return window.location.origin + window.location.pathname;
+    }
+
+    function replaceUrlParams(paramsToDelete) {
+        try {
+            var url = new URL(window.location.href);
+            paramsToDelete.forEach(function(key) { url.searchParams.delete(key); });
+            window.history.replaceState({}, document.title, url.pathname + (url.searchParams.toString() ? ('?' + url.searchParams.toString()) : ''));
+        } catch (e) {}
+    }
+
+    window.copySpectatorLink = function(mode) {
+        var code = mode === '1v1'
+            ? (current1v1Data && (current1v1Data.code || current1v1Id))
+            : (current2v2Data && (current2v2Data.code || current2v2Id));
+        if (!code) return showToast('Aktif oda kodu yok.', 'error');
+        var url = getBaseShareUrl() + '?watchMode=' + encodeURIComponent(mode) + '&watchCode=' + encodeURIComponent(code);
+        navigator.clipboard.writeText(url).then(function() {
+            showToast('Izleyici linki kopyalandi.', 'success');
+        });
+    };
+
+    window.watchLiveGamePrompt = async function() {
+        var result = await Swal.fire({
+            title: 'Canli Izleme',
+            html: '<select id="watchModeSelect" class="swal2-input" style="width:100%; background:#111827; color:#fff;">'
+                + '<option value="2v2">2v2 Satranc</option>'
+                + '<option value="1v1">1v1 Klasik</option>'
+                + '</select>'
+                + '<input id="watchCodeInput" class="swal2-input" placeholder="Oda kodu" style="text-transform:uppercase; letter-spacing:0.16em;">',
+            showCancelButton: true,
+            confirmButtonText: 'IZLE',
+            background: 'rgba(30,30,35,0.95)',
+            color: '#fff',
+            confirmButtonColor: '#0ea5e9',
+            preConfirm: function() {
+                return {
+                    mode: document.getElementById('watchModeSelect').value,
+                    code: sanitizeUserText(document.getElementById('watchCodeInput').value, 12).toUpperCase()
+                };
+            }
+        });
+        if (!result.value || !result.value.code) return;
+        if (result.value.mode === '1v1') enter1v1Game(result.value.code);
+        else enter2v2Game(result.value.code);
+    };
+
+    window.tryReconnectFromDashboard = async function(silent) {
+        var saved = readLocalActiveGame();
+        if (!saved || !saved.mode || !saved.code) {
+            if (!silent) showToast('Kayitli aktif mac bulunamadi.', 'info');
+            return false;
+        }
+        if (silent) {
+            var promptKey = saved.mode + ':' + saved.code;
+            if (reconnectPromptShownFor === promptKey) return false;
+            reconnectPromptShownFor = promptKey;
+            var result = await Swal.fire({
+                title: 'Aktif Macta Geri Don',
+                text: getModeLabel(saved.mode) + ' macin acik gorunuyor. Geri donmek ister misin?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Geri Don',
+                cancelButtonText: 'Simdi Degil',
+                background: 'rgba(30,30,35,0.95)',
+                color: '#fff',
+                confirmButtonColor: '#d4af37'
+            });
+            if (!result.isConfirmed) return false;
+        }
+        if (saved.mode === '1v1') enter1v1Game(saved.code);
+        else if (saved.mode === '2v2') enter2v2Game(saved.code);
+        else return false;
+        return true;
+    };
+
+    async function openSharedAnalysisById(shareId) {
+        if (!shareId) return;
+        try {
+            var shareSnap = await getDoc(doc(db, 'analysis_shares', shareId));
+            if (!shareSnap.exists()) {
+                showToast('Paylasilan analiz bulunamadi.', 'error');
+                return;
+            }
+            var payload = shareSnap.data() || {};
+            if (!payload.pgn) {
+                showToast('Paylasim verisi eksik.', 'error');
+                return;
+            }
+            currentSharedAnalysisPayload = {
+                shareId: shareId,
+                pgn: payload.pgn || '',
+                players: payload.players || [],
+                fen: payload.fen || null
+            };
+            replaceUrlParams(['share']);
+            window.openAnalysis(payload.pgn || '', payload.players || [], payload.fen || null);
+        } catch (e) {
+            console.error(e);
+            showToast('Paylasilan analiz acilamadi.', 'error');
+        }
+    }
+
+    function maybeOpenSharedAnalysisFromUrl() {
+        var url = new URL(window.location.href);
+        pendingSharedAnalysisId = pendingSharedAnalysisId || url.searchParams.get('share');
+        var watchMode = url.searchParams.get('watchMode');
+        var watchCode = url.searchParams.get('watchCode');
+        if (pendingSharedAnalysisId) {
+            var shareId = pendingSharedAnalysisId;
+            pendingSharedAnalysisId = null;
+            openSharedAnalysisById(shareId);
+            return true;
+        }
+        if (watchMode && watchCode) {
+            replaceUrlParams(['watchMode', 'watchCode']);
+            if (watchMode === '1v1') enter1v1Game(watchCode.toUpperCase());
+            else if (watchMode === '2v2') enter2v2Game(watchCode.toUpperCase());
+            return true;
+        }
+        return false;
+    }
+
+    window.shareCurrentAnalysisReport = async function() {
+        if (!currentSharedAnalysisPayload || !currentSharedAnalysisPayload.pgn) {
+            return showToast('Paylasilacak analiz yok.', 'error');
+        }
+        if (!throttleAction('analysis_share', currentUser ? currentUser.uid : 'guest', 2, 30000)) {
+            return showToast('Cok hizli paylasim yapiyorsun. Biraz bekle.', 'error');
+        }
+        var shareId = currentSharedAnalysisPayload.shareId || makeId(8);
+        try {
+            await setDoc(doc(db, 'analysis_shares', shareId), {
+                createdBy: currentUser ? currentUser.uid : null,
+                createdAt: serverTimestamp(),
+                createdAtMs: Date.now(),
+                pgn: currentSharedAnalysisPayload.pgn || '',
+                players: currentSharedAnalysisPayload.players || [],
+                fen: currentSharedAnalysisPayload.fen || null
+            }, { merge: true });
+            currentSharedAnalysisPayload.shareId = shareId;
+            var url = getBaseShareUrl() + '?share=' + encodeURIComponent(shareId);
+            if (navigator.share) {
+                navigator.share({ title: 'Grandmaster Analiz Raporu', text: 'Mac analiz raporu', url: url }).catch(function() {});
+            }
+            navigator.clipboard.writeText(url).then(function() {
+                showToast('Analiz raporu linki kopyalandi.', 'success');
+            });
+        } catch (e) {
+            console.error(e);
+            showToast('Analiz raporu paylasilamadi.', 'error');
+        }
     };
 
     /* ========================================================
@@ -2108,6 +2938,12 @@ const [
         else setStockfishStatus('fallback');
 
         const safePlayers = Array.isArray(players) ? players : [];
+        currentSharedAnalysisPayload = {
+            shareId: null,
+            pgn: typeof pgn === 'string' ? pgn : '',
+            players: safePlayers,
+            fen: fallbackFen || null
+        };
         const wTeam = safePlayers.filter(p => p.team === 'white').map(p => p.name).join(' & ');
         const bTeam = safePlayers.filter(p => p.team === 'black').map(p => p.name).join(' & ');
         document.getElementById('an-white-player').innerText = wTeam || "Beyaz Takim";
@@ -2915,6 +3751,8 @@ const [
                 makeEmptySeat('black', 'Siyah Boş')
             ],
             participantIds: [currentUser.uid],
+            spectatorIds: [],
+            disconnectState: {},
             winner: null,
             createdAt: serverTimestamp()
         };
@@ -2953,6 +3791,10 @@ const [
 
             const data = snap.data();
             current1v1Data = data;
+            current1v1Role = data.players.some(function(player) { return player.uid === currentUser.uid; }) ? 'player' : 'spectator';
+            syncSpectatorMembership('1v1', code, data, current1v1Role);
+            syncGamePresence('1v1', code, data, current1v1Role);
+            if (current1v1Role === 'player' && data.status === 'active' && !document.hidden) setCurrentReconnectState(true);
 
             if (data.status === 'lobby') {
                 render1v1Lobby(data);
@@ -2964,7 +3806,7 @@ const [
                     if (lastPlayedMoveCount1v1 === -1) lastPlayedMoveCount1v1 = data.moveCount;
                     draw1v1Board();
                 }
-                if (data.status === 'finished') {
+                if (data.status === 'finished' && current1v1Role === 'player') {
                     showGameOverModal(data);
                 }
             }
@@ -2982,6 +3824,8 @@ const [
         if (unsubscribe1v1) unsubscribe1v1();
         if (unsubscribeChat) unsubscribeChat();
         if (game1v1TimerInterval) clearInterval(game1v1TimerInterval);
+        if (current1v1Data && current1v1Data.status === 'active' && current1v1Role === 'player') setCurrentReconnectState(false);
+        removeSpectatorMembership('1v1', current1v1Id, current1v1Data, current1v1Role);
 
         if (current1v1Data && current1v1Data.status === 'lobby') {
             const updatedPlayers = current1v1Data.players.map(function(player) {
@@ -3001,6 +3845,7 @@ const [
 
         current1v1Id = null;
         current1v1Data = null;
+        current1v1Role = 'player';
         switchView('view-dashboard');
     };
 
@@ -3087,6 +3932,7 @@ const [
             lastMoveTime: Date.now(),
             moveCount: 0,
             winner: null,
+            disconnectState: {},
             fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             pgn: ""
         });
@@ -3114,6 +3960,9 @@ const [
     function update1v1Game(data) {
         if (data.pgn) chess1v1.load_pgn(data.pgn);
         else chess1v1.load(data.fen);
+        maybeResolveReconnectForfeit('1v1', current1v1Id, data);
+        updateSpectatorCountUI('1v1', data);
+        renderReconnectBanner('1v1', data);
 
         if (data.moveCount > lastPlayedMoveCount1v1) {
             if (lastPlayedMoveCount1v1 !== -1) {
@@ -3160,6 +4009,9 @@ const [
         document.getElementById('turnIndicator1v1').innerText = data.status === 'finished'
             ? 'Oyun Bitti'
             : 'Sıra: ' + ((turnTeam === 'white' ? whitePlayer : blackPlayer) || { name: 'Oyuncu' }).name;
+        if (current1v1Role === 'spectator' && data.status !== 'finished') {
+            document.getElementById('turnIndicator1v1').innerText = 'Izleyici modu • ' + document.getElementById('turnIndicator1v1').innerText;
+        }
         draw1v1Board();
         syncBoardFullscreenUI();
     }
@@ -3355,6 +4207,8 @@ const [
                 {uid: null, name: "Boş", avatar: 'fa-plus', team: 'black', index: 1, isReady: false}
             ],
             participantIds: [currentUser.uid],
+            spectatorIds: [],
+            disconnectState: {},
             winner: null,
             createdAt: serverTimestamp()
         };
@@ -3386,6 +4240,10 @@ const [
             if(!snap.exists()) { showToast("Oyun bulunamadı.", "error"); leave2v2Lobby(); return; }
             const d = snap.data();
             current2v2Data = d;
+            current2v2Role = d.players.some(function(player) { return player.uid === currentUser.uid; }) ? 'player' : 'spectator';
+            syncSpectatorMembership('2v2', code, d, current2v2Role);
+            syncGamePresence('2v2', code, d, current2v2Role);
+            if (current2v2Role === 'player' && d.status === 'active' && !document.hidden) setCurrentReconnectState(true);
             
             if(d.status === 'lobby') {
                 render2v2Lobby(d);
@@ -3397,7 +4255,7 @@ const [
                     if(lastPlayedMoveCount === -1) lastPlayedMoveCount = d.moveCount;
                     drawBoard(); 
                 }
-                if(d.status === 'finished') {
+                if(d.status === 'finished' && current2v2Role === 'player') {
                     showGameOverModal(d);
                 }
             }
@@ -3413,6 +4271,8 @@ const [
         if(unsubscribe2v2) unsubscribe2v2();
         if(unsubscribeChat) unsubscribeChat();
         if(gameTimerInterval) clearInterval(gameTimerInterval);
+        if(current2v2Data && current2v2Data.status === 'active' && current2v2Role === 'player') setCurrentReconnectState(false);
+        removeSpectatorMembership('2v2', current2v2Id, current2v2Data, current2v2Role);
         
         if(current2v2Data && current2v2Data.status === 'lobby') {
              const newPlayers = current2v2Data.players.map(p => {
@@ -3425,6 +4285,8 @@ const [
              });
         }
         current2v2Id = null;
+        current2v2Data = null;
+        current2v2Role = 'player';
         switchView('view-dashboard');
     };
 
@@ -3515,6 +4377,7 @@ const [
             lastMoveTime: Date.now(),
             moveCount: 0,
             winner: null,
+            disconnectState: {},
             fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
         });
     };
@@ -3527,6 +4390,9 @@ const [
         } else {
             chess.load(d.fen);
         }
+        maybeResolveReconnectForfeit('2v2', current2v2Id, d);
+        updateSpectatorCountUI('2v2', d);
+        renderReconnectBanner('2v2', d);
         
         if(d.moveCount > lastPlayedMoveCount) {
             if(lastPlayedMoveCount !== -1) {
@@ -3606,6 +4472,9 @@ const [
             }
         });
         if(current2v2Data.status === 'finished') document.getElementById('turnIndicator').innerText = "Oyun Bitti";
+        if(current2v2Role === 'spectator' && current2v2Data.status !== 'finished') {
+            document.getElementById('turnIndicator').innerText = 'Izleyici modu • ' + document.getElementById('turnIndicator').innerText;
+        }
     }
 
     function render2v2BoardInto(boardEl, activeIdx, turnColor) {
@@ -3896,7 +4765,7 @@ const [
     window.showStats = (s) => { window.playGameSound('nav'); document.getElementById('modalAvatar').innerHTML = `<i class="fas ${s.avatar}"></i>`; document.getElementById('modalName').innerText = s.name; document.getElementById('statWins').innerText = s.w; document.getElementById('statDraws').innerText = s.d; document.getElementById('statLosses').innerText = s.l; document.getElementById('statPoints').innerText = s.pts; document.getElementById('statSB').innerText = s.sb.toFixed(2); const rate = s.p > 0 ? Math.round(((s.pts - (s.d * 0.5)) / s.p) * 100) : 0; document.getElementById('statRate').innerText = `%${rate}`; document.getElementById('statsModal').style.display = 'flex'; };
     window.closeStats = () => document.getElementById('statsModal').style.display='none';
     
-    window.onclick = (e) => { if(e.target.classList.contains('modal-overlay')) { closeStats(); closeRules(); closeHistory2v2(); closeHistory1v1(); } }
+    window.onclick = (e) => { if(e.target.classList.contains('modal-overlay')) { closeStats(); closeRules(); closeHistory2v2(); closeHistory1v1(); closeNotificationsCenter(); closeFriendProfile(); } }
     window.copyCode = () => { navigator.clipboard.writeText(document.getElementById('shareCode').innerText).then(()=>showToast("Kod kopyalandı!", "success")); };
     window.leaveTournamentConfirm = async () => { window.playGameSound('nav'); const res = await Swal.fire({ title: 'Çıkış?', text: 'Turnuva ekranından ayrılacaksın.', icon: 'question', showCancelButton: true, background: 'rgba(30,30,35,0.95)', color: '#fff', confirmButtonColor: '#555', cancelButtonColor: '#d33', confirmButtonText: 'Evet, Çık', cancelButtonText: 'Kal' }); if(res.isConfirmed) leaveTournament(); }
     window.leaveTournament = () => { if(unsubscribeTournament) unsubscribeTournament(); if(unsubscribeChat) unsubscribeChat(); currentTournamentId=null; hideChat(); switchView('view-dashboard'); };
@@ -3975,9 +4844,9 @@ const [
     
     const cw=document.getElementById('chatWidget'), cb=document.getElementById('chatToggleBtn');
     cb.onclick=()=>{ cw.style.display='flex'; cb.style.display='none'; document.getElementById('chatBadge').style.display='none'; scrollChat(); };
-    window.hideChat=()=>{ cw.style.display='none'; if(currentTournamentId || current2v2Id) cb.style.display='flex'; };
-    function initChat(tid){ cb.style.display='flex'; const q=query(collection(db,`tournaments/${tid}/messages`),orderBy('createdAt','asc')); unsubscribeChat=onSnapshot(q,s=>{ const d=document.getElementById('chatMessages'); d.innerHTML=''; let n=false; s.forEach(x=>{ const m=x.data(); const me=m.uid===currentUser.uid; d.innerHTML+=`<div style="text-align:${me?'right':'left'}; margin-bottom:5px;"><strong style="color:${me?'var(--accent)':'var(--primary)'}; font-size:0.8rem;">${m.user}</strong><div style="background:${me?'var(--primary)':'rgba(255,255,255,0.1)'}; color:${me?'#000':'var(--text-main)'}; display:inline-block; padding:5px 10px; border-radius:10px; margin-top:2px; max-width:80%; word-break:break-word;">${m.text}</div></div>`; n=true; }); scrollChat(); if(n && cw.style.display==='none') document.getElementById('chatBadge').style.display='flex'; }); }
-    document.getElementById('chatInputArea').onsubmit=async(e)=>{ e.preventDefault(); const i=document.getElementById('chatInput'); if(!i.value.trim()) return; const id = currentTournamentId || current2v2Id; await addDoc(collection(db,`tournaments/${id}/messages`),{text:i.value, user:currentUser.displayName, uid:currentUser.uid, createdAt:serverTimestamp()}); i.value=''; };
+    window.hideChat=()=>{ cw.style.display='none'; if(currentTournamentId || current2v2Id || current1v1Id) cb.style.display='flex'; };
+    function initChat(tid){ activeChatThreadId = tid; cb.style.display='flex'; const q=query(collection(db,`tournaments/${tid}/messages`),orderBy('createdAt','asc')); unsubscribeChat=onSnapshot(q,s=>{ const d=document.getElementById('chatMessages'); d.innerHTML=''; let n=false; s.forEach(x=>{ const m=x.data(); const me=m.uid===currentUser.uid; d.innerHTML+=`<div style="text-align:${me?'right':'left'}; margin-bottom:5px;"><strong style="color:${me?'var(--accent)':'var(--primary)'}; font-size:0.8rem;">${m.user}</strong><div style="background:${me?'var(--primary)':'rgba(255,255,255,0.1)'}; color:${me?'#000':'var(--text-main)'}; display:inline-block; padding:5px 10px; border-radius:10px; margin-top:2px; max-width:80%; word-break:break-word;">${m.text}</div></div>`; n=true; }); scrollChat(); if(n && cw.style.display==='none') document.getElementById('chatBadge').style.display='flex'; }); }
+    document.getElementById('chatInputArea').onsubmit=async(e)=>{ e.preventDefault(); const i=document.getElementById('chatInput'); const text = sanitizeUserText(i.value, MAX_CHAT_LENGTH); if(!text) return; if(!throttleAction('room_chat', activeChatThreadId || 'default', 5, 12000)) return showToast('Sohbet limiti doldu. Biraz bekle.', 'error'); const id = activeChatThreadId || currentTournamentId || current2v2Id || current1v1Id; await addDoc(collection(db,`tournaments/${id}/messages`),{text:text, user:currentUser.displayName, uid:currentUser.uid, createdAt:serverTimestamp()}); i.value=''; };
     function scrollChat(){ const d=document.getElementById('chatMessages'); d.scrollTop=d.scrollHeight; }
 
     // Admin Tools

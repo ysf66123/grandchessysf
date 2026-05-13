@@ -79,6 +79,10 @@
         .friends-card h3 { color: var(--accent); }
         .friends-stat-row { display:flex; justify-content:space-between; gap:10px; margin:12px 0 18px 0; }
         .friends-stat-pill { flex:1; background: rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius: 999px; padding:8px 10px; font-size:0.78rem; color:var(--text-muted); }
+        .live-card { background: linear-gradient(145deg, rgba(56, 189, 248, 0.08), rgba(2, 132, 199, 0.08)); border-color: rgba(56, 189, 248, 0.22); }
+        .live-card h3 { color: #7dd3fc; }
+        .live-actions { display:flex; gap:12px; flex-wrap:wrap; }
+        .live-actions button { flex:1; min-width:180px; }
         
         .sub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .dash-card { background: var(--glass-card); padding: 25px; border-radius: 12px; border: 1px solid var(--glass-border); text-align: center; transition: 0.3s; display: flex; flex-direction: column; justify-content: space-between; height: 100%; }
@@ -170,6 +174,11 @@
         .analysis-piece-badge.blunder { color:#fff1f2; background: linear-gradient(135deg, #dc2626, #fb7185); }
 
         .game-info-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--glass-border); }
+        .game-utility-bar, .mode-utility-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+        .live-presence-pill { display:inline-flex; align-items:center; gap:8px; padding:9px 12px; border-radius:999px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.24); color:#7dd3fc; font-size:0.78rem; font-weight:800; letter-spacing:0.03em; }
+        .status-banner { width:100%; padding:10px 12px; border-radius:12px; background: rgba(255, 152, 0, 0.12); border:1px solid rgba(255, 152, 0, 0.24); color:#fdba74; font-size:0.8rem; line-height:1.45; }
+        .status-banner.compact { width:auto; flex:1; min-width:220px; }
+        .utility-btn { white-space:nowrap; }
         .player-tag { display: flex; align-items: center; gap: 8px; opacity: 0.5; transition: 0.3s; padding: 5px 10px; border-radius: 20px; border: 1px solid transparent; font-size: 0.9rem; }
         .player-tag.active { opacity: 1; background: var(--primary); color: #000; font-weight: bold; transform: scale(1.05); box-shadow: 0 0 10px rgba(212,175,55,0.4); }
         .timer-box { font-family: monospace; font-size: 1.5rem; font-weight: bold; padding: 5px 15px; background: #222; border-radius: 6px; border: 1px solid #444; width: 100px; text-align: center; }
@@ -261,10 +270,20 @@
         .chat-badge { position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; border: 2px solid #222; display: none; }
         #chatWidget { position: fixed; bottom: 90px; right: 20px; width: 320px; background: rgba(20, 20, 25, 0.95); backdrop-filter: blur(15px); border: 1px solid var(--glass-border); border-radius: 12px; z-index: 1000; display: none; flex-direction: column; max-height: 400px; box-shadow: var(--shadow); }
         #chatMessages { flex: 1; padding: 10px; overflow-y: auto; height: 300px; background: transparent; font-size: 0.9rem; }
-        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px; }
+        .top-brand { display:flex; align-items:center; gap:12px; min-width:0; }
+        .site-logo { width:52px; height:52px; border-radius:16px; object-fit:cover; border:1px solid rgba(255,255,255,0.12); box-shadow: 0 12px 28px rgba(0,0,0,0.28); background:#fff; }
+        .auth-logo { width:120px; height:120px; object-fit:cover; border-radius:28px; border:1px solid rgba(255,255,255,0.12); box-shadow: 0 18px 46px rgba(0,0,0,0.25); margin:0 auto 18px auto; background:#fff; }
+        .top-brand-copy { display:grid; gap:3px; min-width:0; }
+        .top-brand-copy strong { color:var(--text-main); font-size:1rem; letter-spacing:0.1em; text-transform:uppercase; white-space:nowrap; }
+        .top-brand-copy span { font-size:0.72rem; color:var(--text-muted); letter-spacing:0.14em; text-transform:uppercase; white-space:nowrap; }
+        .top-bar-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap; }
         .user-info { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 20px; border: 1px solid var(--glass-border); }
+        .theme-picker { display:flex; align-items:center; gap:4px; padding:6px 10px; border-radius:999px; border:1px solid var(--glass-border); background: rgba(255,255,255,0.03); }
         .theme-btn { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.5); margin-right: 5px; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.2s; }
         .theme-btn:hover { transform: scale(1.2); }
+        .notif-btn { position:relative; overflow:visible; }
+        .notif-badge { position:absolute; top:-6px; right:-4px; min-width:19px; height:19px; padding:0 5px; border-radius:999px; background:linear-gradient(135deg, #ef4444, #f97316); color:#fff; font-size:0.64rem; display:flex; align-items:center; justify-content:center; border:2px solid rgba(27,29,36,0.95); box-shadow: 0 6px 16px rgba(239,68,68,0.32); }
         .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.2); transition: .4s; border-radius: 20px; }
@@ -347,6 +366,8 @@
         .status-dot.offline { color:#64748b; background:#64748b; }
         .friend-actions { display:flex; gap:8px; flex-wrap:wrap; }
         .friend-empty { padding:20px; text-align:center; color:var(--text-muted); border:1px dashed var(--glass-border); border-radius:12px; }
+        .friend-card-row { cursor:pointer; transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease; }
+        .friend-card-row:hover { transform: translateY(-1px); border-color: rgba(0, 242, 255, 0.22); background: rgba(255,255,255,0.06); }
         .dm-panel { min-height: 620px; }
         .dm-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:14px; border-bottom:1px solid var(--glass-border); margin-bottom:14px; }
         .dm-thread { height: 420px; overflow-y:auto; padding-right:4px; display:flex; flex-direction:column; gap:10px; }
@@ -357,6 +378,38 @@
         .dm-form { display:flex; gap:10px; margin-top:14px; }
         .invite-type-pill { padding:4px 9px; border-radius:999px; font-size:0.68rem; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; background: rgba(255,255,255,0.08); color:var(--accent); border:1px solid rgba(255,255,255,0.08); }
         .friends-toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px; }
+        .modal-wide { max-width: 720px; }
+        .modal-head-row { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:16px; }
+        .notification-list { display:grid; gap:12px; max-height: 520px; overflow-y:auto; padding-right:4px; }
+        .notification-card { display:grid; grid-template-columns:auto minmax(0, 1fr) auto; gap:14px; align-items:start; padding:14px; border-radius:14px; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); }
+        .notification-card.unread { border-color: rgba(0, 242, 255, 0.26); background: linear-gradient(145deg, rgba(0, 242, 255, 0.08), rgba(255,255,255,0.03)); }
+        .notification-icon { width:42px; height:42px; border-radius:14px; display:flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.08); color:var(--accent); font-size:1rem; }
+        .notification-title { font-weight:800; margin-bottom:4px; }
+        .notification-body { font-size:0.86rem; color:var(--text-muted); line-height:1.45; }
+        .notification-meta { font-size:0.72rem; color:#94a3b8; white-space:nowrap; }
+        .notification-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+        .friend-profile-shell { display:grid; gap:18px; }
+        .friend-profile-hero { display:grid; grid-template-columns:auto minmax(0, 1fr) auto; gap:16px; align-items:center; }
+        .friend-profile-avatar { width:72px; height:72px; border-radius:22px; background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; font-size:2rem; color:var(--primary); }
+        .friend-profile-name { font-size:1.35rem; font-weight:900; margin-bottom:6px; }
+        .friend-profile-sub { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:0.82rem; color:var(--text-muted); }
+        .friend-profile-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+        .friend-profile-grid { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:10px; }
+        .profile-stat-card { padding:14px; border-radius:14px; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); text-align:center; }
+        .profile-stat-card strong { display:block; font-size:1.25rem; color:var(--primary); margin-bottom:4px; }
+        .profile-section { padding:16px; border-radius:16px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); }
+        .profile-section h4 { margin-bottom:12px; color:var(--accent); letter-spacing:0.06em; text-transform:uppercase; font-size:0.82rem; }
+        .profile-stack { display:grid; gap:10px; }
+        .profile-line { display:flex; justify-content:space-between; gap:16px; font-size:0.88rem; color:var(--text-muted); }
+        .profile-line strong { color:var(--text-main); font-weight:700; }
+        .skeleton-block, .skeleton-line { position:relative; overflow:hidden; background: rgba(255,255,255,0.06); }
+        .skeleton-block::after, .skeleton-line::after { content:''; position:absolute; inset:0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent); animation: skeleton-shimmer 1.35s infinite; }
+        .skeleton-line { height:14px; border-radius:999px; }
+        .skeleton-line.short { width:40%; }
+        .skeleton-line.medium { width:65%; }
+        .skeleton-line.long { width:100%; }
+        .skeleton-card { padding:16px; border-radius:14px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); display:grid; gap:10px; }
+        @keyframes skeleton-shimmer { 100% { transform: translateX(100%); } }
         body.board-fullscreen-open { overflow: hidden; }
         .fullscreen-board-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px 18px; z-index: 5000; background:
             radial-gradient(circle at top, rgba(0, 242, 255, 0.14), transparent 34%),
@@ -385,6 +438,14 @@
             .friends-layout { grid-template-columns: 1fr; }
             .dm-panel { min-height: auto; }
             .dm-thread { height: 320px; }
+            .top-bar { align-items:flex-start; }
+            .top-bar-actions { justify-content:flex-start; }
+            .top-brand-copy strong, .top-brand-copy span { white-space:normal; }
+            .friend-profile-hero { grid-template-columns:1fr; justify-items:flex-start; }
+            .friend-profile-actions { justify-content:flex-start; }
+            .friend-profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .game-utility-bar { align-items:stretch; }
+            .status-banner.compact { width:100%; }
             .fullscreen-player-row { grid-template-columns: 1fr; text-align: center; justify-items: center; }
             .fullscreen-side-label, .fullscreen-timer { text-align: center; }
             .fullscreen-board { width: min(76vh, 94vw); max-width: min(76vh, 94vw); }
@@ -397,6 +458,12 @@
             #chatWidget { width: 90%; right: 5%; bottom: 100px; }
             .avatar-grid { grid-template-columns: repeat(4, 1fr); }
             .app-container { padding: 15px; border-radius: 0; min-height: 100vh; border:none; }
+            .top-bar { gap:12px; }
+            .site-logo { width:46px; height:46px; border-radius:14px; }
+            .auth-logo { width:96px; height:96px; border-radius:22px; }
+            .top-bar-actions { width:100%; gap:8px; }
+            .user-info { width:100%; justify-content:center; }
+            .theme-picker { width:100%; justify-content:center; }
             .cr-deck-container { grid-template-columns: repeat(4, 1fr); gap: 5px; }
             .cr-card { aspect-ratio: 0.7; }
             .cr-elixir { width: 20px; height: 20px; font-size: 0.6rem; }
@@ -410,6 +477,12 @@
             .friend-code-display { font-size:1.35rem; letter-spacing:0.1em; }
             .analysis-shell { min-height: 0; }
             .board-expand-btn { width: 34px; height: 34px; top: 10px; right: 10px; }
+            .live-actions, .mode-utility-row, .game-utility-bar, .modal-head-row, .notification-card, .profile-line { grid-template-columns: none; flex-direction:column; }
+            .notification-card { display:grid; grid-template-columns:1fr; }
+            .friend-profile-grid { grid-template-columns:1fr 1fr; }
+            .friend-actions { width:100%; }
+            .friend-actions button { flex:1; }
+            .live-presence-pill, .utility-btn { width:100%; justify-content:center; }
             .fullscreen-board-overlay { padding: 20px 10px; }
             .board-fullscreen-close { top: 12px; right: 12px; width: 36px; height: 36px; }
             .fullscreen-player-row { padding: 12px; border-radius: 14px; gap: 10px; }
