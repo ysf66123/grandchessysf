@@ -298,13 +298,25 @@
         .move-num { width: 30px; color: var(--text-muted); }
         .move-san { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 24px; }
         .move-san.empty { color: transparent; }
-        .move-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.03em; border-radius: 999px; padding: 2px 6px; border: 1px solid transparent; }
+        .move-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; font-size: 0.62rem; font-weight: 900; letter-spacing: 0.03em; border-radius: 999px; padding: 2px 7px; border: 1px solid transparent; text-transform: uppercase; }
+        .move-tag.brilliant { color: #ecfeff; background: linear-gradient(135deg, #0891b2, #22d3ee); border-color: rgba(255,255,255,0.4); box-shadow: 0 0 10px rgba(34,211,238,0.35); }
         .move-tag.best { color: #0f172a; background: #4ade80; border-color: rgba(255,255,255,0.35); }
-        .move-tag.excellent { color: #0f172a; background: #a3e635; border-color: rgba(255,255,255,0.35); }
         .move-tag.good { color: #082f49; background: #7dd3fc; border-color: rgba(255,255,255,0.25); }
-        .move-tag.inaccuracy { color: #1f2937; background: #facc15; border-color: rgba(255,255,255,0.25); }
         .move-tag.mistake { color: #fff; background: #fb923c; border-color: rgba(255,255,255,0.25); }
         .move-tag.blunder { color: #fff; background: #ef4444; border-color: rgba(255,255,255,0.25); }
+
+        .best-move-btn { width: 100%; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.04); color: var(--primary); border-radius: 7px; padding: 6px 8px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.2s; }
+        .best-move-btn:hover { border-color: var(--primary); background: rgba(212,175,55,0.12); transform: translateY(-1px); }
+        .best-move-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .quality-summary { margin: 10px 0 12px 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        .quality-chip { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 7px 6px; text-align: center; font-size: 0.7rem; }
+        .quality-chip .count { display: block; font-size: 1rem; font-weight: 800; margin-bottom: 2px; }
+        .quality-chip.brilliant .count { color: #22d3ee; }
+        .quality-chip.best .count { color: #4ade80; }
+        .quality-chip.good .count { color: #7dd3fc; }
+        .quality-chip.mistake .count { color: #fb923c; }
+        .quality-chip.blunder .count { color: #ef4444; }
         
         .analysis-controls { display: flex; gap: 5px; padding: 10px; background: rgba(0,0,0,0.2); border-top: 1px solid var(--glass-border); justify-content: center; }
         .analysis-btn { background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); width: 40px; height: 35px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -322,6 +334,7 @@
         @media (max-width: 768px) {
             .analysis-layout { grid-template-columns: 1fr; }
             .move-list-container { max-height: 300px; }
+            .quality-summary { grid-template-columns: repeat(3, 1fr); }
         }
 
         @media (max-width: 600px) {
@@ -531,7 +544,8 @@
                      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
                          <div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; text-align:center;">
                              <div style="font-size:0.7rem; color:#888; margin-bottom:3px;">EN İYİ HAMLE</div>
-                             <div id="report-best" style="font-weight:bold; color:var(--primary); font-size:1.1rem;">...</div>
+                             <button id="report-best" class="best-move-btn" onclick="previewBestVsPlayedMove()" title="En iyi hamleyi ve oynanan hamleyi sırayla göster">...</button>
+                             <div style="font-size:0.62rem; color:#7f8a9a; margin-top:4px;">Tikla: En iyi -> Oynanan</div>
                          </div>
                          <div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; text-align:center;">
                              <div style="font-size:0.7rem; color:#888; margin-bottom:3px;">DEĞERLENDİRME</div>
@@ -556,6 +570,7 @@
                              <div style="font-size:0.8rem; color:#aaa;">Siyah Doğruluk</div>
                          </div>
                      </div>
+                     <div id="analysisQualitySummary" class="quality-summary"></div>
                      <div class="dash-card" style="margin-top:10px; text-align:left; font-size:0.9rem;">
                          <div style="margin-bottom:10px;"><i class="fas fa-exclamation-circle" style="color:orange;"></i> <strong>Kritik Hata:</strong> <span id="report-blunder">...</span></div>
                          <div style="margin-bottom:10px;"><i class="fas fa-check-circle" style="color:var(--success);"></i> <strong>Maç Sonucu:</strong> <span id="report-result">...</span></div>
@@ -1295,6 +1310,9 @@
     let analysisMoveReviews = [];
     let analysisReviewToken = 0;
     let liveEvalRequestId = 0;
+    let liveBestMoveUci = null;
+    let liveBestMoveFen = null;
+    let bestPreviewToken = 0;
 
     let sfWorker = null;
     let sfInitPromise = null;
@@ -1303,21 +1321,19 @@
     let sfQueue = [];
     let sfActiveTask = null;
 
-    const SF_DEPTH_LIVE = 14;
-    const SF_DEPTH_REVIEW = 11;
+    const SF_DEPTH_LIVE = 17;
+    const SF_DEPTH_REVIEW = 12;
     const MOVE_CATEGORY_LABELS = {
+        brilliant: "Brilliant",
         best: "En iyi",
-        excellent: "Mukemmel",
         good: "Iyi",
-        inaccuracy: "Tutarsizlik",
         mistake: "Hata",
-        blunder: "Kritik hata"
+        blunder: "Blunder"
     };
     const MOVE_CATEGORY_TAGS = {
-        best: "!!",
-        excellent: "!",
-        good: "OK",
-        inaccuracy: "?!",
+        brilliant: "BR",
+        best: "BEST",
+        good: "GOOD",
         mistake: "?",
         blunder: "??"
     };
@@ -1474,6 +1490,9 @@
     function handleStockfishLine(line) {
         if (line === 'uciok') {
             sfWorker.postMessage('setoption name MultiPV value 1');
+            sfWorker.postMessage('setoption name Hash value 96');
+            var threads = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
+            sfWorker.postMessage('setoption name Threads value ' + threads);
             sfWorker.postMessage('isready');
             return;
         }
@@ -1539,14 +1558,96 @@
         return uci;
     }
 
+    function setBestMoveButton(text, uci, fen) {
+        var bestEl = document.getElementById('report-best');
+        if (!bestEl) return;
+        bestEl.innerText = text;
+        bestEl.dataset.uci = uci || '';
+        bestEl.dataset.fen = fen || '';
+        bestEl.disabled = !uci;
+    }
+
+    function getCurrentReviewContext() {
+        if (!analysisMoveReviews.length || !analysisHistory.length) return null;
+        var idx = currentAnalysisIndex > 0 ? currentAnalysisIndex - 1 : 0;
+        var review = analysisMoveReviews[idx];
+        if (!review || !review.bestMove || review.bestMove === '(none)') return null;
+        return { moveIndex: idx, review: review };
+    }
+
+    function refreshBestMoveButtonState() {
+        var ctx = getCurrentReviewContext();
+        if (ctx && ctx.review.bestMoveSan && ctx.review.bestMoveSan !== '-') {
+            setBestMoveButton(ctx.review.bestMoveSan, ctx.review.bestMove, ctx.review.beforeFen);
+            return;
+        }
+
+        if (liveBestMoveUci && liveBestMoveFen) {
+            setBestMoveButton(formatEngineMove(liveBestMoveUci, liveBestMoveFen), liveBestMoveUci, liveBestMoveFen);
+            return;
+        }
+
+        setBestMoveButton('-', null, null);
+    }
+
+    function waitMs(ms) {
+        return new Promise(function(resolve) { setTimeout(resolve, ms); });
+    }
+
+    window.previewBestVsPlayedMove = async () => {
+        var ctx = getCurrentReviewContext();
+        if (!ctx || !ctx.review.beforeFen || !ctx.review.bestMove || !analysisHistory[ctx.moveIndex]) {
+            showToast('Bu hamle icin karsilastirma hazir degil.', 'info');
+            return;
+        }
+
+        var token = ++bestPreviewToken;
+        var originalFen = analysisChess.fen();
+        var originalIndex = currentAnalysisIndex;
+        var move = analysisHistory[ctx.moveIndex];
+
+        try {
+            analysisChess.load(ctx.review.beforeFen);
+            analysisChess.move({
+                from: ctx.review.bestMove.slice(0, 2),
+                to: ctx.review.bestMove.slice(2, 4),
+                promotion: ctx.review.bestMove.length > 4 ? ctx.review.bestMove.slice(4, 5) : undefined
+            });
+            renderAnalysisBoard();
+            if (token !== bestPreviewToken) return;
+            await waitMs(900);
+
+            analysisChess.load(ctx.review.beforeFen);
+            analysisChess.move(move.san);
+            renderAnalysisBoard();
+            if (token !== bestPreviewToken) return;
+            await waitMs(900);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            if (token !== bestPreviewToken) return;
+            analysisChess.load(originalFen);
+            currentAnalysisIndex = originalIndex;
+            renderAnalysisBoard();
+            highlightMoveRow();
+            runStockfish();
+        }
+    };
+
     function runStockfish() {
         var fen = analysisChess.fen();
-        var bestEl = document.getElementById('report-best');
-        if (bestEl) bestEl.innerText = "Hesaplaniyor...";
+        var ctx = getCurrentReviewContext();
+        if (ctx && ctx.review.bestMoveSan && ctx.review.bestMoveSan !== '-') {
+            setBestMoveButton(ctx.review.bestMoveSan, ctx.review.bestMove, ctx.review.beforeFen);
+        } else {
+            setBestMoveButton("Hesaplaniyor...", null, fen);
+        }
 
         if (!sfWorker) {
             updateEvalBarFallback(fen);
-            if (bestEl) bestEl.innerText = "-";
+            liveBestMoveUci = null;
+            liveBestMoveFen = null;
+            refreshBestMoveButtonState();
             setStockfishStatus('fallback');
             return;
         }
@@ -1555,6 +1656,7 @@
             sfPendingFen = fen;
             updateEvalBarFallback(fen);
             setStockfishStatus('loading');
+            refreshBestMoveButtonState();
             return;
         }
 
@@ -1571,13 +1673,15 @@
                 updateEvalBarFallback(fen);
             }
 
-            if (bestEl) {
-                if (result.bestMove && result.bestMove !== '(none)') {
-                    bestEl.innerText = formatEngineMove(result.bestMove, fen);
-                } else {
-                    bestEl.innerText = "-";
-                }
+            if (result.bestMove && result.bestMove !== '(none)') {
+                liveBestMoveUci = result.bestMove;
+                liveBestMoveFen = fen;
+            } else {
+                liveBestMoveUci = null;
+                liveBestMoveFen = null;
             }
+
+            refreshBestMoveButtonState();
         });
     }
 
@@ -1646,30 +1750,95 @@
         return evalResult;
     }
 
-    function classifyMoveByCpl(cpl, bestMove, moveObj) {
-        var playedUci = moveObj.from + moveObj.to + (moveObj.promotion || '');
-        if (bestMove && bestMove === playedUci && cpl <= 15) return 'best';
-        if (cpl <= 20) return 'excellent';
-        if (cpl <= 60) return 'good';
-        if (cpl <= 120) return 'inaccuracy';
-        if (cpl <= 250) return 'mistake';
+    function moveToUci(moveObj) {
+        if (!moveObj || !moveObj.from || !moveObj.to) return '';
+        return moveObj.from + moveObj.to + (moveObj.promotion || '');
+    }
+
+    function moverScoreFromWhite(whiteScore, moveColor) {
+        return moveColor === 'w' ? whiteScore : -whiteScore;
+    }
+
+    function winChanceFromScore(score) {
+        if (score >= 9000) return 0.999;
+        if (score <= -9000) return 0.001;
+        return 1 / (1 + Math.exp(-score / 260));
+    }
+
+    function moveAccuracyFromEval(beforeWhite, bestAfterWhite, playedAfterWhite, moveColor, cpl) {
+        var bestMover = moverScoreFromWhite(bestAfterWhite, moveColor);
+        var playedMover = moverScoreFromWhite(playedAfterWhite, moveColor);
+        var beforeMover = moverScoreFromWhite(beforeWhite, moveColor);
+
+        var bestChance = winChanceFromScore(bestMover);
+        var playedChance = winChanceFromScore(playedMover);
+        var beforeChance = winChanceFromScore(beforeMover);
+
+        var chanceLoss = Math.max(0, bestChance - playedChance);
+        var cpPenalty = Math.min(0.5, cpl / 900);
+        var volatilityBonus = Math.max(0, (Math.abs(beforeChance - 0.5) - 0.25) * 10);
+
+        var accuracy = 100 - (chanceLoss * 122) - (cpPenalty * 34) + volatilityBonus;
+        return Math.max(1, Math.min(100, Math.round(accuracy)));
+    }
+
+    function isBrilliantMove(payload) {
+        if (!payload.playedIsBest) return false;
+        if (payload.cpl > 25) return false;
+        if (payload.materialDeltaForMover > -120) return false;
+        return payload.afterMoverScore >= payload.beforeMoverScore - 35;
+    }
+
+    function classifyMoveQuality(payload) {
+        if (isBrilliantMove(payload)) return 'brilliant';
+        if (payload.playedIsBest || payload.cpl <= 15 || payload.moveAccuracy >= 97) return 'best';
+        if (payload.cpl <= 90 || payload.moveAccuracy >= 80) return 'good';
+        if (payload.cpl <= 260 || payload.moveAccuracy >= 42) return 'mistake';
         return 'blunder';
     }
 
     function calculateAccuracy(reviews) {
         if (!reviews.length) return 100;
-        var avgCpl = reviews.reduce(function(total, r) { return total + r.cpl; }, 0) / reviews.length;
-        var mistakes = reviews.filter(function(r) { return r.category === 'mistake'; }).length;
-        var blunders = reviews.filter(function(r) { return r.category === 'blunder'; }).length;
-        var accuracy = 100 - (avgCpl * 0.36) - (mistakes * 1.0) - (blunders * 2.2);
-        return Math.max(35, Math.min(99, Math.round(accuracy)));
+        var weighted = 0;
+        var total = 0;
+        reviews.forEach(function(r, idx) {
+            var phaseWeight = idx < 10 ? 0.9 : (idx > 55 ? 1.1 : 1);
+            weighted += r.moveAccuracy * phaseWeight;
+            total += phaseWeight;
+        });
+        return Math.max(1, Math.min(100, Math.round(weighted / total)));
+    }
+
+    function countMoveCategories(reviews) {
+        var counts = { brilliant: 0, best: 0, good: 0, mistake: 0, blunder: 0 };
+        reviews.forEach(function(r) {
+            if (!r || !counts.hasOwnProperty(r.category)) return;
+            counts[r.category] += 1;
+        });
+        return counts;
+    }
+
+    function renderQualitySummary() {
+        var container = document.getElementById('analysisQualitySummary');
+        if (!container) return;
+
+        var white = countMoveCategories(analysisMoveReviews.filter(function(r) { return r && r.moveColor === 'w'; }));
+        var black = countMoveCategories(analysisMoveReviews.filter(function(r) { return r && r.moveColor === 'b'; }));
+        var order = ['brilliant', 'best', 'good', 'mistake', 'blunder'];
+
+        container.innerHTML = order.map(function(cat) {
+            return '<div class="quality-chip ' + cat + '">' +
+                '<span class="count">' + (white[cat] || 0) + ' / ' + (black[cat] || 0) + '</span>' +
+                '<span>' + (MOVE_CATEGORY_LABELS[cat] || cat) + '</span>' +
+                '</div>';
+        }).join('');
     }
 
     function updateAccuracyRing(id, value) {
         var el = document.getElementById(id);
         if (!el) return;
         var color = '#ef4444';
-        if (value >= 88) color = '#4caf50';
+        if (value >= 90) color = '#4caf50';
         else if (value >= 75) color = '#f59e0b';
         el.innerText = value + "%";
         el.style.color = color;
@@ -1681,6 +1850,7 @@
             updateAccuracyRing('acc-white', 100);
             updateAccuracyRing('acc-black', 100);
             document.getElementById('report-blunder').innerText = "Hamle kaydi yok.";
+            renderQualitySummary();
             return;
         }
 
@@ -1690,6 +1860,7 @@
         analysisMoveReviews = new Array(analysisHistory.length);
         renderMoveList();
         highlightMoveRow();
+        renderQualitySummary();
 
         var probeChess = new Chess();
         var previousEval = await evaluateFenDetailed(probeChess.fen(), SF_DEPTH_REVIEW, token);
@@ -1699,30 +1870,83 @@
             if (token !== analysisReviewToken) return;
 
             var move = analysisHistory[i];
-            probeChess.move(move.san);
-            var currentEval = await evaluateFenDetailed(probeChess.fen(), SF_DEPTH_REVIEW, token);
-            if (!currentEval || token !== analysisReviewToken) return;
+            var beforeFen = probeChess.fen();
+            var playedUci = moveToUci(move);
 
-            var before = previousEval.whiteScore;
-            var after = currentEval.whiteScore;
-            var cpl = 0;
-            if (before !== null && after !== null) {
-                cpl = move.color === 'w'
-                    ? Math.max(0, Math.round(before - after))
-                    : Math.max(0, Math.round(after - before));
+            probeChess.move(move.san);
+            var playedFen = probeChess.fen();
+            var playedEval = await evaluateFenDetailed(playedFen, SF_DEPTH_REVIEW, token);
+            if (!playedEval || token !== analysisReviewToken) return;
+
+            var bestMoveUci = previousEval.bestMove || null;
+            var bestAfterEval = playedEval;
+            var bestFen = playedFen;
+
+            if (bestMoveUci && bestMoveUci !== '(none)' && bestMoveUci !== playedUci) {
+                try {
+                    var bestProbe = new Chess();
+                    if (bestProbe.load(beforeFen)) {
+                        bestProbe.move({
+                            from: bestMoveUci.slice(0, 2),
+                            to: bestMoveUci.slice(2, 4),
+                            promotion: bestMoveUci.length > 4 ? bestMoveUci.slice(4, 5) : undefined
+                        });
+                        bestFen = bestProbe.fen();
+                        var maybeBest = await evaluateFenDetailed(bestFen, SF_DEPTH_REVIEW, token);
+                        if (maybeBest && token === analysisReviewToken) bestAfterEval = maybeBest;
+                    }
+                } catch (e) {
+                    bestAfterEval = playedEval;
+                    bestFen = playedFen;
+                }
             }
 
-            var category = classifyMoveByCpl(cpl, previousEval.bestMove, move);
+            var beforeMoverScore = moverScoreFromWhite(previousEval.whiteScore, move.color);
+            var playedMoverScore = moverScoreFromWhite(playedEval.whiteScore, move.color);
+            var bestMoverScore = moverScoreFromWhite(bestAfterEval.whiteScore, move.color);
+            var cpl = Math.max(0, Math.round(bestMoverScore - playedMoverScore));
+
+            var beforeMaterial = materialEvalWhiteCpFromFen(beforeFen);
+            var playedMaterial = materialEvalWhiteCpFromFen(playedFen);
+            var materialDeltaForMover = move.color === 'w'
+                ? (playedMaterial - beforeMaterial)
+                : (beforeMaterial - playedMaterial);
+
+            var moveAccuracy = moveAccuracyFromEval(
+                previousEval.whiteScore,
+                bestAfterEval.whiteScore,
+                playedEval.whiteScore,
+                move.color,
+                cpl
+            );
+
+            var category = classifyMoveQuality({
+                playedIsBest: !!bestMoveUci && bestMoveUci === playedUci,
+                cpl: cpl,
+                moveAccuracy: moveAccuracy,
+                materialDeltaForMover: materialDeltaForMover,
+                beforeMoverScore: beforeMoverScore,
+                afterMoverScore: playedMoverScore
+            });
+
+            var bestMoveSan = formatEngineMove(bestMoveUci, beforeFen);
             analysisMoveReviews[i] = {
                 index: i,
                 moveSan: move.san,
                 moveColor: move.color,
                 cpl: cpl,
                 category: category,
-                bestMove: previousEval.bestMove || null
+                moveAccuracy: moveAccuracy,
+                bestMove: bestMoveUci,
+                bestMoveSan: bestMoveSan,
+                beforeFen: beforeFen,
+                playedFen: playedFen,
+                bestFen: bestFen,
+                playedUci: playedUci,
+                materialDeltaForMover: materialDeltaForMover
             };
 
-            previousEval = currentEval;
+            previousEval = playedEval;
 
             if (progressEl && (i % 4 === 0 || i === analysisHistory.length - 1)) {
                 progressEl.innerText = "Analiz: " + (i + 1) + "/" + analysisHistory.length + " hamle";
@@ -1730,6 +1954,7 @@
             if (i % 6 === 0 || i === analysisHistory.length - 1) {
                 renderMoveList();
                 highlightMoveRow();
+                renderQualitySummary();
             }
         }
 
@@ -1739,6 +1964,7 @@
         var blackReviews = analysisMoveReviews.filter(function(r) { return r && r.moveColor === 'b'; });
         updateAccuracyRing('acc-white', calculateAccuracy(whiteReviews));
         updateAccuracyRing('acc-black', calculateAccuracy(blackReviews));
+        renderQualitySummary();
 
         var worst = null;
         analysisMoveReviews.forEach(function(r) {
@@ -1760,17 +1986,21 @@
 
         renderMoveList();
         highlightMoveRow();
+        refreshBestMoveButtonState();
     }
 
     window.openAnalysis = async (pgn, players, fallbackFen = null) => {
         switchView('view-2v2-analysis');
+        bestPreviewToken++;
         analysisReviewToken++;
         var thisReviewToken = analysisReviewToken;
         analysisMoveReviews = [];
         liveEvalRequestId++;
+        liveBestMoveUci = null;
+        liveBestMoveFen = null;
 
         setStockfishStatus('loading');
-        document.getElementById('report-best').innerText = "Motor Yukleniyor...";
+        setBestMoveButton("Motor Yukleniyor...", null, null);
 
         if (!sfWorker || !isSfReady) {
             await initStockfish();
@@ -1825,10 +2055,12 @@
         document.getElementById('report-blunder').innerText = analysisHistory.length > 0 ? "Derin analiz hazirlaniyor..." : "Hamle kaydi yok.";
         document.getElementById('acc-white').innerText = "--";
         document.getElementById('acc-black').innerText = "--";
+        renderQualitySummary();
 
         renderAnalysisBoard();
         renderMoveList();
         highlightMoveRow();
+        refreshBestMoveButtonState();
         runStockfish();
         switchAnalysisTab('review');
 
@@ -1837,6 +2069,8 @@
         } else {
             updateAccuracyRing('acc-white', 100);
             updateAccuracyRing('acc-black', 100);
+            renderQualitySummary();
+            refreshBestMoveButtonState();
         }
     };
 
@@ -1862,6 +2096,7 @@
     };
 
     window.navAnalysis = (action) => {
+        bestPreviewToken++;
         if (action === 'start') {
             currentAnalysisIndex = 0;
             analysisChess.reset();
@@ -1885,10 +2120,12 @@
         }
         renderAnalysisBoard();
         highlightMoveRow();
+        refreshBestMoveButtonState();
         runStockfish();
     };
 
     window.jumpToMove = (index) => {
+        bestPreviewToken++;
         analysisChess.reset();
         for (let i = 0; i < index; i++) {
             analysisChess.move(analysisHistory[i].san);
@@ -1896,6 +2133,7 @@
         currentAnalysisIndex = index;
         renderAnalysisBoard();
         highlightMoveRow();
+        refreshBestMoveButtonState();
         runStockfish();
     };
 
@@ -1971,7 +2209,7 @@
             const tag = document.createElement('span');
             tag.className = `move-tag ${review.category}`;
             tag.innerText = MOVE_CATEGORY_TAGS[review.category] || '';
-            tag.title = `${MOVE_CATEGORY_LABELS[review.category] || 'Hamle'} | CPL: ${review.cpl}`;
+            tag.title = `${MOVE_CATEGORY_LABELS[review.category] || 'Hamle'} | CPL: ${review.cpl} | Dogruluk: ${review.moveAccuracy || 0}%`;
             cell.appendChild(tag);
         }
 
