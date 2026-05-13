@@ -593,7 +593,12 @@
             <div id="p1v1-black" class="player-tag"><i class="fas fa-user"></i> <span>Siyah</span></div>
         </div>
 
-        <div class="board-container" id="chessBoard1v1"></div>
+        <div class="board-stage">
+            <button class="board-expand-btn" onclick="openBoardFullscreen('1v1')" title="Tahtayı büyüt">
+                <i class="fas fa-expand"></i>
+            </button>
+            <div class="board-container" id="chessBoard1v1"></div>
+        </div>
 
         <div style="display:flex; justify-content:center; margin-top:10px;">
             <div id="p1v1-white" class="player-tag"><i class="fas fa-user"></i> <span>Beyaz</span></div>
@@ -617,7 +622,12 @@
             <div id="p-b-1" class="player-tag"><i class="fas fa-user"></i> <span>Oyuncu 2</span></div>
         </div>
 
-        <div class="board-container" id="chessBoard"></div>
+        <div class="board-stage">
+            <button class="board-expand-btn" onclick="openBoardFullscreen('2v2')" title="Tahtayı büyüt">
+                <i class="fas fa-expand"></i>
+            </button>
+            <div class="board-container" id="chessBoard"></div>
+        </div>
 
         <div style="display:flex; justify-content:space-around; margin-top:10px;">
             <div id="p-w-0" class="player-tag"><i class="fas fa-user"></i> <span>Oyuncu 1</span></div>
@@ -674,14 +684,6 @@
             <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:15px; border-radius:8px; margin-top:20px; border:1px solid var(--glass-border);">
                 <span>Oyun Sesleri</span>
                 <label class="switch"><input type="checkbox" id="muteSoundToggle"><span class="slider"></span></label>
-            </div>
-            <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:8px; margin-top:12px; border:1px solid var(--glass-border); text-align:left;">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:15px; margin-bottom:10px;">
-                    <span>Pasif Taş Saydamlığı</span>
-                    <strong id="inactiveOpacityValue" style="color:var(--accent);">70%</strong>
-                </div>
-                <input type="range" id="inactiveOpacityRange" min="0.2" max="1" step="0.05" value="0.7" style="margin:0;">
-                <div style="margin-top:8px; font-size:0.76rem; color:var(--text-muted);">Sıra sende değilken taşların ne kadar silik görüneceğini ayarlar.</div>
             </div>
             <div style="margin-top:10px; font-size:0.8rem; color:#aaa; text-align:left;">
                 <i class="fas fa-info-circle"></i> Ses gelmiyorsa ekranda herhangi bir yere tıklayın.
@@ -828,6 +830,27 @@
         </div>
     </div>
 
+</div>
+
+<div id="chessFullscreenOverlay" class="fullscreen-board-overlay" aria-hidden="true">
+    <button class="board-fullscreen-close" onclick="closeBoardFullscreen()" title="Tam ekrandan çık">
+        <i class="fas fa-times"></i>
+    </button>
+    <div class="fullscreen-board-stage">
+        <div id="fullscreenBlackRow" class="fullscreen-player-row black">
+            <div class="fullscreen-side-label">Siyah</div>
+            <div id="fullscreenBlackPlayers" class="fullscreen-player-group"></div>
+            <div id="fullscreenTimerBlack" class="fullscreen-timer">10:00</div>
+        </div>
+        <div class="fullscreen-board-shell">
+            <div class="board-container fullscreen-board" id="fullscreenBoard"></div>
+        </div>
+        <div id="fullscreenWhiteRow" class="fullscreen-player-row white">
+            <div class="fullscreen-side-label">Beyaz</div>
+            <div id="fullscreenWhitePlayers" class="fullscreen-player-group"></div>
+            <div id="fullscreenTimerWhite" class="fullscreen-timer">10:00</div>
+        </div>
+    </div>
 </div>
 
 <div id="gameOverModal" class="modal-overlay">

@@ -234,6 +234,151 @@ const [
     let boardValidMoves = [];
     let gameTimerInterval = null;
     let lastPlayedMoveCount = -1; 
+    let activeFullscreenBoardMode = null;
+
+    function getFormattedClock(ms) {
+        const totalSeconds = Math.max(0, Math.floor((ms || 0) / 1000));
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+    }
+
+    function setBoardFullscreenVisible(visible) {
+        const overlay = document.getElementById('chessFullscreenOverlay');
+        if (!overlay) return;
+        overlay.classList.toggle('active', visible);
+        overlay.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        document.body.classList.toggle('board-fullscreen-open', visible);
+        if (!visible) {
+            overlay.dataset.mode = '';
+            const boardEl = document.getElementById('fullscreenBoard');
+            if (boardEl) boardEl.innerHTML = '';
+        }
+    }
+
+    function setFullscreenPlayerGroup(containerId, players, activeUid) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        const safePlayers = Array.isArray(players) && players.length ? players : [{ name: 'Bekleniyor...', avatar: 'fa-user' }];
+        safePlayers.forEach(function(player) {
+            const chip = document.createElement('div');
+            chip.className = 'fullscreen-player-chip';
+            if (activeUid && player && player.uid === activeUid) chip.classList.add('active');
+
+            const icon = document.createElement('i');
+            icon.className = 'fas ' + ((player && player.avatar) || 'fa-user');
+            const name = document.createElement('span');
+            name.innerText = (player && player.name) || 'Bekleniyor...';
+
+            chip.appendChild(icon);
+            chip.appendChild(name);
+            container.appendChild(chip);
+        });
+    }
+
+    function syncFullscreenTimers(whiteText, blackText) {
+        const whiteEl = document.getElementById('fullscreenTimerWhite');
+        const blackEl = document.getElementById('fullscreenTimerBlack');
+        if (whiteEl) whiteEl.innerText = whiteText || '--:--';
+        if (blackEl) blackEl.innerText = blackText || '--:--';
+    }
+
+    function setFullscreenRowActive(color) {
+        const whiteRow = document.getElementById('fullscreenWhiteRow');
+        const blackRow = document.getElementById('fullscreenBlackRow');
+        if (whiteRow) whiteRow.classList.toggle('active', color === 'white');
+        if (blackRow) blackRow.classList.toggle('active', color === 'black');
+    }
+
+    function syncBoardFullscreenUI() {
+        if (!activeFullscreenBoardMode) return;
+        const overlay = document.getElementById('chessFullscreenOverlay');
+        if (!overlay) return;
+        overlay.dataset.mode = activeFullscreenBoardMode;
+
+        if (activeFullscreenBoardMode === '1v1') {
+            if (!current1v1Data) {
+                window.closeBoardFullscreen();
+                return;
+            }
+            const whitePlayer = current1v1Data.players.find(function(player) { return player.team === 'white'; });
+            const blackPlayer = current1v1Data.players.find(function(player) { return player.team === 'black'; });
+            const activeColor = current1v1Data.status === 'active' ? (chess1v1.turn() === 'w' ? 'white' : 'black') : null;
+
+            setFullscreenPlayerGroup('fullscreenWhitePlayers', whitePlayer ? [whitePlayer] : [], activeColor === 'white' && whitePlayer ? whitePlayer.uid : null);
+            setFullscreenPlayerGroup('fullscreenBlackPlayers', blackPlayer ? [blackPlayer] : [], activeColor === 'black' && blackPlayer ? blackPlayer.uid : null);
+            setFullscreenRowActive(activeColor);
+            syncFullscreenTimers(
+                (document.getElementById('timer1v1White') || {}).innerText,
+                (document.getElementById('timer1v1Black') || {}).innerText
+            );
+            render1v1BoardInto(document.getElementById('fullscreenBoard'));
+            return;
+        }
+
+        if (activeFullscreenBoardMode === '2v2') {
+            if (!current2v2Data) {
+                window.closeBoardFullscreen();
+                return;
+            }
+            const whitePlayers = current2v2Data.players.filter(function(player) { return player.team === 'white' && player.uid; });
+            const blackPlayers = current2v2Data.players.filter(function(player) { return player.team === 'black' && player.uid; });
+            const movesPerTurn = current2v2Data.movesPerTurn || 5;
+            const movesMadeByColor = Math.floor((current2v2Data.moveCount || 0) / 2);
+            const activeIndex = Math.floor(movesMadeByColor / movesPerTurn) % 2;
+            const activeColor = current2v2Data.status === 'active' ? (chess.turn() === 'w' ? 'white' : 'black') : null;
+            const activePlayer = current2v2Data.players.find(function(player) {
+                return activeColor && player.team === activeColor && player.index === activeIndex;
+            });
+            const activeUid = activePlayer ? activePlayer.uid : null;
+
+            setFullscreenPlayerGroup('fullscreenWhitePlayers', whitePlayers, activeColor === 'white' ? activeUid : null);
+            setFullscreenPlayerGroup('fullscreenBlackPlayers', blackPlayers, activeColor === 'black' ? activeUid : null);
+            setFullscreenRowActive(activeColor);
+            syncFullscreenTimers(
+                (document.getElementById('timerWhite') || {}).innerText,
+                (document.getElementById('timerBlack') || {}).innerText
+            );
+            render2v2BoardInto(document.getElementById('fullscreenBoard'), activeIndex, chess.turn());
+        }
+    }
+
+    window.openBoardFullscreen = async function(mode) {
+        if (mode !== '1v1' && mode !== '2v2') return;
+        activeFullscreenBoardMode = mode;
+        setBoardFullscreenVisible(true);
+        syncBoardFullscreenUI();
+
+        const overlay = document.getElementById('chessFullscreenOverlay');
+        if (overlay && overlay.requestFullscreen && document.fullscreenElement !== overlay) {
+            try { await overlay.requestFullscreen(); } catch (e) {}
+        }
+    };
+
+    window.closeBoardFullscreen = async function() {
+        const overlay = document.getElementById('chessFullscreenOverlay');
+        activeFullscreenBoardMode = null;
+        setBoardFullscreenVisible(false);
+        if (document.fullscreenElement === overlay) {
+            try { await document.exitFullscreen(); } catch (e) {}
+        }
+    };
+
+    document.addEventListener('fullscreenchange', function() {
+        const overlay = document.getElementById('chessFullscreenOverlay');
+        if (!overlay) return;
+        if (document.fullscreenElement !== overlay && activeFullscreenBoardMode && overlay.classList.contains('active')) {
+            activeFullscreenBoardMode = null;
+            setBoardFullscreenVisible(false);
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && activeFullscreenBoardMode && !document.fullscreenElement) {
+            window.closeBoardFullscreen();
+        }
+    });
     
     // Idris Clicker Logic
     let idrisCooldown = false;
@@ -299,29 +444,7 @@ const [
         return Math.max(min, Math.min(max, num));
     }
 
-    function getStoredInactiveOpacity() {
-        var raw = parseFloat(localStorage.getItem('gm_inactive_piece_opacity') || '0.7');
-        return clamp(isNaN(raw) ? 0.7 : raw, 0.2, 1);
-    }
-
-    function applyInactiveOpacity(value) {
-        var safeValue = clamp(parseFloat(value), 0.2, 1);
-        document.documentElement.style.setProperty('--inactive-piece-opacity', safeValue.toFixed(2));
-        var range = document.getElementById('inactiveOpacityRange');
-        var label = document.getElementById('inactiveOpacityValue');
-        if (range) range.value = safeValue.toFixed(2);
-        if (label) label.innerText = Math.round(safeValue * 100) + '%';
-        return safeValue;
-    }
-
-    applyInactiveOpacity(getStoredInactiveOpacity());
-
-    var inactiveOpacityRange = document.getElementById('inactiveOpacityRange');
-    if (inactiveOpacityRange) {
-        inactiveOpacityRange.addEventListener('input', function(e) {
-            applyInactiveOpacity(e.target.value);
-        });
-    }
+    localStorage.removeItem('gm_inactive_piece_opacity');
 
     function isUserOnline(profile) {
         if (!profile || !profile.lastActiveAt) return false;
@@ -488,6 +611,104 @@ const [
         renderFriendsList();
         renderDmThread();
     }
+
+    function isUserFriend(targetUid) {
+        var friendIds = (currentProfileData && Array.isArray(currentProfileData.friends)) ? currentProfileData.friends : [];
+        return !!targetUid && friendIds.indexOf(targetUid) !== -1;
+    }
+
+    function getPendingIncomingFriendRequest(targetUid) {
+        return friendRequestsCache.find(function(req) {
+            return req.status === 'pending' && req.fromUid === targetUid;
+        }) || null;
+    }
+
+    async function sendFriendRequestToUid(targetUid, targetProfileOverride) {
+        if (!currentUser || !currentProfileData) return false;
+        if (!targetUid) {
+            showToast('Oyuncu bulunamadı.', 'error');
+            return false;
+        }
+        if (targetUid === currentUser.uid) {
+            showToast('Kendine istek gönderemezsin.', 'error');
+            return false;
+        }
+        if (isUserFriend(targetUid)) {
+            showToast('Bu kullanıcı zaten arkadaş listende.', 'info');
+            return false;
+        }
+
+        try {
+            var targetProfile = targetProfileOverride;
+            if (!targetProfile) {
+                var targetSnap = await getDoc(doc(db, 'profiles', targetUid));
+                if (!targetSnap.exists()) {
+                    showToast('Oyuncu profili bulunamadı.', 'error');
+                    return false;
+                }
+                targetProfile = targetSnap.data() || {};
+            }
+
+            var reverseRequestRef = doc(db, 'friend_requests', targetUid + '_' + currentUser.uid);
+            var reverseRequestSnap = await getDoc(reverseRequestRef);
+            if (reverseRequestSnap.exists() && reverseRequestSnap.data().status === 'pending') {
+                await window.acceptFriendRequest(reverseRequestSnap.id);
+                return true;
+            }
+
+            var requestRef = doc(db, 'friend_requests', currentUser.uid + '_' + targetUid);
+            var requestSnap = await getDoc(requestRef);
+            if (requestSnap.exists() && requestSnap.data().status === 'pending') {
+                showToast('Arkadaşlık isteği zaten gönderildi.', 'info');
+                return false;
+            }
+
+            await setDoc(requestRef, {
+                fromUid: currentUser.uid,
+                fromName: currentUser.displayName || 'Oyuncu',
+                fromAvatar: currentUser.photoURL || 'fa-chess-pawn',
+                fromCode: currentProfileData.friendCode || '',
+                toUid: targetUid,
+                toName: targetProfile.displayName || 'Oyuncu',
+                toAvatar: targetProfile.avatar || 'fa-user',
+                status: 'pending',
+                createdAt: serverTimestamp(),
+                createdAtMs: Date.now()
+            }, { merge: true });
+
+            showToast('Arkadaşlık isteği gönderildi.', 'success');
+            return true;
+        } catch (e) {
+            console.error(e);
+            showToast('Arkadaşlık isteği gönderilemedi.', 'error');
+            return false;
+        }
+    }
+
+    function appendLobbyFriendButton(container, targetUid) {
+        if (!container || !targetUid || !currentUser || targetUid === currentUser.uid || isUserFriend(targetUid)) return;
+        var incomingRequest = getPendingIncomingFriendRequest(targetUid);
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'mini-social-btn' + (incomingRequest ? ' accept' : '');
+        button.innerHTML = incomingRequest
+            ? '<i class="fas fa-user-check"></i>'
+            : '<i class="fas fa-user-plus"></i>';
+        button.title = incomingRequest ? 'Arkadaşlık isteğini kabul et' : 'Arkadaş ekle';
+        button.onclick = function(event) {
+            event.stopPropagation();
+            if (incomingRequest) {
+                window.acceptFriendRequest(incomingRequest.id);
+            } else {
+                window.sendFriendRequestToPlayer(targetUid);
+            }
+        };
+        container.appendChild(button);
+    }
+
+    window.sendFriendRequestToPlayer = function(targetUid) {
+        return sendFriendRequestToUid(targetUid);
+    };
 
     function renderEmptyState(containerId, message) {
         var container = document.getElementById(containerId);
@@ -676,35 +897,8 @@ const [
             if (matches.empty) return showToast('Bu koda sahip kullanıcı bulunamadı.', 'error');
 
             var targetDoc = matches.docs[0];
-            var targetProfile = targetDoc.data() || {};
-            var targetUid = targetDoc.id;
-            var myFriends = Array.isArray(currentProfileData.friends) ? currentProfileData.friends : [];
-            if (targetUid === currentUser.uid) return showToast('Kendine istek gönderemezsin.', 'error');
-            if (myFriends.includes(targetUid)) return showToast('Bu kullanıcı zaten arkadaş listende.', 'info');
-
-            var reverseRequestRef = doc(db, 'friend_requests', targetUid + '_' + currentUser.uid);
-            var reverseRequestSnap = await getDoc(reverseRequestRef);
-            if (reverseRequestSnap.exists() && reverseRequestSnap.data().status === 'pending') {
-                await window.acceptFriendRequest(reverseRequestSnap.id);
-                if (input) input.value = '';
-                return showToast('Karşılıklı istek bulundu, arkadaş eklendi!', 'success');
-            }
-
-            await setDoc(doc(db, 'friend_requests', currentUser.uid + '_' + targetUid), {
-                fromUid: currentUser.uid,
-                fromName: currentUser.displayName || 'Oyuncu',
-                fromAvatar: currentUser.photoURL || 'fa-chess-pawn',
-                fromCode: currentProfileData.friendCode || '',
-                toUid: targetUid,
-                toName: targetProfile.displayName || 'Oyuncu',
-                toAvatar: targetProfile.avatar || 'fa-user',
-                status: 'pending',
-                createdAt: serverTimestamp(),
-                createdAtMs: Date.now()
-            }, { merge: true });
-
-            if (input) input.value = '';
-            showToast('Arkadaşlık isteği gönderildi.', 'success');
+            var sent = await sendFriendRequestToUid(targetDoc.id, targetDoc.data() || {});
+            if (sent && input) input.value = '';
         } catch (e) {
             console.error(e);
             showToast('Arkadaşlık isteği gönderilemedi.', 'error');
@@ -952,6 +1146,9 @@ const [
         window.playGameSound('nav'); 
         const previousView = currentViewId;
         currentViewId = id;
+        if ((activeFullscreenBoardMode === '1v1' && id !== 'view-1v1-game') || (activeFullscreenBoardMode === '2v2' && id !== 'view-2v2-game')) {
+            window.closeBoardFullscreen();
+        }
         if (previousView === 'view-2v2-analysis' && id !== 'view-2v2-analysis') {
             analysisReviewToken++;
             liveEvalRequestId++;
@@ -979,6 +1176,7 @@ const [
     let analysisHistory = [];
     let currentAnalysisIndex = 0;
     let analysisMoveReviews = [];
+    let analysisBaseFen = null;
     let analysisReviewToken = 0;
     let liveEvalRequestId = 0;
     let liveBestMoveUci = null;
@@ -1364,6 +1562,47 @@ const [
         return new Promise(function(resolve) { setTimeout(resolve, ms); });
     }
 
+    function getAnalysisReplayMove(move) {
+        if (!move) return null;
+        if (move.from && move.to) {
+            return {
+                from: move.from,
+                to: move.to,
+                promotion: move.promotion || undefined
+            };
+        }
+        return move.san || null;
+    }
+
+    function setAnalysisPosition(index) {
+        var targetIndex = Math.max(0, Math.min(index, analysisHistory.length));
+
+        if (analysisBaseFen) {
+            try {
+                analysisChess.load(analysisBaseFen);
+            } catch (e) {
+                analysisChess.reset();
+            }
+        } else {
+            analysisChess.reset();
+        }
+
+        for (var i = 0; i < targetIndex; i++) {
+            var replayMove = getAnalysisReplayMove(analysisHistory[i]);
+            var played = replayMove ? analysisChess.move(replayMove) : null;
+            if (!played && analysisHistory[i] && analysisHistory[i].san) {
+                played = analysisChess.move(analysisHistory[i].san);
+            }
+            if (!played) {
+                currentAnalysisIndex = i;
+                return false;
+            }
+        }
+
+        currentAnalysisIndex = targetIndex;
+        return true;
+    }
+
     window.previewBestVsPlayedMove = async () => {
         var ctx = getCurrentReviewContext();
         if (!ctx || !ctx.review.beforeFen || !ctx.review.bestMove || !analysisHistory[ctx.moveIndex]) {
@@ -1396,8 +1635,12 @@ const [
             console.error(e);
         } finally {
             if (token !== bestPreviewToken) return;
-            analysisChess.load(originalFen);
-            currentAnalysisIndex = originalIndex;
+            try {
+                analysisChess.load(originalFen);
+                currentAnalysisIndex = originalIndex;
+            } catch (e) {
+                setAnalysisPosition(originalIndex);
+            }
             renderAnalysisBoard();
             highlightMoveRow();
             runStockfish();
@@ -1870,6 +2113,7 @@ const [
         document.getElementById('an-white-player').innerText = wTeam || "Beyaz Takim";
         document.getElementById('an-black-player').innerText = bTeam || "Siyah Takim";
 
+        analysisBaseFen = null;
         analysisChess.reset();
         let pgnLoaded = false;
         try {
@@ -1883,16 +2127,25 @@ const [
         if (!pgnLoaded && fallbackFen) {
             try {
                 pgnLoaded = analysisChess.load(fallbackFen);
+                analysisBaseFen = fallbackFen;
             } catch (e) {
                 pgnLoaded = false;
             }
         }
 
         if (!pgnLoaded) analysisChess.reset();
+        if (pgnLoaded && !analysisBaseFen) {
+            try {
+                var analysisHeaders = analysisChess.header ? analysisChess.header() : null;
+                if (analysisHeaders && analysisHeaders.SetUp === '1' && analysisHeaders.FEN) {
+                    analysisBaseFen = analysisHeaders.FEN;
+                }
+            } catch (e) {}
+        }
         analysisHistory = (pgnLoaded && typeof pgn === 'string' && pgn.trim())
             ? analysisChess.history({ verbose: true })
             : [];
-        currentAnalysisIndex = analysisHistory.length;
+        setAnalysisPosition(analysisHistory.length);
 
         let result = "Devam Ediyor";
         if (analysisChess.in_checkmate()) {
@@ -1956,27 +2209,21 @@ const [
 
     window.navAnalysis = (action) => {
         bestPreviewToken++;
+        var targetIndex = currentAnalysisIndex;
         if (action === 'start') {
-            currentAnalysisIndex = 0;
-            analysisChess.reset();
+            targetIndex = 0;
         } else if (action === 'prev') {
             if (currentAnalysisIndex > 0) {
-                currentAnalysisIndex--;
-                analysisChess.undo();
+                targetIndex = currentAnalysisIndex - 1;
             }
         } else if (action === 'next') {
             if (currentAnalysisIndex < analysisHistory.length) {
-                const move = analysisHistory[currentAnalysisIndex];
-                analysisChess.move(move.san);
-                currentAnalysisIndex++;
+                targetIndex = currentAnalysisIndex + 1;
             }
         } else if (action === 'end') {
-            while (currentAnalysisIndex < analysisHistory.length) {
-                const move = analysisHistory[currentAnalysisIndex];
-                analysisChess.move(move.san);
-                currentAnalysisIndex++;
-            }
+            targetIndex = analysisHistory.length;
         }
+        setAnalysisPosition(targetIndex);
         renderAnalysisBoard();
         highlightMoveRow();
         refreshBestMoveButtonState();
@@ -1985,11 +2232,7 @@ const [
 
     window.jumpToMove = (index) => {
         bestPreviewToken++;
-        analysisChess.reset();
-        for (let i = 0; i < index; i++) {
-            analysisChess.move(analysisHistory[i].san);
-        }
-        currentAnalysisIndex = index;
+        setAnalysisPosition(index);
         renderAnalysisBoard();
         highlightMoveRow();
         refreshBestMoveButtonState();
@@ -1998,6 +2241,7 @@ const [
 
     function renderAnalysisBoard() {
         const boardEl = document.getElementById('analysisBoard');
+        if (!boardEl) return;
         boardEl.innerHTML = '';
         const boardArray = analysisChess.board();
         const isFlipped = boardEl.classList.contains('flipped');
@@ -2010,20 +2254,14 @@ const [
                 const row = isFlipped ? 7 - r : r;
                 const col = isFlipped ? 7 - c : c;
                 const sq = boardArray[row][col];
+                const squareName = String.fromCharCode(97 + col) + (8 - row);
 
                 const div = document.createElement('div');
                 div.className = `square ${(r + c) % 2 === 0 ? 'white' : 'black'}`;
 
                 const lastMove = analysisHistory[currentAnalysisIndex - 1];
-                if (lastMove) {
-                    const fromRow = 8 - parseInt(lastMove.from[1], 10);
-                    const fromCol = lastMove.from.charCodeAt(0) - 97;
-                    const toRow = 8 - parseInt(lastMove.to[1], 10);
-                    const toCol = lastMove.to.charCodeAt(0) - 97;
-
-                    if ((row === fromRow && col === fromCol) || (row === toRow && col === toCol)) {
-                        div.style.background = "rgba(255, 255, 0, 0.4)";
-                    }
+                if (lastMove && (squareName === lastMove.from || squareName === lastMove.to)) {
+                    div.style.background = "rgba(255, 255, 0, 0.4)";
                 }
 
                 if (c === 0) {
@@ -2349,6 +2587,7 @@ const [
             el.innerHTML = `<div style="font-size:2rem; margin-bottom:5px;"><i class="fas ${p.avatar || 'fa-user'}"></i></div>
                             <div style="font-weight:bold;">${p.name}</div>
                             <div style="font-size:0.8rem;">0 Puan</div>`;
+            appendLobbyFriendButton(el, p.uid);
             list.appendChild(el);
         });
     }
@@ -2780,6 +3019,7 @@ const [
             } else {
                 el.innerHTML = `<span><i class="fas fa-plus"></i> ${player.team === 'white' ? 'Beyaz Boş' : 'Siyah Boş'}</span>`;
             }
+            appendLobbyFriendButton(el, player.uid);
         });
 
         const mySeat = data.players.find(function(player) { return player.uid === currentUser.uid; });
@@ -2854,14 +3094,11 @@ const [
     };
 
     function update1v1TimerDisplay(whiteMs, blackMs) {
-        const format = function(ms) {
-            const totalSeconds = Math.floor(ms / 1000);
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
-        };
-        document.getElementById('timer1v1White').innerText = format(whiteMs);
-        document.getElementById('timer1v1Black').innerText = format(blackMs);
+        const whiteText = getFormattedClock(whiteMs);
+        const blackText = getFormattedClock(blackMs);
+        document.getElementById('timer1v1White').innerText = whiteText;
+        document.getElementById('timer1v1Black').innerText = blackText;
+        if (activeFullscreenBoardMode === '1v1') syncFullscreenTimers(whiteText, blackText);
     }
 
     async function handle1v1TimeOut(loserColor) {
@@ -2924,10 +3161,10 @@ const [
             ? 'Oyun Bitti'
             : 'Sıra: ' + ((turnTeam === 'white' ? whitePlayer : blackPlayer) || { name: 'Oyuncu' }).name;
         draw1v1Board();
+        syncBoardFullscreenUI();
     }
 
-    function draw1v1Board() {
-        const boardEl = document.getElementById('chessBoard1v1');
+    function render1v1BoardInto(boardEl) {
         if (!boardEl || !current1v1Data) return;
         boardEl.innerHTML = '';
         const myPlayer = current1v1Data.players.find(function(player) { return player.uid === currentUser.uid; });
@@ -2969,6 +3206,13 @@ const [
                 }
                 boardEl.appendChild(div);
             }
+        }
+    }
+
+    function draw1v1Board() {
+        render1v1BoardInto(document.getElementById('chessBoard1v1'));
+        if (activeFullscreenBoardMode === '1v1') {
+            render1v1BoardInto(document.getElementById('fullscreenBoard'));
         }
     }
 
@@ -3105,10 +3349,10 @@ const [
             pgn: "",
             moveCount: 0,
             players: [
-                {uid: currentUser.uid, name: currentUser.displayName, team: 'white', index: 0, isReady: false},
-                {uid: null, name: "Boş", team: 'white', index: 1, isReady: false},
-                {uid: null, name: "Boş", team: 'black', index: 0, isReady: false},
-                {uid: null, name: "Boş", team: 'black', index: 1, isReady: false}
+                {uid: currentUser.uid, name: currentUser.displayName, avatar: currentUser.photoURL || 'fa-chess-pawn', team: 'white', index: 0, isReady: false},
+                {uid: null, name: "Boş", avatar: 'fa-plus', team: 'white', index: 1, isReady: false},
+                {uid: null, name: "Boş", avatar: 'fa-plus', team: 'black', index: 0, isReady: false},
+                {uid: null, name: "Boş", avatar: 'fa-plus', team: 'black', index: 1, isReady: false}
             ],
             participantIds: [currentUser.uid],
             winner: null,
@@ -3172,7 +3416,7 @@ const [
         
         if(current2v2Data && current2v2Data.status === 'lobby') {
              const newPlayers = current2v2Data.players.map(p => {
-                 if(p.uid === currentUser.uid) return {uid: null, name: "Boş", team: p.team, index: p.index, isReady: false};
+                 if(p.uid === currentUser.uid) return {uid: null, name: "Boş", avatar: 'fa-plus', team: p.team, index: p.index, isReady: false};
                  return p;
              });
              await updateDoc(doc(db, "games_2v2", current2v2Id), { 
@@ -3199,12 +3443,13 @@ const [
             el.className = `team-slot team-${p.team} ${p.uid ? 'taken' : ''} ${p.isReady ? 'ready' : ''}`;
             let html = '';
             if(p.uid) {
-                html = `<span><i class="fas fa-user"></i> ${p.name} ${p.uid===d.hostId ? '👑' : ''}</span> ${p.isReady ? '<i class="fas fa-check" style="color:var(--success)"></i>' : '<i class="fas fa-clock"></i>'}`;
+                html = `<span><i class="fas ${p.avatar || 'fa-user'}"></i> ${escapeHtml(p.name)} ${p.uid===d.hostId ? '👑' : ''}</span> ${p.isReady ? '<i class="fas fa-check" style="color:var(--success)"></i>' : '<i class="fas fa-clock"></i>'}`;
                 if(p.uid === currentUser.uid) html += ` <span style="font-size:0.7rem; color:var(--accent)">(Sen)</span>`;
             } else {
                 html = `<span><i class="fas fa-plus"></i> Boş</span>`;
             }
             el.innerHTML = html;
+            appendLobbyFriendButton(el, p.uid);
         });
 
         const mySlot = d.players.find(p => p.uid === currentUser.uid);
@@ -3225,12 +3470,12 @@ const [
         if(target.uid && target.uid !== currentUser.uid) return showToast("Bu koltuk dolu.", "error");
         
         let newPlayers = d.players.map(p => {
-            if(p.uid === currentUser.uid) return { ...p, uid: null, name: "Boş", isReady: false };
+            if(p.uid === currentUser.uid) return { uid: null, name: "Boş", avatar: 'fa-plus', team: p.team, index: p.index, isReady: false };
             return p;
         });
         
         newPlayers = newPlayers.map(p => {
-            if(p.team === team && p.index === index) return { ...p, uid: currentUser.uid, name: currentUser.displayName, isReady: false };
+            if(p.team === team && p.index === index) return { ...p, uid: currentUser.uid, name: currentUser.displayName, avatar: currentUser.photoURL || 'fa-chess-pawn', isReady: false };
             return p;
         });
 
@@ -3327,17 +3572,15 @@ const [
 
         updatePlayerTags(activePlayerIndex, turnColor, d.players, movesRemaining);
         drawBoard(activePlayerIndex, turnColor);
+        syncBoardFullscreenUI();
     }
 
     function updateTimerDisplay(w, b) {
-        const fmt = (ms) => {
-            const totSec = Math.floor(ms/1000);
-            const m = Math.floor(totSec/60);
-            const s = totSec % 60;
-            return `${m}:${s<10?'0':''}${s}`;
-        };
-        document.getElementById('timerWhite').innerText = fmt(w);
-        document.getElementById('timerBlack').innerText = fmt(b);
+        const whiteText = getFormattedClock(w);
+        const blackText = getFormattedClock(b);
+        document.getElementById('timerWhite').innerText = whiteText;
+        document.getElementById('timerBlack').innerText = blackText;
+        if (activeFullscreenBoardMode === '2v2') syncFullscreenTimers(whiteText, blackText);
     }
 
     async function handleTimeOut(loserColor) {
@@ -3365,10 +3608,10 @@ const [
         if(current2v2Data.status === 'finished') document.getElementById('turnIndicator').innerText = "Oyun Bitti";
     }
 
-    function drawBoard(activeIdx, turnColor) {
-        const boardEl = document.getElementById('chessBoard');
+    function render2v2BoardInto(boardEl, activeIdx, turnColor) {
+        if (!boardEl || !current2v2Data) return;
         boardEl.innerHTML = '';
-        
+
         if(activeIdx === undefined || turnColor === undefined) {
              const movesPerTurn = current2v2Data.movesPerTurn || 5;
              const movesMadeByColor = Math.floor(current2v2Data.moveCount / 2);
@@ -3422,6 +3665,13 @@ const [
                 
                 boardEl.appendChild(div);
             }
+        }
+    }
+
+    function drawBoard(activeIdx, turnColor) {
+        render2v2BoardInto(document.getElementById('chessBoard'), activeIdx, turnColor);
+        if (activeFullscreenBoardMode === '2v2') {
+            render2v2BoardInto(document.getElementById('fullscreenBoard'), activeIdx, turnColor);
         }
     }
 
@@ -3544,6 +3794,7 @@ const [
     
     function showGameOverModal(d) {
         if(document.getElementById('gameOverModal').style.display === 'flex') return;
+        if (activeFullscreenBoardMode) window.closeBoardFullscreen();
         currentGameOverPayload = d;
         confetti({particleCount: 200, spread: 150, origin: { y: 0.6 }});
         window.playGameSound('gameEnd');
@@ -3624,6 +3875,7 @@ const [
                 if (isAdmin && !isMe) { html += `<button class="kick-btn" onclick="kickPlayer(${slot.index})" title="Masadan Kaldır"><i class="fas fa-times"></i></button>`; }
             }
             div.innerHTML = html;
+            appendLobbyFriendButton(div, slot.ownerId);
             grid.appendChild(div);
         });
     }
@@ -3659,15 +3911,12 @@ const [
             var icon = option.querySelector('i');
             if (icon && icon.classList.contains(currentUser.photoURL || avatarList[0])) option.classList.add('selected');
         });
-        applyInactiveOpacity(getStoredInactiveOpacity());
         switchView('view-settings');
     };
     window.saveSettings = async() => {
         try {
             const newName = document.getElementById('settingsNameInput').value.trim() || 'Oyuncu';
             const newAvatar = document.getElementById('settingsSelectedAvatar').value || 'fa-chess-pawn';
-            const inactiveOpacity = applyInactiveOpacity(document.getElementById('inactiveOpacityRange').value);
-            localStorage.setItem('gm_inactive_piece_opacity', inactiveOpacity.toFixed(2));
 
             await updateProfile(currentUser,{displayName:newName, photoURL:newAvatar});
             await setDoc(doc(db, 'profiles', currentUser.uid), {
