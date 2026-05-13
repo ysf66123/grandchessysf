@@ -91,6 +91,43 @@
             </button>
         </div>
 
+        <div class="dashboard-quick-grid sub-grid">
+            <div class="dash-card">
+                <div>
+                    <h3><i class="fas fa-chess-knight"></i> 1v1 Klasik Satranç</h3>
+                    <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:18px;">Bire bir klasik satranç kapışması. Oda kur, arkadaşını davet et ve hemen başla.</p>
+                </div>
+                <div>
+                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                        <button onclick="create1v1Game()" style="flex:1; background:linear-gradient(45deg, #4ade80, #22c55e); color:#052e16;">
+                            <i class="fas fa-plus-circle"></i> OYUN OLUŞTUR
+                        </button>
+                        <button onclick="join1v1Prompt()" class="secondary" style="flex:1; border-color:#4ade80; color:#4ade80;">
+                            <i class="fas fa-sign-in-alt"></i> KATIL
+                        </button>
+                    </div>
+                    <button class="secondary" onclick="load1v1History()" style="width:100%; font-size:0.78rem;">
+                        <i class="fas fa-clock-rotate-left"></i> 1v1 Geçmişi
+                    </button>
+                </div>
+            </div>
+
+            <div class="dash-card friends-card">
+                <div>
+                    <h3><i class="fas fa-user-group"></i> Arkadaşlar</h3>
+                    <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:18px;">Kod ile arkadaş ekle, çevrim içi durumlarını gör, DM at ve lobine davet gönder.</p>
+                    <div class="friends-stat-row">
+                        <div class="friends-stat-pill"><span id="friendsOnlineCount">0</span> çevrim içi</div>
+                        <div class="friends-stat-pill"><span id="friendsRequestCount">0</span> istek</div>
+                        <div class="friends-stat-pill"><span id="friendsInviteCount">0</span> davet</div>
+                    </div>
+                </div>
+                <button onclick="openFriendsView()" style="width:100%; background:linear-gradient(90deg, #00f2ff, #0ea5e9); color:#082f49;">
+                    <i class="fas fa-comments"></i> ARKADAŞLARI AÇ
+                </button>
+            </div>
+        </div>
+
         <!-- NEW QUIZ MODE SECTION -->
         <div class="dash-card quiz-card" style="margin-bottom:20px;">
             <div style="display:flex; align-items:center; justify-content:space-between;">
@@ -179,81 +216,95 @@
             </div>
         </div>
         
-        <div class="analysis-layout">
-            <!-- Left Side: Board & Eval -->
-            <div style="display:flex; gap:10px;">
-                <div class="eval-bar-container" style="min-width:28px; width:28px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); overflow:hidden; position:relative;">
-                    <div id="analysisEvalFill" class="eval-fill" style="height:50%; background:linear-gradient(to top, #fff, #f0f0f0); transition:height 0.4s ease;"></div>
-                    <div id="analysisEvalScore" class="eval-score" style="font-size:0.65rem; font-weight:bold; color:#888; text-shadow:0 0 3px rgba(0,0,0,0.5);">0.0</div>
+        <div class="analysis-shell">
+            <div class="analysis-layout">
+                <!-- Left Side: Board & Eval -->
+                <div style="display:flex; gap:10px;">
+                    <div class="eval-bar-container" style="min-width:28px; width:28px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); overflow:hidden; position:relative;">
+                        <div id="analysisEvalFill" class="eval-fill" style="height:50%; background:linear-gradient(to top, #fff, #f0f0f0); transition:height 0.4s ease;"></div>
+                        <div id="analysisEvalScore" class="eval-score" style="font-size:0.65rem; font-weight:bold; color:#888; text-shadow:0 0 3px rgba(0,0,0,0.5);">0.0</div>
+                    </div>
+                    <div style="flex:1;">
+                        <div class="game-info-bar">
+                             <div class="player-tag"><i class="fas fa-user"></i> <span id="an-black-player">Siyah</span></div>
+                             <div style="font-family:monospace; font-weight:bold;">VS</div>
+                             <div class="player-tag"><i class="fas fa-user"></i> <span id="an-white-player">Beyaz</span></div>
+                        </div>
+                        <div class="board-container" id="analysisBoard"></div>
+                        <div class="analysis-controls">
+                            <button class="analysis-btn" onclick="navAnalysis('start')"><i class="fas fa-step-backward"></i></button>
+                            <button class="analysis-btn" onclick="navAnalysis('prev')"><i class="fas fa-chevron-left"></i></button>
+                            <button class="analysis-btn" onclick="navAnalysis('next')"><i class="fas fa-chevron-right"></i></button>
+                            <button class="analysis-btn" onclick="navAnalysis('end')"><i class="fas fa-step-forward"></i></button>
+                            <button class="analysis-btn" onclick="flipAnalysisBoard()"><i class="fas fa-sync-alt"></i></button>
+                        </div>
+                    </div>
                 </div>
-                <div style="flex:1;">
-                    <div class="game-info-bar">
-                         <div class="player-tag"><i class="fas fa-user"></i> <span id="an-black-player">Siyah</span></div>
-                         <div style="font-family:monospace; font-weight:bold;">VS</div>
-                         <div class="player-tag"><i class="fas fa-user"></i> <span id="an-white-player">Beyaz</span></div>
-                    </div>
-                    <div class="board-container" id="analysisBoard"></div>
-                    <div class="analysis-controls">
-                        <button class="analysis-btn" onclick="navAnalysis('start')"><i class="fas fa-step-backward"></i></button>
-                        <button class="analysis-btn" onclick="navAnalysis('prev')"><i class="fas fa-chevron-left"></i></button>
-                        <button class="analysis-btn" onclick="navAnalysis('next')"><i class="fas fa-chevron-right"></i></button>
-                        <button class="analysis-btn" onclick="navAnalysis('end')"><i class="fas fa-step-forward"></i></button>
-                        <button class="analysis-btn" onclick="flipAnalysisBoard()"><i class="fas fa-sync-alt"></i></button>
-                    </div>
+                
+                <!-- Right Side: Info & Moves -->
+                <div>
+                     <!-- Engine Info Bar -->
+                     <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(76,175,80,0.3); border-radius:8px; padding:12px; margin-bottom:12px;">
+                         <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                             <i class="fas fa-microchip" style="color:var(--success);"></i>
+                             <span style="font-weight:bold; font-size:0.85rem; color:var(--success);">Stockfish Motor</span>
+                         </div>
+                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                             <div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; text-align:center;">
+                                 <div style="font-size:0.7rem; color:#888; margin-bottom:3px;">EN İYİ HAMLE</div>
+                                 <button id="report-best" class="best-move-btn" onclick="previewBestVsPlayedMove()" title="En iyi hamleyi ve oynanan hamleyi sırayla göster">...</button>
+                                 <div style="font-size:0.62rem; color:#7f8a9a; margin-top:4px;">Tikla: En iyi -> Oynanan</div>
+                             </div>
+                             <div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; text-align:center;">
+                                 <div style="font-size:0.7rem; color:#888; margin-bottom:3px;">DEĞERLENDİRME</div>
+                                 <div id="report-eval-display" style="font-weight:bold; color:var(--accent); font-size:1.1rem;">0.0</div>
+                             </div>
+                         </div>
+                     </div>
+                     
+                     <div class="analysis-tabs">
+                         <div class="analysis-tab active" onclick="switchAnalysisTab('review')" id="tab-btn-review">OYUN RAPORU</div>
+                         <div class="analysis-tab" onclick="switchAnalysisTab('moves')" id="tab-btn-moves">HAMLELER</div>
+                     </div>
+                     
+                     <div id="tab-content-review">
+                         <div class="report-stats">
+                             <div class="report-card">
+                                 <div class="accuracy-ring" id="acc-white">88%</div>
+                                 <div style="font-size:0.8rem; color:#aaa;">Beyaz Doğruluk</div>
+                             </div>
+                             <div class="report-card">
+                                 <div class="accuracy-ring" id="acc-black" style="color:var(--danger); border-color:var(--danger);">75%</div>
+                                 <div style="font-size:0.8rem; color:#aaa;">Siyah Doğruluk</div>
+                             </div>
+                         </div>
+                         <div id="analysisQualitySummary" class="quality-summary"></div>
+                         <div class="dash-card" style="margin-top:10px; text-align:left; font-size:0.9rem;">
+                             <div style="margin-bottom:10px;"><i class="fas fa-exclamation-circle" style="color:orange;"></i> <strong>Kritik Hata:</strong> <span id="report-blunder">...</span></div>
+                             <div style="margin-bottom:10px;"><i class="fas fa-check-circle" style="color:var(--success);"></i> <strong>Maç Sonucu:</strong> <span id="report-result">...</span></div>
+                             <button style="width:100%; margin-top:10px; font-size:0.8rem;" onclick="switchAnalysisTab('moves')">HAMLELERİ İNCELE</button>
+                         </div>
+                     </div>
+                     
+                     <div id="tab-content-moves" style="display:none; height:400px;">
+                         <div class="move-list-container">
+                             <div class="move-list-header">HAMLE LİSTESİ</div>
+                             <div class="move-list" id="analysisMoveList"></div>
+                         </div>
+                     </div>
                 </div>
             </div>
-            
-            <!-- Right Side: Info & Moves -->
-            <div>
-                 <!-- Engine Info Bar -->
-                 <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(76,175,80,0.3); border-radius:8px; padding:12px; margin-bottom:12px;">
-                     <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                         <i class="fas fa-microchip" style="color:var(--success);"></i>
-                         <span style="font-weight:bold; font-size:0.85rem; color:var(--success);">Stockfish Motor</span>
-                     </div>
-                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                         <div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; text-align:center;">
-                             <div style="font-size:0.7rem; color:#888; margin-bottom:3px;">EN İYİ HAMLE</div>
-                             <button id="report-best" class="best-move-btn" onclick="previewBestVsPlayedMove()" title="En iyi hamleyi ve oynanan hamleyi sırayla göster">...</button>
-                             <div style="font-size:0.62rem; color:#7f8a9a; margin-top:4px;">Tikla: En iyi -> Oynanan</div>
-                         </div>
-                         <div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; text-align:center;">
-                             <div style="font-size:0.7rem; color:#888; margin-bottom:3px;">DEĞERLENDİRME</div>
-                             <div id="report-eval-display" style="font-weight:bold; color:var(--accent); font-size:1.1rem;">0.0</div>
-                         </div>
-                     </div>
-                 </div>
-                 
-                 <div class="analysis-tabs">
-                     <div class="analysis-tab active" onclick="switchAnalysisTab('review')" id="tab-btn-review">OYUN RAPORU</div>
-                     <div class="analysis-tab" onclick="switchAnalysisTab('moves')" id="tab-btn-moves">HAMLELER</div>
-                 </div>
-                 
-                 <div id="tab-content-review">
-                     <div class="report-stats">
-                         <div class="report-card">
-                             <div class="accuracy-ring" id="acc-white">88%</div>
-                             <div style="font-size:0.8rem; color:#aaa;">Beyaz Doğruluk</div>
-                         </div>
-                         <div class="report-card">
-                             <div class="accuracy-ring" id="acc-black" style="color:var(--danger); border-color:var(--danger);">75%</div>
-                             <div style="font-size:0.8rem; color:#aaa;">Siyah Doğruluk</div>
-                         </div>
-                     </div>
-                     <div id="analysisQualitySummary" class="quality-summary"></div>
-                     <div class="dash-card" style="margin-top:10px; text-align:left; font-size:0.9rem;">
-                         <div style="margin-bottom:10px;"><i class="fas fa-exclamation-circle" style="color:orange;"></i> <strong>Kritik Hata:</strong> <span id="report-blunder">...</span></div>
-                         <div style="margin-bottom:10px;"><i class="fas fa-check-circle" style="color:var(--success);"></i> <strong>Maç Sonucu:</strong> <span id="report-result">...</span></div>
-                         <button style="width:100%; margin-top:10px; font-size:0.8rem;" onclick="switchAnalysisTab('moves')">HAMLELERİ İNCELE</button>
-                     </div>
-                 </div>
-                 
-                 <div id="tab-content-moves" style="display:none; height:400px;">
-                     <div class="move-list-container">
-                         <div class="move-list-header">HAMLE LİSTESİ</div>
-                         <div class="move-list" id="analysisMoveList"></div>
-                     </div>
-                 </div>
+
+            <div id="analysisLoadingOverlay" class="analysis-loading-overlay">
+                <div class="analysis-loading-card">
+                    <div id="analysisCountdownNumber" class="analysis-countdown-ring">10</div>
+                    <div class="analysis-loading-title">Analiz Hazırlanıyor</div>
+                    <div id="analysisLoadingMessage" class="analysis-loading-message">Motor en iyi hamleleri ve kritik anları arıyor.</div>
+                    <div class="analysis-loading-progress">
+                        <div id="analysisLoadingProgressFill" class="analysis-loading-progress-fill"></div>
+                    </div>
+                    <div id="analysisLoadingSubtext" class="analysis-loading-subtext">10 saniyelik ön hazırlık</div>
+                </div>
             </div>
         </div>
     </div>
@@ -335,6 +386,10 @@
             
             <div id="quizWaitingMsg" style="margin-top:15px; color:var(--text-muted); font-style:italic;">Yönetici başlatana kadar bekle...</div>
         </div>
+
+        <button class="secondary" onclick="openLobbyInvites('quiz')" style="width:100%; margin-top:-5px; margin-bottom:15px;">
+            <i class="fas fa-user-plus"></i> AKTİF ARKADAŞ DAVET ET
+        </button>
         
         <h4 style="margin-top:20px; border-bottom:1px solid var(--glass-border);">KATILIMCILAR (<span id="quizPlayerCount">0</span>)</h4>
         <div id="quizPlayerList" class="slot-grid" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));"></div>
@@ -431,6 +486,10 @@
             <div style="font-size:0.8rem; color:var(--success);">Tıklayıp Kopyala</div>
         </div>
 
+        <button class="secondary" onclick="openLobbyInvites('2v2')" style="width:100%; margin-bottom:20px;">
+            <i class="fas fa-user-plus"></i> AKTİF ARKADAŞ DAVET ET
+        </button>
+
         <div id="hostControls2v2" style="display:none; text-align:center; background:rgba(0,0,0,0.2); padding:15px; border-radius:8px; margin-bottom:20px;">
             <div style="display:flex; justify-content:center; gap:15px; margin-bottom:10px;">
                 <div>
@@ -478,6 +537,69 @@
             </div>
         </div>
         <button id="btnReady2v2" onclick="toggleReady2v2()" style="width:100%; margin-top:20px; background:#4caf50; display:none;">HAZIRIM</button>
+    </div>
+
+    <div id="view-1v1-lobby" class="view">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>1v1 Lobi</h2>
+            <button class="secondary icon-btn" onclick="leave1v1Lobby()"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div style="text-align:center; margin-bottom:20px;">
+            <div style="font-size:0.9rem; color:var(--text-muted);">ODA KODU</div>
+            <div id="lobby1v1Code" style="font-size:2.5rem; letter-spacing:5px; color:#4ade80; font-weight:bold; cursor:pointer;" onclick="copy1v1Code()">...</div>
+            <div style="font-size:0.8rem; color:var(--success);">Tıklayıp Kopyala</div>
+        </div>
+
+        <button class="secondary" onclick="openLobbyInvites('1v1')" style="width:100%; margin-bottom:20px; border-color:#4ade80; color:#4ade80;">
+            <i class="fas fa-user-plus"></i> AKTİF ARKADAŞ DAVET ET
+        </button>
+
+        <div id="hostControls1v1" style="display:none; text-align:center; background:rgba(0,0,0,0.2); padding:15px; border-radius:8px; margin-bottom:20px;">
+            <div style="max-width:160px; margin:0 auto 10px auto;">
+                <label style="color:var(--text-main); font-size:0.8rem; display:block; margin-bottom:5px;">Süre (Dakika)</label>
+                <select id="timeControlSelect1v1">
+                    <option value="3">3 dk</option>
+                    <option value="5" selected>5 dk</option>
+                    <option value="10">10 dk</option>
+                    <option value="15">15 dk</option>
+                </select>
+            </div>
+            <button onclick="start1v1Game()" style="width:100%; background:linear-gradient(45deg, #4ade80, #22c55e); color:#052e16;">OYUNU BAŞLAT</button>
+        </div>
+
+        <div class="chess-lobby-grid" style="grid-template-columns:1fr; gap:12px;">
+            <div id="slot-1v1-white" class="team-slot team-white" onclick="join1v1Seat('white')">
+                <span><i class="fas fa-plus"></i> Beyaz Boş</span>
+            </div>
+            <div id="slot-1v1-black" class="team-slot team-black" onclick="join1v1Seat('black')">
+                <span><i class="fas fa-plus"></i> Siyah Boş</span>
+            </div>
+        </div>
+        <button id="btnReady1v1" onclick="toggleReady1v1()" style="width:100%; margin-top:20px; background:#4caf50; display:none;">HAZIRIM</button>
+    </div>
+
+    <div id="view-1v1-game" class="view">
+        <div class="game-info-bar">
+            <div class="timer-box black" id="timer1v1Black">5:00</div>
+            <div style="text-align:center;">
+                <div style="font-size:0.8rem; color:var(--text-muted);">1v1 KLASİK SATRANÇ</div>
+                <div id="turnIndicator1v1" style="font-weight:bold; color:#4ade80;">Oyun Başlıyor...</div>
+            </div>
+            <div class="timer-box white" id="timer1v1White">5:00</div>
+        </div>
+
+        <div style="display:flex; justify-content:center; margin-bottom:10px;">
+            <div id="p1v1-black" class="player-tag"><i class="fas fa-user"></i> <span>Siyah</span></div>
+        </div>
+
+        <div class="board-container" id="chessBoard1v1"></div>
+
+        <div style="display:flex; justify-content:center; margin-top:10px;">
+            <div id="p1v1-white" class="player-tag"><i class="fas fa-user"></i> <span>Beyaz</span></div>
+        </div>
+
+        <button class="secondary" onclick="leave1v1GameConfirm()" style="width:100%; margin-top:20px; padding:8px; font-size:0.8rem;">Oyundan Çık</button>
     </div>
 
     <div id="view-2v2-game" class="view">
@@ -553,11 +675,82 @@
                 <span>Oyun Sesleri</span>
                 <label class="switch"><input type="checkbox" id="muteSoundToggle"><span class="slider"></span></label>
             </div>
+            <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:8px; margin-top:12px; border:1px solid var(--glass-border); text-align:left;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:15px; margin-bottom:10px;">
+                    <span>Pasif Taş Saydamlığı</span>
+                    <strong id="inactiveOpacityValue" style="color:var(--accent);">70%</strong>
+                </div>
+                <input type="range" id="inactiveOpacityRange" min="0.2" max="1" step="0.05" value="0.7" style="margin:0;">
+                <div style="margin-top:8px; font-size:0.76rem; color:var(--text-muted);">Sıra sende değilken taşların ne kadar silik görüneceğini ayarlar.</div>
+            </div>
             <div style="margin-top:10px; font-size:0.8rem; color:#aaa; text-align:left;">
                 <i class="fas fa-info-circle"></i> Ses gelmiyorsa ekranda herhangi bir yere tıklayın.
             </div>
             <button id="btnSaveSettings" onclick="saveSettings()" style="width:100%; margin-top:20px;">KAYDET</button>
             <button class="secondary" onclick="switchView('view-dashboard')" style="width:100%; margin-top:10px;">GERİ DÖN</button>
+        </div>
+    </div>
+
+    <div id="view-friends" class="view">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2><i class="fas fa-user-group" style="color:var(--accent);"></i> Arkadaşlar</h2>
+            <button class="secondary icon-btn" onclick="switchView('view-dashboard')"><i class="fas fa-arrow-left"></i></button>
+        </div>
+
+        <div class="friends-layout">
+            <div class="friends-sidebar">
+                <div class="dash-card" style="text-align:left;">
+                    <div class="friends-toolbar">
+                        <h3 style="margin:0; font-size:1rem;">Arkadaşlık Kodun</h3>
+                        <button class="secondary" onclick="copyFriendCode()" style="font-size:0.7rem; padding:8px 12px;">KOPYALA</button>
+                    </div>
+                    <div id="friendCodeDisplay" class="friend-code-display">......</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">Arkadaşın bu kodla seni ekleyebilir.</div>
+                    <input type="text" id="friendCodeInput" placeholder="Arkadaşlık Kodu" style="text-transform:uppercase; letter-spacing:2px;">
+                    <button onclick="sendFriendRequestByCode()" style="width:100%; background:linear-gradient(90deg, #00f2ff, #0ea5e9); color:#082f49;">ARKADAŞ EKLE</button>
+                </div>
+
+                <div class="dash-card" style="text-align:left;">
+                    <h3 style="font-size:1rem;">Davetler</h3>
+                    <div id="friendInvitesList" class="friends-scroll"></div>
+                </div>
+
+                <div class="dash-card" style="text-align:left;">
+                    <h3 style="font-size:1rem;">Arkadaşlık İstekleri</h3>
+                    <div id="friendRequestsList" class="friends-scroll"></div>
+                </div>
+
+                <div class="dash-card" style="text-align:left;">
+                    <div class="friends-toolbar">
+                        <h3 style="font-size:1rem; margin:0;">Arkadaşların</h3>
+                        <span style="font-size:0.78rem; color:var(--text-muted);"><span id="friendsOnlineCountView">0</span> çevrim içi</span>
+                    </div>
+                    <div id="friendsList" class="friends-scroll"></div>
+                </div>
+            </div>
+
+            <div class="dash-card dm-panel" style="text-align:left;">
+                <div id="dmEmptyState" class="friend-empty" style="height:100%; display:flex; align-items:center; justify-content:center;">
+                    Bir arkadaş seç. Buradan DM konuşmalarını okuyup mesaj gönderebilirsin.
+                </div>
+
+                <div id="dmPanelContent" style="display:none;">
+                    <div class="dm-header">
+                        <div>
+                            <div id="dmCurrentName" style="font-weight:800; font-size:1.1rem;">Arkadaş</div>
+                            <div id="dmCurrentStatus" style="font-size:0.8rem; color:var(--text-muted);">Çevrim dışı</div>
+                        </div>
+                        <button class="secondary" onclick="inviteSelectedFriendToCurrentLobby()" style="font-size:0.72rem; padding:9px 12px;">
+                            <i class="fas fa-paper-plane"></i> DAVET ET
+                        </button>
+                    </div>
+                    <div id="dmThread" class="dm-thread"></div>
+                    <form id="dmInputArea" class="dm-form">
+                        <input type="text" id="dmInput" placeholder="Mesaj yaz..." autocomplete="off" style="margin:0;">
+                        <button type="submit" style="width:auto; margin:0;"><i class="fas fa-paper-plane"></i></button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -583,6 +776,10 @@
                 </button>
             </div>
         </div>
+
+        <button class="secondary" onclick="openLobbyInvites('tournament')" style="width:100%; margin-bottom:16px;">
+            <i class="fas fa-user-plus"></i> AKTİF ARKADAŞ DAVET ET
+        </button>
         
         <div id="lobbySlots" class="slot-grid"></div>
     </div>
@@ -653,6 +850,14 @@
         <span class="close-modal" onclick="closeHistory2v2()">×</span>
         <h3>2v2 Maç Geçmişi</h3>
         <div id="history2v2List" class="history-list" style="max-height:400px;"></div>
+    </div>
+</div>
+
+<div id="history1v1Modal" class="modal-overlay">
+    <div class="modal-content glass-panel" style="max-width:600px;">
+        <span class="close-modal" onclick="closeHistory1v1()">×</span>
+        <h3>1v1 Maç Geçmişi</h3>
+        <div id="history1v1List" class="history-list" style="max-height:400px;"></div>
     </div>
 </div>
 

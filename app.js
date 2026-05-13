@@ -90,6 +90,11 @@ const [
             setTimeout(function(){ playTone(659, 0.12, 'sine', 0.2); }, 120);
             setTimeout(function(){ playTone(784, 0.15, 'sine', 0.25); }, 240);
         },
+        gameStart: function() {
+            playTone(392, 0.12, 'sine', 0.18);
+            setTimeout(function(){ playTone(523, 0.14, 'sine', 0.22); }, 120);
+            setTimeout(function(){ playTone(659, 0.18, 'sine', 0.26); }, 240);
+        },
         gameEnd: function() {
             playTone(523, 0.2, 'sine', 0.2);
             setTimeout(function(){ playTone(659, 0.2, 'sine', 0.2); }, 200);
@@ -150,6 +155,62 @@ const [
     let unsubscribeTournament = null;
     let unsubscribeChat = null;
     let previousMatchesStr = "";
+    let currentViewId = 'view-auth';
+    let currentGameOverPayload = null;
+    let currentProfileData = null;
+    let profileUnsubscribe = null;
+    let profileHeartbeatInterval = null;
+    let friendRequestsUnsubscribe = null;
+    let friendInvitesUnsubscribe = null;
+    let dmThreadUnsubscribe = null;
+    let selectedFriendUid = null;
+    let friendProfileUnsubscribers = {};
+    let friendProfilesCache = {};
+    let friendRequestsCache = [];
+    let friendInvitesCache = [];
+    let currentDmMessages = [];
+
+    const PROFILE_HEARTBEAT_MS = 25000;
+    const ONLINE_GRACE_MS = 70000;
+    
+    // 1v1 Globals
+    let current1v1Id = null;
+    let current1v1Data = null;
+    let unsubscribe1v1 = null;
+    let chess1v1 = new Chess();
+    let board1v1SelectedSquare = null;
+    let board1v1ValidMoves = [];
+    let game1v1TimerInterval = null;
+    let lastPlayedMoveCount1v1 = -1;
+
+    function releaseModeListeners(exceptMode) {
+        if (exceptMode !== 'quiz' && unsubscribeQuiz) {
+            unsubscribeQuiz();
+            unsubscribeQuiz = null;
+            currentQuizId = null;
+            currentQuizData = null;
+        }
+        if (exceptMode !== '1v1' && unsubscribe1v1) {
+            unsubscribe1v1();
+            unsubscribe1v1 = null;
+            current1v1Id = null;
+            current1v1Data = null;
+        }
+        if (exceptMode !== '2v2' && unsubscribe2v2) {
+            unsubscribe2v2();
+            unsubscribe2v2 = null;
+            current2v2Id = null;
+            current2v2Data = null;
+        }
+        if (exceptMode !== 'tournament' && unsubscribeTournament) {
+            unsubscribeTournament();
+            unsubscribeTournament = null;
+            currentTournamentId = null;
+            currentTournamentData = null;
+        }
+        if (exceptMode !== '1v1' && game1v1TimerInterval) clearInterval(game1v1TimerInterval);
+        if (exceptMode !== '2v2' && gameTimerInterval) clearInterval(gameTimerInterval);
+    }
     
     // Toggle Mute Logic
     let soundEnabled = localStorage.getItem('gm_mute') !== 'true'; 
@@ -227,18 +288,657 @@ const [
     window.showToast = (msg, type = "info") => { let bg; if(type === "success") bg = "linear-gradient(to right, #00b09b, #96c93d)"; else if(type === "error") bg = "linear-gradient(to right, #ff5f6d, #ffc371)"; else if(type === "gold") bg = "linear-gradient(to right, #b8860b, #d4af37)"; else bg = "#333"; Toastify({ text: msg, duration: 3000, gravity: "top", position: "right", stopOnFocus: true, style: { background: bg, borderRadius: "8px", boxShadow: "0 4px 15px rgba(0,0,0,0.3)", fontWeight: "bold" }, }).showToast(); };
     window.setTheme = (t) => { document.body.setAttribute('data-theme', t); localStorage.setItem('gm_theme', t); };
     window.setTheme(localStorage.getItem('gm_theme') || 'dark');
+
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, function(char) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char];
+        });
+    }
+
+    function clamp(num, min, max) {
+        return Math.max(min, Math.min(max, num));
+    }
+
+    function getStoredInactiveOpacity() {
+        var raw = parseFloat(localStorage.getItem('gm_inactive_piece_opacity') || '0.7');
+        return clamp(isNaN(raw) ? 0.7 : raw, 0.2, 1);
+    }
+
+    function applyInactiveOpacity(value) {
+        var safeValue = clamp(parseFloat(value), 0.2, 1);
+        document.documentElement.style.setProperty('--inactive-piece-opacity', safeValue.toFixed(2));
+        var range = document.getElementById('inactiveOpacityRange');
+        var label = document.getElementById('inactiveOpacityValue');
+        if (range) range.value = safeValue.toFixed(2);
+        if (label) label.innerText = Math.round(safeValue * 100) + '%';
+        return safeValue;
+    }
+
+    applyInactiveOpacity(getStoredInactiveOpacity());
+
+    var inactiveOpacityRange = document.getElementById('inactiveOpacityRange');
+    if (inactiveOpacityRange) {
+        inactiveOpacityRange.addEventListener('input', function(e) {
+            applyInactiveOpacity(e.target.value);
+        });
+    }
+
+    function isUserOnline(profile) {
+        if (!profile || !profile.lastActiveAt) return false;
+        return (Date.now() - profile.lastActiveAt) < ONLINE_GRACE_MS;
+    }
+
+    function formatPresence(profile) {
+        if (!profile || !profile.lastActiveAt) return 'Durum bilinmiyor';
+        if (isUserOnline(profile)) return 'Çevrim içi';
+        var diff = Math.max(0, Date.now() - profile.lastActiveAt);
+        var minutes = Math.floor(diff / 60000);
+        if (minutes < 1) return 'Az önce';
+        if (minutes < 60) return minutes + ' dk önce';
+        var hours = Math.floor(minutes / 60);
+        if (hours < 24) return hours + ' sa önce';
+        return Math.floor(hours / 24) + ' gün önce';
+    }
+
+    function getFriendThreadId(uidA, uidB) {
+        return [uidA, uidB].sort().join('_');
+    }
+
+    function getLobbyInviteDocId(type, roomId, fromUid, toUid) {
+        return [type, roomId, fromUid, toUid].join('_');
+    }
     
     const avatarList = ['fa-chess-king', 'fa-chess-queen', 'fa-chess-rook', 'fa-chess-bishop', 'fa-chess-knight', 'fa-chess-pawn', 'fa-user-astronaut', 'fa-dragon', 'fa-fire', 'fa-bolt', 'fa-crown', 'fa-brain', 'fa-ghost', 'fa-robot'];
     function renderAvatars(tid, iid) { const c = document.getElementById(tid); c.innerHTML=''; avatarList.forEach(i => { const d=document.createElement('div'); d.className='avatar-option'; d.innerHTML=`<i class="fas ${i}"></i>`; d.onclick=()=>{ window.playGameSound('nav'); c.querySelectorAll('.avatar-option').forEach(e=>e.classList.remove('selected')); d.classList.add('selected'); document.getElementById(iid).value=i; }; c.appendChild(d); }); if(c.firstChild) c.firstChild.classList.add('selected'); document.getElementById(iid).value=avatarList[0]; }
     renderAvatars('authAvatarGrid','selectedAvatar');
     function makeId(length) { let result = ''; const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; for (let i = 0; i < length; i++) result += characters.charAt(Math.floor(Math.random() * characters.length)); return result; }
+
+    async function generateUniqueFriendCode() {
+        for (var attempt = 0; attempt < 8; attempt++) {
+            var code = makeId(6);
+            var snap = await getDocs(query(collection(db, 'profiles'), where('friendCode', '==', code)));
+            var isAvailable = true;
+            snap.forEach(function(docSnap) {
+                if (docSnap.id !== currentUser.uid) isAvailable = false;
+            });
+            if (isAvailable) return code;
+        }
+        return makeId(6);
+    }
+
+    function stopFriendProfileSubscriptions() {
+        Object.keys(friendProfileUnsubscribers).forEach(function(uid) {
+            try { friendProfileUnsubscribers[uid](); } catch (e) {}
+        });
+        friendProfileUnsubscribers = {};
+        friendProfilesCache = {};
+    }
+
+    function stopSocialListeners() {
+        if (profileUnsubscribe) profileUnsubscribe();
+        if (friendRequestsUnsubscribe) friendRequestsUnsubscribe();
+        if (friendInvitesUnsubscribe) friendInvitesUnsubscribe();
+        if (dmThreadUnsubscribe) dmThreadUnsubscribe();
+        if (profileHeartbeatInterval) clearInterval(profileHeartbeatInterval);
+        profileUnsubscribe = null;
+        friendRequestsUnsubscribe = null;
+        friendInvitesUnsubscribe = null;
+        dmThreadUnsubscribe = null;
+        profileHeartbeatInterval = null;
+        selectedFriendUid = null;
+        currentDmMessages = [];
+        currentProfileData = null;
+        friendRequestsCache = [];
+        friendInvitesCache = [];
+        stopFriendProfileSubscriptions();
+        updateFriendsSummary();
+    }
+
+    async function ensureUserProfile() {
+        if (!currentUser) return;
+        var profileRef = doc(db, 'profiles', currentUser.uid);
+        var snap = await getDoc(profileRef);
+        var existing = snap.exists() ? (snap.data() || {}) : {};
+        var friendCode = existing.friendCode || await generateUniqueFriendCode();
+        await setDoc(profileRef, {
+            uid: currentUser.uid,
+            displayName: currentUser.displayName || existing.displayName || 'Oyuncu',
+            avatar: currentUser.photoURL || existing.avatar || 'fa-chess-pawn',
+            email: currentUser.email || existing.email || '',
+            friendCode: friendCode,
+            friends: Array.isArray(existing.friends) ? existing.friends : [],
+            lastActiveAt: Date.now(),
+            lastView: currentViewId
+        }, { merge: true });
+
+        if (profileUnsubscribe) profileUnsubscribe();
+        profileUnsubscribe = onSnapshot(profileRef, function(profileSnap) {
+            currentProfileData = profileSnap.exists() ? profileSnap.data() : null;
+            syncFriendProfileSubscriptions();
+            updateFriendsSummary();
+            renderFriendsView();
+        });
+    }
+
+    async function pushProfilePresence() {
+        if (!currentUser) return;
+        try {
+            await setDoc(doc(db, 'profiles', currentUser.uid), {
+                displayName: currentUser.displayName || 'Oyuncu',
+                avatar: currentUser.photoURL || 'fa-chess-pawn',
+                lastActiveAt: Date.now(),
+                lastView: currentViewId
+            }, { merge: true });
+        } catch (e) {}
+    }
+
+    function startProfileHeartbeat() {
+        if (profileHeartbeatInterval) clearInterval(profileHeartbeatInterval);
+        pushProfilePresence();
+        profileHeartbeatInterval = setInterval(pushProfilePresence, PROFILE_HEARTBEAT_MS);
+    }
+
+    function syncFriendProfileSubscriptions() {
+        var friendIds = (currentProfileData && Array.isArray(currentProfileData.friends)) ? currentProfileData.friends : [];
+        var activeMap = {};
+        friendIds.forEach(function(uid) { activeMap[uid] = true; });
+
+        Object.keys(friendProfileUnsubscribers).forEach(function(uid) {
+            if (!activeMap[uid]) {
+                try { friendProfileUnsubscribers[uid](); } catch (e) {}
+                delete friendProfileUnsubscribers[uid];
+                delete friendProfilesCache[uid];
+            }
+        });
+
+        friendIds.forEach(function(uid) {
+            if (friendProfileUnsubscribers[uid]) return;
+            friendProfileUnsubscribers[uid] = onSnapshot(doc(db, 'profiles', uid), function(snap) {
+                if (snap.exists()) {
+                    friendProfilesCache[uid] = Object.assign({ uid: uid }, snap.data());
+                } else {
+                    delete friendProfilesCache[uid];
+                }
+                updateFriendsSummary();
+                renderFriendsView();
+            });
+        });
+    }
+
+    function updateFriendsSummary() {
+        var friendIds = (currentProfileData && Array.isArray(currentProfileData.friends)) ? currentProfileData.friends : [];
+        var onlineCount = friendIds.filter(function(uid) { return isUserOnline(friendProfilesCache[uid]); }).length;
+        ['friendsOnlineCount', 'friendsOnlineCountView'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.innerText = onlineCount;
+        });
+        var requestCount = friendRequestsCache.filter(function(req) { return req.status === 'pending'; }).length;
+        var inviteCount = friendInvitesCache.filter(function(inv) { return inv.status === 'pending'; }).length;
+        var reqEl = document.getElementById('friendsRequestCount');
+        var inviteEl = document.getElementById('friendsInviteCount');
+        if (reqEl) reqEl.innerText = requestCount;
+        if (inviteEl) inviteEl.innerText = inviteCount;
+        var friendCodeEl = document.getElementById('friendCodeDisplay');
+        if (friendCodeEl) friendCodeEl.innerText = (currentProfileData && currentProfileData.friendCode) ? currentProfileData.friendCode : '......';
+    }
+
+    function renderFriendsView() {
+        renderFriendRequests();
+        renderFriendInvites();
+        renderFriendsList();
+        renderDmThread();
+    }
+
+    function renderEmptyState(containerId, message) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '<div class="friend-empty">' + message + '</div>';
+    }
+
+    function renderFriendRequests() {
+        var container = document.getElementById('friendRequestsList');
+        if (!container) return;
+        var items = friendRequestsCache.filter(function(req) { return req.status === 'pending'; }).sort(function(a, b) {
+            return (b.createdAtMs || 0) - (a.createdAtMs || 0);
+        });
+        if (!items.length) return renderEmptyState('friendRequestsList', 'Bekleyen arkadaşlık isteği yok.');
+        container.innerHTML = '';
+        items.forEach(function(req) {
+            var row = document.createElement('div');
+            row.className = 'friend-request-row';
+            row.innerHTML = `
+                <div class="friend-avatar"><i class="fas ${escapeHtml(req.fromAvatar || 'fa-user')}" ></i></div>
+                <div class="friend-meta">
+                    <div class="friend-name">${escapeHtml(req.fromName || 'Oyuncu')}</div>
+                    <div class="friend-sub">Kod: ${escapeHtml(req.fromCode || '------')}</div>
+                </div>
+                <div class="friend-actions">
+                    <button style="padding:8px 12px; font-size:0.7rem;" onclick="acceptFriendRequest('${req.id}')">KABUL</button>
+                    <button class="secondary" style="padding:8px 12px; font-size:0.7rem;" onclick="declineFriendRequest('${req.id}')">RED</button>
+                </div>`;
+            container.appendChild(row);
+        });
+    }
+
+    function renderFriendInvites() {
+        var container = document.getElementById('friendInvitesList');
+        if (!container) return;
+        var items = friendInvitesCache.filter(function(inv) { return inv.status === 'pending'; }).sort(function(a, b) {
+            return (b.createdAtMs || 0) - (a.createdAtMs || 0);
+        });
+        if (!items.length) return renderEmptyState('friendInvitesList', 'Bekleyen oyun daveti yok.');
+        container.innerHTML = '';
+        items.forEach(function(inv) {
+            var row = document.createElement('div');
+            row.className = 'invite-row';
+            row.innerHTML = `
+                <div class="friend-avatar"><i class="fas ${escapeHtml(inv.fromAvatar || 'fa-user')}"></i></div>
+                <div class="friend-meta">
+                    <div class="friend-name">${escapeHtml(inv.fromName || 'Oyuncu')}</div>
+                    <div class="friend-sub">
+                        <span class="invite-type-pill">${escapeHtml(inv.type || 'oyun')}</span>
+                        <span>${escapeHtml(inv.roomLabel || inv.roomCode || 'Lobi')}</span>
+                    </div>
+                </div>
+                <div class="friend-actions">
+                    <button style="padding:8px 12px; font-size:0.7rem;" onclick="acceptFriendInvite('${inv.id}')">KATIL</button>
+                    <button class="secondary" style="padding:8px 12px; font-size:0.7rem;" onclick="dismissFriendInvite('${inv.id}')">KAPAT</button>
+                </div>`;
+            container.appendChild(row);
+        });
+    }
+
+    function renderFriendsList() {
+        var container = document.getElementById('friendsList');
+        if (!container) return;
+        var friendIds = (currentProfileData && Array.isArray(currentProfileData.friends)) ? currentProfileData.friends.slice() : [];
+        if (!friendIds.length) return renderEmptyState('friendsList', 'Henüz arkadaşın yok.');
+        friendIds.sort(function(a, b) {
+            var aProfile = friendProfilesCache[a];
+            var bProfile = friendProfilesCache[b];
+            var onlineDiff = Number(isUserOnline(bProfile)) - Number(isUserOnline(aProfile));
+            if (onlineDiff !== 0) return onlineDiff;
+            return String((aProfile && aProfile.displayName) || a).localeCompare(String((bProfile && bProfile.displayName) || b), 'tr');
+        });
+        container.innerHTML = '';
+        friendIds.forEach(function(uid) {
+            var profile = friendProfilesCache[uid] || { uid: uid, displayName: 'Yükleniyor...', avatar: 'fa-user' };
+            var isSelected = selectedFriendUid === uid;
+            var row = document.createElement('div');
+            row.className = 'friend-card-row';
+            row.style.borderColor = isSelected ? 'rgba(0, 242, 255, 0.35)' : 'rgba(255,255,255,0.06)';
+            row.innerHTML = `
+                <div class="friend-avatar"><i class="fas ${escapeHtml(profile.avatar || 'fa-user')}"></i></div>
+                <div class="friend-meta">
+                    <div class="friend-name">${escapeHtml(profile.displayName || uid)}</div>
+                    <div class="friend-sub">
+                        <span class="status-dot ${isUserOnline(profile) ? 'online' : 'offline'}"></span>
+                        <span>${escapeHtml(formatPresence(profile))}</span>
+                    </div>
+                </div>
+                <div class="friend-actions">
+                    <button class="secondary" style="padding:8px 12px; font-size:0.7rem;" onclick="selectFriend('${uid}')">DM</button>
+                    <button style="padding:8px 12px; font-size:0.7rem;" onclick="quickInviteFriend('${uid}')">DAVET</button>
+                </div>`;
+            container.appendChild(row);
+        });
+    }
+
+    function renderDmThread() {
+        var emptyState = document.getElementById('dmEmptyState');
+        var panel = document.getElementById('dmPanelContent');
+        var thread = document.getElementById('dmThread');
+        if (!emptyState || !panel || !thread) return;
+
+        if (!selectedFriendUid) {
+            emptyState.style.display = 'flex';
+            panel.style.display = 'none';
+            return;
+        }
+
+        var friendProfile = friendProfilesCache[selectedFriendUid] || {};
+        emptyState.style.display = 'none';
+        panel.style.display = 'block';
+        document.getElementById('dmCurrentName').innerText = friendProfile.displayName || 'Arkadaş';
+        document.getElementById('dmCurrentStatus').innerText = formatPresence(friendProfile);
+        thread.innerHTML = '';
+
+        if (!currentDmMessages.length) {
+            thread.innerHTML = '<div class="friend-empty">Henüz mesaj yok. İlk mesajı sen gönder.</div>';
+            return;
+        }
+
+        currentDmMessages.forEach(function(message) {
+            var row = document.createElement('div');
+            row.className = 'dm-bubble-row' + (message.uid === currentUser.uid ? ' me' : '');
+            var bubble = document.createElement('div');
+            bubble.className = 'dm-bubble';
+            bubble.innerText = message.text || '';
+            row.appendChild(bubble);
+            thread.appendChild(row);
+        });
+        thread.scrollTop = thread.scrollHeight;
+    }
+
+    function subscribeSocialCollections() {
+        if (!currentUser) return;
+        if (friendRequestsUnsubscribe) friendRequestsUnsubscribe();
+        if (friendInvitesUnsubscribe) friendInvitesUnsubscribe();
+
+        friendRequestsUnsubscribe = onSnapshot(
+            query(collection(db, 'friend_requests'), where('toUid', '==', currentUser.uid)),
+            function(snapshot) {
+                friendRequestsCache = snapshot.docs.map(function(docSnap) {
+                    return Object.assign({ id: docSnap.id }, docSnap.data());
+                }).filter(function(req) {
+                    return req.status === 'pending';
+                });
+                updateFriendsSummary();
+                renderFriendsView();
+            }
+        );
+
+        friendInvitesUnsubscribe = onSnapshot(
+            query(collection(db, 'social_invites'), where('toUid', '==', currentUser.uid)),
+            function(snapshot) {
+                friendInvitesCache = snapshot.docs.map(function(docSnap) {
+                    return Object.assign({ id: docSnap.id }, docSnap.data());
+                }).filter(function(inv) {
+                    return inv.status === 'pending';
+                });
+                updateFriendsSummary();
+                renderFriendsView();
+            }
+        );
+    }
+
+    window.openFriendsView = () => {
+        switchView('view-friends');
+        renderFriendsView();
+    };
+
+    window.copyFriendCode = () => {
+        if (!currentProfileData || !currentProfileData.friendCode) return showToast('Kod henüz hazır değil.', 'error');
+        navigator.clipboard.writeText(currentProfileData.friendCode).then(function() {
+            showToast('Arkadaşlık kodu kopyalandı!', 'success');
+        });
+    };
+
+    window.sendFriendRequestByCode = async () => {
+        if (!currentUser || !currentProfileData) return;
+        var input = document.getElementById('friendCodeInput');
+        var friendCode = (input && input.value ? input.value : '').trim().toUpperCase();
+        if (!friendCode) return showToast('Bir arkadaşlık kodu gir.', 'error');
+        if (friendCode === currentProfileData.friendCode) return showToast('Kendi kodunu giremezsin.', 'error');
+
+        try {
+            var matches = await getDocs(query(collection(db, 'profiles'), where('friendCode', '==', friendCode)));
+            if (matches.empty) return showToast('Bu koda sahip kullanıcı bulunamadı.', 'error');
+
+            var targetDoc = matches.docs[0];
+            var targetProfile = targetDoc.data() || {};
+            var targetUid = targetDoc.id;
+            var myFriends = Array.isArray(currentProfileData.friends) ? currentProfileData.friends : [];
+            if (targetUid === currentUser.uid) return showToast('Kendine istek gönderemezsin.', 'error');
+            if (myFriends.includes(targetUid)) return showToast('Bu kullanıcı zaten arkadaş listende.', 'info');
+
+            var reverseRequestRef = doc(db, 'friend_requests', targetUid + '_' + currentUser.uid);
+            var reverseRequestSnap = await getDoc(reverseRequestRef);
+            if (reverseRequestSnap.exists() && reverseRequestSnap.data().status === 'pending') {
+                await window.acceptFriendRequest(reverseRequestSnap.id);
+                if (input) input.value = '';
+                return showToast('Karşılıklı istek bulundu, arkadaş eklendi!', 'success');
+            }
+
+            await setDoc(doc(db, 'friend_requests', currentUser.uid + '_' + targetUid), {
+                fromUid: currentUser.uid,
+                fromName: currentUser.displayName || 'Oyuncu',
+                fromAvatar: currentUser.photoURL || 'fa-chess-pawn',
+                fromCode: currentProfileData.friendCode || '',
+                toUid: targetUid,
+                toName: targetProfile.displayName || 'Oyuncu',
+                toAvatar: targetProfile.avatar || 'fa-user',
+                status: 'pending',
+                createdAt: serverTimestamp(),
+                createdAtMs: Date.now()
+            }, { merge: true });
+
+            if (input) input.value = '';
+            showToast('Arkadaşlık isteği gönderildi.', 'success');
+        } catch (e) {
+            console.error(e);
+            showToast('Arkadaşlık isteği gönderilemedi.', 'error');
+        }
+    };
+
+    window.acceptFriendRequest = async (requestId) => {
+        var request = friendRequestsCache.find(function(req) { return req.id === requestId; });
+        if (!request) return;
+        try {
+            await updateDoc(doc(db, 'friend_requests', requestId), {
+                status: 'accepted',
+                respondedAt: serverTimestamp(),
+                respondedAtMs: Date.now()
+            });
+            await setDoc(doc(db, 'profiles', currentUser.uid), { friends: arrayUnion(request.fromUid) }, { merge: true });
+            await setDoc(doc(db, 'profiles', request.fromUid), { friends: arrayUnion(currentUser.uid) }, { merge: true });
+            showToast('Arkadaş eklendi.', 'success');
+        } catch (e) {
+            console.error(e);
+            showToast('İstek kabul edilemedi.', 'error');
+        }
+    };
+
+    window.declineFriendRequest = async (requestId) => {
+        try {
+            await updateDoc(doc(db, 'friend_requests', requestId), {
+                status: 'declined',
+                respondedAt: serverTimestamp(),
+                respondedAtMs: Date.now()
+            });
+            showToast('İstek kapatıldı.', 'info');
+        } catch (e) {
+            console.error(e);
+            showToast('İstek reddedilemedi.', 'error');
+        }
+    };
+
+    window.selectFriend = function(uid) {
+        selectedFriendUid = uid;
+        currentDmMessages = [];
+        if (dmThreadUnsubscribe) dmThreadUnsubscribe();
+        var threadId = getFriendThreadId(currentUser.uid, uid);
+        dmThreadUnsubscribe = onSnapshot(
+            query(collection(db, 'friend_threads', threadId, 'messages'), orderBy('createdAtMs', 'asc')),
+            function(snapshot) {
+                currentDmMessages = snapshot.docs.map(function(docSnap) { return docSnap.data(); });
+                renderFriendsView();
+            }
+        );
+        renderFriendsView();
+    };
+
+    var dmInputArea = document.getElementById('dmInputArea');
+    if (dmInputArea) {
+        dmInputArea.onsubmit = async function(e) {
+            e.preventDefault();
+            if (!selectedFriendUid || !currentUser) return;
+            var input = document.getElementById('dmInput');
+            var text = (input && input.value ? input.value : '').trim();
+            if (!text) return;
+            try {
+                var threadId = getFriendThreadId(currentUser.uid, selectedFriendUid);
+                await addDoc(collection(db, 'friend_threads', threadId, 'messages'), {
+                    uid: currentUser.uid,
+                    user: currentUser.displayName || 'Oyuncu',
+                    avatar: currentUser.photoURL || 'fa-chess-pawn',
+                    text: text,
+                    createdAt: serverTimestamp(),
+                    createdAtMs: Date.now()
+                });
+                input.value = '';
+            } catch (err) {
+                console.error(err);
+                showToast('Mesaj gönderilemedi.', 'error');
+            }
+        };
+    }
+
+    function buildLobbyInviteContext(mode) {
+        if (mode === '2v2' && current2v2Id && current2v2Data && current2v2Data.status === 'lobby') {
+            return { type: '2v2', roomId: current2v2Id, roomCode: current2v2Data.code || current2v2Id, roomLabel: '2v2 Lobi' };
+        }
+        if (mode === '1v1' && current1v1Id && current1v1Data && current1v1Data.status === 'lobby') {
+            return { type: '1v1', roomId: current1v1Id, roomCode: current1v1Data.code || current1v1Id, roomLabel: '1v1 Lobi' };
+        }
+        if (mode === 'quiz' && currentQuizId && currentQuizData && currentQuizData.status === 'lobby') {
+            return { type: 'quiz', roomId: currentQuizId, roomCode: currentQuizData.code || currentQuizId, roomLabel: currentQuizData.name || 'Quiz Lobisi' };
+        }
+        if (mode === 'tournament' && currentTournamentId && currentTournamentData && currentTournamentData.status === 'lobby') {
+            return { type: 'tournament', roomId: currentTournamentId, roomCode: currentTournamentId, roomLabel: currentTournamentData.name || 'Turnuva Lobisi' };
+        }
+        return null;
+    }
+
+    function getAnyOpenLobbyInviteContext() {
+        return buildLobbyInviteContext('2v2') || buildLobbyInviteContext('1v1') || buildLobbyInviteContext('quiz') || buildLobbyInviteContext('tournament');
+    }
+
+    async function sendFriendInviteToUid(uid, mode) {
+        var context = buildLobbyInviteContext(mode) || getAnyOpenLobbyInviteContext();
+        if (!context) return showToast('Önce bir lobi açmalısın.', 'error');
+        try {
+            await setDoc(doc(db, 'social_invites', getLobbyInviteDocId(context.type, context.roomId, currentUser.uid, uid)), {
+                fromUid: currentUser.uid,
+                fromName: currentUser.displayName || 'Oyuncu',
+                fromAvatar: currentUser.photoURL || 'fa-chess-pawn',
+                toUid: uid,
+                roomId: context.roomId,
+                roomCode: context.roomCode,
+                roomLabel: context.roomLabel,
+                type: context.type,
+                status: 'pending',
+                createdAt: serverTimestamp(),
+                createdAtMs: Date.now()
+            }, { merge: true });
+            showToast('Davet gönderildi.', 'success');
+        } catch (e) {
+            console.error(e);
+            showToast('Davet gönderilemedi.', 'error');
+        }
+    }
+
+    window.quickInviteFriend = function(uid) {
+        sendFriendInviteToUid(uid);
+    };
+
+    window.inviteSelectedFriendToCurrentLobby = function() {
+        if (!selectedFriendUid) return showToast('Önce bir arkadaş seç.', 'error');
+        sendFriendInviteToUid(selectedFriendUid);
+    };
+
+    window.openLobbyInvites = async function(mode) {
+        var onlineFriends = Object.keys(friendProfilesCache).map(function(uid) {
+            return friendProfilesCache[uid];
+        }).filter(function(profile) {
+            return profile && isUserOnline(profile);
+        });
+        if (!buildLobbyInviteContext(mode)) return showToast('Bu ekranda aktif bir lobi bulunmuyor.', 'error');
+        if (!onlineFriends.length) return showToast('Şu an çevrim içi arkadaş yok.', 'info');
+
+        var html = '<div style="display:grid; gap:10px; max-height:320px; overflow:auto; text-align:left;">' +
+            onlineFriends.map(function(profile) {
+                return '<button class="secondary friend-modal-btn" data-uid="' + escapeHtml(profile.uid) + '" style="width:100%; text-transform:none; display:flex; align-items:center; justify-content:space-between; gap:10px;">' +
+                    '<span><i class="fas ' + escapeHtml(profile.avatar || 'fa-user') + '" style="margin-right:8px;"></i>' + escapeHtml(profile.displayName || 'Oyuncu') + '</span>' +
+                    '<span style="color:#22c55e; font-size:0.75rem;">Çevrim içi</span>' +
+                '</button>';
+            }).join('') + '</div>';
+
+        await Swal.fire({
+            title: 'Arkadaş Davet Et',
+            html: html,
+            showConfirmButton: false,
+            background: 'rgba(30,30,35,0.95)',
+            color: '#fff',
+            didOpen: function() {
+                Array.prototype.forEach.call(document.querySelectorAll('.friend-modal-btn'), function(btn) {
+                    btn.addEventListener('click', async function() {
+                        await sendFriendInviteToUid(btn.getAttribute('data-uid'), mode);
+                        Swal.close();
+                    });
+                });
+            }
+        });
+    };
+
+    window.acceptFriendInvite = async function(inviteId) {
+        var invite = friendInvitesCache.find(function(item) { return item.id === inviteId; });
+        if (!invite) return;
+        try {
+            await updateDoc(doc(db, 'social_invites', inviteId), {
+                status: 'accepted',
+                respondedAt: serverTimestamp(),
+                respondedAtMs: Date.now()
+            });
+            if (invite.type === '2v2') enter2v2Game(invite.roomCode);
+            else if (invite.type === '1v1') enter1v1Game(invite.roomCode);
+            else if (invite.type === 'quiz') enterQuizGame(invite.roomCode);
+            else if (invite.type === 'tournament') enterTournament(invite.roomId);
+        } catch (e) {
+            console.error(e);
+            showToast('Davete katılınamadı.', 'error');
+        }
+    };
+
+    window.dismissFriendInvite = async function(inviteId) {
+        try {
+            await updateDoc(doc(db, 'social_invites', inviteId), {
+                status: 'dismissed',
+                respondedAt: serverTimestamp(),
+                respondedAtMs: Date.now()
+            });
+            showToast('Davet kapatıldı.', 'info');
+        } catch (e) {
+            console.error(e);
+            showToast('Davet kapatılamadı.', 'error');
+        }
+    };
     let isReg = false;
     document.getElementById('btnSwitchLogin').onclick=()=>{isReg=false; toggleAuth();};
     document.getElementById('btnSwitchRegister').onclick=()=>{isReg=true; toggleAuth();};
     function toggleAuth(){ window.playGameSound('nav'); document.getElementById('registerFields').style.display=isReg?'block':'none'; document.getElementById('btnAuthAction').innerText=isReg?'HESAP OLUŞTUR & GİR':'GİRİŞ YAP'; document.getElementById('btnSwitchLogin').classList.toggle('secondary', isReg); document.getElementById('btnSwitchRegister').classList.toggle('secondary', !isReg); }
     document.getElementById('btnAuthAction').onclick=async()=>{ window.playGameSound('nav'); const btn = document.getElementById('btnAuthAction'); const e=document.getElementById('emailInput').value.trim(), p=document.getElementById('passwordInput').value.trim(), n=document.getElementById('displayNameInput').value.trim(), a=document.getElementById('selectedAvatar').value; if (!e || !p || (isReg && !n)) { return showToast("Lütfen tüm alanları doldurun.", "error"); } btn.disabled = true; btn.innerText = "İŞLENİYOR..."; try { if(isReg){ const c=await createUserWithEmailAndPassword(auth,e,p); await updateProfile(c.user,{displayName:n, photoURL:a}); showToast("Kayıt başarılı! Hoş geldin.", "success"); } else { await signInWithEmailAndPassword(auth,e,p); showToast("Giriş yapıldı.", "success"); } } catch(err){ showToast(err.message, "error"); } finally { btn.disabled = false; toggleAuth(); } };
     document.getElementById('btnLogout').onclick=()=>{ window.playGameSound('nav'); Swal.fire({ title: 'Çıkış Yap', text: "Oturumu kapatmak istiyor musun?", icon: 'question', showCancelButton: true, confirmButtonColor: '#d4af37', cancelButtonColor: '#555', confirmButtonText: 'Evet, Çık', cancelButtonText: 'İptal', background: 'rgba(30,30,35,0.95)', color: '#fff' }).then((result) => { if (result.isConfirmed) signOut(auth); }); };
-    onAuthStateChanged(auth, u=>{ if(u){ currentUser=u; document.getElementById('userInfoSection').style.display='flex'; document.getElementById('btnLogout').style.display='inline-block'; document.getElementById('currentUserDisplay').innerText=u.displayName; document.getElementById('currentUserIcon').innerHTML=`<i class="fas ${u.photoURL||'fa-chess-pawn'}" style="color:var(--primary)"></i>`; window.switchView('view-dashboard'); loadMyTournaments(); initIdrisListener(); } else { currentUser=null; document.getElementById('userInfoSection').style.display='none'; document.getElementById('btnLogout').style.display='none'; window.switchView('view-auth'); } });
+    document.addEventListener('visibilitychange', function() {
+        if (!currentUser) return;
+        pushProfilePresence();
+    });
+    window.addEventListener('focus', function() {
+        if (!currentUser) return;
+        pushProfilePresence();
+    });
+
+    onAuthStateChanged(auth, async u => {
+        if(u){
+            currentUser=u;
+            document.getElementById('userInfoSection').style.display='flex';
+            document.getElementById('btnLogout').style.display='inline-block';
+            document.getElementById('currentUserDisplay').innerText=u.displayName;
+            document.getElementById('currentUserIcon').innerHTML=`<i class="fas ${u.photoURL||'fa-chess-pawn'}" style="color:var(--primary)"></i>`;
+            window.switchView('view-dashboard');
+            await ensureUserProfile();
+            startProfileHeartbeat();
+            subscribeSocialCollections();
+            loadMyTournaments();
+            initIdrisListener();
+        } else {
+            stopSocialListeners();
+            currentUser=null;
+            document.getElementById('userInfoSection').style.display='none';
+            document.getElementById('btnLogout').style.display='none';
+            window.switchView('view-auth');
+        }
+    });
     function loadMyTournaments(){ if(!currentUser) return; const q = query(collection(db,"tournaments"), where("participantIds","array-contains",currentUser.uid)); onSnapshot(q, snap=>{ const l = document.getElementById('myTournamentsList'); l.innerHTML=''; if(snap.empty) l.innerHTML='<p style="text-align:center; color:var(--text-muted)">Kayıtlı turnuva yok.</p>'; snap.forEach(d=>{ const t=d.data(); const isFin = t.status==='finished'; let actionBtn = ''; if(isFin) { actionBtn += `<button class="secondary" style="margin-right:5px; font-size:0.7rem;" onclick="enterTournament('${d.id}')">Görüntüle</button>`; actionBtn += `<button class="secondary" style="font-size:0.7rem; color:var(--danger); border-color:var(--danger);" onclick="removeTournament('${d.id}')">Sil</button>`; } else { actionBtn = `<button class="icon-btn secondary" style="border:none" onclick="enterTournament('${d.id}')"><i class="fas fa-chevron-right"></i></button>`; } l.innerHTML += `<div class="history-item"><div><div style="font-weight:bold; ${isFin?'color:var(--text-muted); text-decoration:line-through;':''}">${t.name}</div><div style="font-size:0.8rem; color:var(--text-muted);">${isFin?'Tamamlandı':(t.status==='active'?'Oynanıyor':'Lobi')} #${d.id}</div></div><div>${actionBtn}</div></div>`; }); }); }
     window.removeTournament = async(tid) => { window.playGameSound('nav'); const res = await Swal.fire({title:'Listeden Kaldır?', text:"Geçmişten silinecek.", icon:'warning', showCancelButton:true, confirmButtonColor:'#d33', background:'rgba(30,30,35,0.95)', color:'#fff'}); if(res.isConfirmed) { await updateDoc(doc(db,"tournaments",tid), { participantIds: arrayRemove(currentUser.uid) }); showToast("Listeden kaldırıldı", "info"); } };
     document.getElementById('btnCreateTournament').onclick=async()=>{ window.playGameSound('nav'); const btn = document.getElementById('btnCreateTournament'); const n=document.getElementById('newTournamentName').value.trim(), c=parseInt(document.getElementById('playerCount').value); if(!n) return showToast("Lütfen bir turnuva adı girin.", "error"); btn.disabled = true; btn.innerText = "OLUŞTURULUYOR..."; const shortId = makeId(5); const slots=[]; for(let i=0;i<c;i++) slots.push({index:i, name:`Masa ${i+1}`, ownerId:null, avatar:'fa-chair', status:'open'}); await setDoc(doc(db,"tournaments",shortId),{ name:n, creatorId:currentUser.uid, status:'lobby', slots, matches:[], participantIds:[currentUser.uid], rules:"", createdAt:new Date() }); btn.disabled = false; btn.innerText = "OLUŞTUR"; showToast("Turnuva oluşturuldu!", "success"); enterTournament(shortId); };
@@ -250,16 +950,26 @@ const [
     window.copyToCR = () => { if (!currentCRDeck || currentCRDeck.length !== 8) { return showToast("Önce bir deste oluşturulmalı!", "error"); } const idString = currentCRDeck.map(c => c.id).join(';'); const finalLink = `https://link.clashroyale.com/en/?clashroyale://copyDeck?deck=${idString}&l=Royals&tt=159000000`; const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent); showToast("Clash Royale açılıyor...", "success"); if (isMobile) { window.open(finalLink, '_blank'); } else { window.open(finalLink, '_blank'); } };
     window.switchView = (id) => { 
         window.playGameSound('nav'); 
+        const previousView = currentViewId;
+        currentViewId = id;
+        if (previousView === 'view-2v2-analysis' && id !== 'view-2v2-analysis') {
+            analysisReviewToken++;
+            liveEvalRequestId++;
+            clearAnalysisOverlayTimers();
+            setAnalysisOverlayVisible(false);
+            analysisLoadingState = null;
+        }
         document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); 
         document.getElementById(id).classList.add('active'); 
         const floatNav = document.querySelector('.floating-container'); 
-        if(id === 'view-lobby' || id === 'view-tournament' || id === 'view-2v2-lobby' || id === 'view-2v2-game'){ 
+        if(id === 'view-lobby' || id === 'view-tournament' || id === 'view-2v2-lobby' || id === 'view-2v2-game' || id === 'view-1v1-lobby' || id === 'view-1v1-game'){ 
             floatNav.style.display = 'flex'; 
         } else { 
             floatNav.style.display = 'none'; 
             document.getElementById('chatWidget').style.display = 'none'; 
             document.getElementById('chatToggleBtn').style.display = 'flex'; 
         }
+        if (currentUser) pushProfilePresence();
     };
 
     /* ========================================================
@@ -274,6 +984,7 @@ const [
     let liveBestMoveUci = null;
     let liveBestMoveFen = null;
     let bestPreviewToken = 0;
+    let analysisLoadingState = null;
 
     let sfWorker = null;
     let sfInitPromise = null;
@@ -293,7 +1004,7 @@ const [
         blunder: "Blunder"
     };
     const MOVE_CATEGORY_TAGS = {
-        brilliant: "BR",
+        brilliant: "!!",
         best: "BEST",
         good: "GOOD",
         mistake: "?",
@@ -319,6 +1030,86 @@ const [
             badge.style.color = 'orange';
             badge.style.borderColor = 'orange';
         }
+    }
+
+    function setAnalysisOverlayVisible(isVisible) {
+        var overlay = document.getElementById('analysisLoadingOverlay');
+        if (!overlay) return;
+        overlay.style.display = isVisible ? 'flex' : 'none';
+    }
+
+    function clearAnalysisOverlayTimers() {
+        if (!analysisLoadingState) return;
+        if (analysisLoadingState.intervalId) clearInterval(analysisLoadingState.intervalId);
+        if (analysisLoadingState.timeoutId) clearTimeout(analysisLoadingState.timeoutId);
+        analysisLoadingState.intervalId = null;
+        analysisLoadingState.timeoutId = null;
+    }
+
+    function renderAnalysisOverlayState() {
+        if (!analysisLoadingState) return;
+        var progressFill = document.getElementById('analysisLoadingProgressFill');
+        var countdownEl = document.getElementById('analysisCountdownNumber');
+        var messageEl = document.getElementById('analysisLoadingMessage');
+        var subtextEl = document.getElementById('analysisLoadingSubtext');
+        if (!progressFill || !countdownEl || !messageEl || !subtextEl) return;
+
+        var elapsed = Date.now() - analysisLoadingState.startedAt;
+        var progress = clamp((elapsed / analysisLoadingState.minimumMs) * 100, 0, 100);
+        var remainingMs = Math.max(0, analysisLoadingState.minimumMs - elapsed);
+        var remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
+        progressFill.style.width = progress + '%';
+        countdownEl.innerText = remainingSec;
+
+        if (elapsed < analysisLoadingState.minimumMs) {
+            messageEl.innerText = 'Motor kritik anları işliyor. Geri sayım bittiğinde analiz hazırsa doğrudan açılacak.';
+            subtextEl.innerText = remainingSec + ' saniyelik hazırlık sürüyor';
+        } else if (analysisLoadingState.completed) {
+            messageEl.innerText = 'Analiz tamamlandı. Ekran açılıyor...';
+            subtextEl.innerText = 'Rapor hazır';
+        } else {
+            messageEl.innerText = 'İlk hazırlık tamamlandı. Derin analiz bitene kadar yükleme ekranı açık kalacak.';
+            subtextEl.innerText = 'Motor son hesaplamaları yapıyor';
+        }
+    }
+
+    function maybeHideAnalysisOverlay(token) {
+        if (!analysisLoadingState || analysisLoadingState.token !== token) return;
+        if (!analysisLoadingState.completed) return;
+        if ((Date.now() - analysisLoadingState.startedAt) < analysisLoadingState.minimumMs) return;
+        clearAnalysisOverlayTimers();
+        setAnalysisOverlayVisible(false);
+        analysisLoadingState = null;
+    }
+
+    function startAnalysisOverlay(token) {
+        clearAnalysisOverlayTimers();
+        analysisLoadingState = {
+            token: token,
+            startedAt: Date.now(),
+            minimumMs: 10000,
+            completed: false,
+            intervalId: null,
+            timeoutId: null
+        };
+        setAnalysisOverlayVisible(true);
+        renderAnalysisOverlayState();
+        analysisLoadingState.intervalId = setInterval(function() {
+            if (!analysisLoadingState || analysisLoadingState.token !== token) return;
+            renderAnalysisOverlayState();
+            maybeHideAnalysisOverlay(token);
+        }, 150);
+        analysisLoadingState.timeoutId = setTimeout(function() {
+            renderAnalysisOverlayState();
+            maybeHideAnalysisOverlay(token);
+        }, analysisLoadingState.minimumMs);
+    }
+
+    function finishAnalysisOverlay(token) {
+        if (!analysisLoadingState || analysisLoadingState.token !== token) return;
+        analysisLoadingState.completed = true;
+        renderAnalysisOverlayState();
+        maybeHideAnalysisOverlay(token);
     }
 
     function materialEvalWhiteCpFromFen(fen) {
@@ -1058,6 +1849,7 @@ const [
         bestPreviewToken++;
         analysisReviewToken++;
         var thisReviewToken = analysisReviewToken;
+        startAnalysisOverlay(thisReviewToken);
         analysisMoveReviews = [];
         liveEvalRequestId++;
         liveBestMoveUci = null;
@@ -1129,12 +1921,15 @@ const [
         switchAnalysisTab('review');
 
         if (analysisHistory.length > 0) {
-            runDetailedGameReview(thisReviewToken);
+            Promise.resolve(runDetailedGameReview(thisReviewToken)).finally(function() {
+                finishAnalysisOverlay(thisReviewToken);
+            });
         } else {
             updateAccuracyRing('acc-white', 100);
             updateAccuracyRing('acc-black', 100);
             renderQualitySummary();
             refreshBestMoveButtonState();
+            finishAnalysisOverlay(thisReviewToken);
         }
     };
 
@@ -1206,6 +2001,9 @@ const [
         boardEl.innerHTML = '';
         const boardArray = analysisChess.board();
         const isFlipped = boardEl.classList.contains('flipped');
+        const currentReview = currentAnalysisIndex > 0 ? analysisMoveReviews[currentAnalysisIndex - 1] : null;
+        const currentMove = currentAnalysisIndex > 0 ? analysisHistory[currentAnalysisIndex - 1] : null;
+        const badgeSquare = currentMove ? currentMove.to : null;
 
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
@@ -1247,6 +2045,14 @@ const [
                     const url = `https://images.chesscomfiles.com/chess-themes/pieces/neo/150/${sq.color}${sq.type}.png`;
                     piece.style.backgroundImage = `url('${url}')`;
                     div.appendChild(piece);
+
+                    if (badgeSquare && currentReview && squareName === badgeSquare) {
+                        const badge = document.createElement('div');
+                        badge.className = 'analysis-piece-badge ' + currentReview.category;
+                        badge.innerText = MOVE_CATEGORY_TAGS[currentReview.category] || '';
+                        badge.title = MOVE_CATEGORY_LABELS[currentReview.category] || 'Hamle';
+                        div.appendChild(badge);
+                    }
                 }
                 boardEl.appendChild(div);
             }
@@ -1474,6 +2280,7 @@ const [
     };
 
     window.enterQuizGame = (code) => {
+        releaseModeListeners('quiz');
         if(unsubscribeQuiz) unsubscribeQuiz();
         currentQuizId = code;
         
@@ -1838,12 +2645,456 @@ const [
     /* EXISTING LOGIC PRESERVATION (2v2 Chess, Tournament, Etc)                                 */
     /* ========================================================================================== */
 
+    function makeEmptySeat(team, nameLabel) {
+        return {
+            uid: null,
+            name: nameLabel || 'Boş',
+            avatar: 'fa-plus',
+            team: team,
+            index: 0,
+            isReady: false
+        };
+    }
+
+    window.create1v1Game = async () => {
+        window.playGameSound('nav');
+        const code = makeId(5);
+        const gameData = {
+            code: code,
+            hostId: currentUser.uid,
+            gameMode: '1v1',
+            status: 'lobby',
+            timeControl: 5,
+            whiteTime: 300000,
+            blackTime: 300000,
+            lastMoveTime: null,
+            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            pgn: "",
+            moveCount: 0,
+            players: [
+                { uid: currentUser.uid, name: currentUser.displayName, avatar: currentUser.photoURL || 'fa-chess-pawn', team: 'white', index: 0, isReady: false },
+                makeEmptySeat('black', 'Siyah Boş')
+            ],
+            participantIds: [currentUser.uid],
+            winner: null,
+            createdAt: serverTimestamp()
+        };
+        await setDoc(doc(db, 'games_1v1', code), gameData);
+        enter1v1Game(code);
+    };
+
+    window.join1v1Prompt = async () => {
+        const result = await Swal.fire({
+            title: '1v1 Oda Kodu',
+            input: 'text',
+            inputPlaceholder: 'Örn: X9Y2Z',
+            background: 'rgba(30,30,35,0.95)',
+            color: '#fff',
+            confirmButtonColor: '#22c55e'
+        });
+        if (result.value) enter1v1Game(result.value.trim().toUpperCase());
+    };
+
+    window.enter1v1Game = (code) => {
+        releaseModeListeners('1v1');
+        if (unsubscribe1v1) unsubscribe1v1();
+        if (unsubscribeChat) unsubscribeChat();
+        current1v1Id = code;
+        board1v1SelectedSquare = null;
+        board1v1ValidMoves = [];
+        chess1v1.reset();
+        lastPlayedMoveCount1v1 = -1;
+
+        unsubscribe1v1 = onSnapshot(doc(db, 'games_1v1', code), function(snap) {
+            if (!snap.exists()) {
+                showToast('1v1 oyunu bulunamadı.', 'error');
+                leave1v1Lobby();
+                return;
+            }
+
+            const data = snap.data();
+            current1v1Data = data;
+
+            if (data.status === 'lobby') {
+                render1v1Lobby(data);
+                switchView('view-1v1-lobby');
+            } else if (data.status === 'active' || data.status === 'finished') {
+                update1v1Game(data);
+                if (!document.getElementById('view-1v1-game').classList.contains('active')) {
+                    switchView('view-1v1-game');
+                    if (lastPlayedMoveCount1v1 === -1) lastPlayedMoveCount1v1 = data.moveCount;
+                    draw1v1Board();
+                }
+                if (data.status === 'finished') {
+                    showGameOverModal(data);
+                }
+            }
+        });
+        initChat(code);
+    };
+
+    window.copy1v1Code = () => {
+        navigator.clipboard.writeText(current1v1Id).then(function() {
+            showToast('1v1 oda kodu kopyalandı!', 'success');
+        });
+    };
+
+    window.leave1v1Lobby = async () => {
+        if (unsubscribe1v1) unsubscribe1v1();
+        if (unsubscribeChat) unsubscribeChat();
+        if (game1v1TimerInterval) clearInterval(game1v1TimerInterval);
+
+        if (current1v1Data && current1v1Data.status === 'lobby') {
+            const updatedPlayers = current1v1Data.players.map(function(player) {
+                if (player.uid === currentUser.uid) {
+                    return makeEmptySeat(player.team, player.team === 'white' ? 'Beyaz Boş' : 'Siyah Boş');
+                }
+                return player;
+            });
+            const remainingPlayer = updatedPlayers.find(function(player) { return !!player.uid; });
+            const updates = {
+                players: updatedPlayers,
+                participantIds: arrayRemove(currentUser.uid),
+                hostId: remainingPlayer ? remainingPlayer.uid : null
+            };
+            await updateDoc(doc(db, 'games_1v1', current1v1Id), updates);
+        }
+
+        current1v1Id = null;
+        current1v1Data = null;
+        switchView('view-dashboard');
+    };
+
+    function render1v1Lobby(data) {
+        document.getElementById('lobby1v1Code').innerText = data.code;
+        const isHost = data.hostId === currentUser.uid;
+        document.getElementById('hostControls1v1').style.display = isHost ? 'block' : 'none';
+        if (isHost) document.getElementById('timeControlSelect1v1').value = data.timeControl || 5;
+
+        data.players.forEach(function(player) {
+            const slotId = player.team === 'white' ? 'slot-1v1-white' : 'slot-1v1-black';
+            const el = document.getElementById(slotId);
+            el.className = 'team-slot team-' + player.team + (player.uid ? ' taken' : '') + (player.isReady ? ' ready' : '');
+            if (player.uid) {
+                el.innerHTML = `<span><i class="fas ${player.avatar || 'fa-user'}"></i> ${escapeHtml(player.name)} ${player.uid === data.hostId ? '<i class="fas fa-crown" style="color:var(--primary); margin-left:4px;"></i>' : ''}</span> ${player.isReady ? '<i class="fas fa-check" style="color:var(--success)"></i>' : '<i class="fas fa-clock"></i>'}`;
+            } else {
+                el.innerHTML = `<span><i class="fas fa-plus"></i> ${player.team === 'white' ? 'Beyaz Boş' : 'Siyah Boş'}</span>`;
+            }
+        });
+
+        const mySeat = data.players.find(function(player) { return player.uid === currentUser.uid; });
+        const btnReady = document.getElementById('btnReady1v1');
+        if (mySeat) {
+            btnReady.style.display = 'block';
+            btnReady.innerText = mySeat.isReady ? 'HAZIRIM (BEKLENİYOR...)' : 'HAZIRIM';
+            btnReady.classList.toggle('secondary', mySeat.isReady);
+        } else {
+            btnReady.style.display = 'none';
+        }
+    }
+
+    window.join1v1Seat = async (team) => {
+        if (!current1v1Data) return;
+        const targetSeat = current1v1Data.players.find(function(player) { return player.team === team; });
+        if (targetSeat.uid && targetSeat.uid !== currentUser.uid) return showToast('Bu taraf dolu.', 'error');
+
+        let updatedPlayers = current1v1Data.players.map(function(player) {
+            if (player.uid === currentUser.uid) {
+                return makeEmptySeat(player.team, player.team === 'white' ? 'Beyaz Boş' : 'Siyah Boş');
+            }
+            return player;
+        });
+
+        updatedPlayers = updatedPlayers.map(function(player) {
+            if (player.team === team) {
+                return { uid: currentUser.uid, name: currentUser.displayName, avatar: currentUser.photoURL || 'fa-chess-pawn', team: team, index: 0, isReady: false };
+            }
+            return player;
+        });
+
+        await updateDoc(doc(db, 'games_1v1', current1v1Id), {
+            players: updatedPlayers,
+            participantIds: arrayUnion(currentUser.uid)
+        });
+    };
+
+    window.toggleReady1v1 = async () => {
+        if (!current1v1Data) return;
+        const updatedPlayers = current1v1Data.players.map(function(player) {
+            if (player.uid === currentUser.uid) return Object.assign({}, player, { isReady: !player.isReady });
+            return player;
+        });
+        await updateDoc(doc(db, 'games_1v1', current1v1Id), { players: updatedPlayers });
+    };
+
+    document.getElementById('timeControlSelect1v1').onchange = async function() {
+        if (!current1v1Id) return;
+        await updateDoc(doc(db, 'games_1v1', current1v1Id), {
+            timeControl: parseInt(document.getElementById('timeControlSelect1v1').value, 10)
+        });
+    };
+
+    window.start1v1Game = async () => {
+        if (!current1v1Data) return;
+        if (current1v1Data.players.some(function(player) { return !player.uid || !player.isReady; })) {
+            return showToast('İki oyuncu da hazır olmalı.', 'error');
+        }
+        const ms = (current1v1Data.timeControl || 5) * 60 * 1000;
+        await updateDoc(doc(db, 'games_1v1', current1v1Id), {
+            status: 'active',
+            whiteTime: ms,
+            blackTime: ms,
+            lastMoveTime: Date.now(),
+            moveCount: 0,
+            winner: null,
+            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            pgn: ""
+        });
+        window.playGameSound('gameStart');
+    };
+
+    function update1v1TimerDisplay(whiteMs, blackMs) {
+        const format = function(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+        };
+        document.getElementById('timer1v1White').innerText = format(whiteMs);
+        document.getElementById('timer1v1Black').innerText = format(blackMs);
+    }
+
+    async function handle1v1TimeOut(loserColor) {
+        if (current1v1Data.hostId === currentUser.uid && current1v1Data.status === 'active') {
+            const winner = loserColor === 'white' ? 'black' : 'white';
+            await updateDoc(doc(db, 'games_1v1', current1v1Id), {
+                status: 'finished',
+                winner: winner
+            });
+        }
+    }
+
+    function update1v1Game(data) {
+        if (data.pgn) chess1v1.load_pgn(data.pgn);
+        else chess1v1.load(data.fen);
+
+        if (data.moveCount > lastPlayedMoveCount1v1) {
+            if (lastPlayedMoveCount1v1 !== -1) {
+                const flags = data.lastMoveFlags || "";
+                const isCheck = data.isCheck === true;
+                const isCapture = flags.includes('c') || flags.includes('e');
+                const isCastle = flags.includes('k') || flags.includes('q');
+                if (isCheck) window.playGameSound('check');
+                else if (isCapture) window.playGameSound('capture');
+                else if (isCastle) window.playGameSound('castle');
+                else window.playGameSound('move');
+            }
+            lastPlayedMoveCount1v1 = data.moveCount;
+        } else if (data.moveCount === 0 && lastPlayedMoveCount1v1 !== 0) {
+            lastPlayedMoveCount1v1 = 0;
+        }
+
+        if (game1v1TimerInterval) clearInterval(game1v1TimerInterval);
+        if (data.status === 'active') {
+            game1v1TimerInterval = setInterval(function() {
+                const now = Date.now();
+                let whiteTime = data.whiteTime;
+                let blackTime = data.blackTime;
+                if (data.lastMoveTime) {
+                    const diff = now - data.lastMoveTime;
+                    if (chess1v1.turn() === 'w') whiteTime = Math.max(0, whiteTime - diff);
+                    else blackTime = Math.max(0, blackTime - diff);
+                }
+                update1v1TimerDisplay(whiteTime, blackTime);
+                if (whiteTime === 0 || blackTime === 0) handle1v1TimeOut(whiteTime === 0 ? 'white' : 'black');
+            }, 100);
+        } else {
+            update1v1TimerDisplay(data.whiteTime, data.blackTime);
+        }
+
+        const turnTeam = chess1v1.turn() === 'w' ? 'white' : 'black';
+        const whitePlayer = data.players.find(function(player) { return player.team === 'white'; });
+        const blackPlayer = data.players.find(function(player) { return player.team === 'black'; });
+        document.getElementById('p1v1-white').querySelector('span').innerText = whitePlayer ? whitePlayer.name : 'Beyaz';
+        document.getElementById('p1v1-black').querySelector('span').innerText = blackPlayer ? blackPlayer.name : 'Siyah';
+        document.querySelectorAll('#p1v1-white, #p1v1-black').forEach(function(el) { el.classList.remove('active'); });
+        const activeTag = document.getElementById('p1v1-' + turnTeam);
+        if (activeTag && data.status === 'active') activeTag.classList.add('active');
+        document.getElementById('turnIndicator1v1').innerText = data.status === 'finished'
+            ? 'Oyun Bitti'
+            : 'Sıra: ' + ((turnTeam === 'white' ? whitePlayer : blackPlayer) || { name: 'Oyuncu' }).name;
+        draw1v1Board();
+    }
+
+    function draw1v1Board() {
+        const boardEl = document.getElementById('chessBoard1v1');
+        if (!boardEl || !current1v1Data) return;
+        boardEl.innerHTML = '';
+        const myPlayer = current1v1Data.players.find(function(player) { return player.uid === currentUser.uid; });
+        const rotate = myPlayer && myPlayer.team === 'black';
+        const isMyTurn = current1v1Data.status === 'active' && myPlayer && myPlayer.team === (chess1v1.turn() === 'w' ? 'white' : 'black');
+        const boardArray = chess1v1.board();
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const row = rotate ? 7 - r : r;
+                const col = rotate ? 7 - c : c;
+                const sq = boardArray[row][col];
+                const squareName = String.fromCharCode(97 + col) + (8 - row);
+                const div = document.createElement('div');
+                div.className = 'square ' + ((r + c) % 2 === 0 ? 'white' : 'black');
+                if (board1v1SelectedSquare === squareName) div.classList.add('selected');
+                if (board1v1ValidMoves.includes(squareName)) div.classList.add('highlight');
+
+                if (c === 0) {
+                    const rankEl = document.createElement('span');
+                    rankEl.className = 'coord coord-rank';
+                    rankEl.innerText = 8 - row;
+                    div.appendChild(rankEl);
+                }
+                if (r === 7) {
+                    const fileEl = document.createElement('span');
+                    fileEl.className = 'coord coord-file';
+                    fileEl.innerText = String.fromCharCode(97 + col);
+                    div.appendChild(fileEl);
+                }
+
+                div.onclick = function() { handle1v1SquareClick(squareName, isMyTurn); };
+
+                if (sq) {
+                    const piece = document.createElement('div');
+                    piece.className = 'piece ' + (isMyTurn ? 'active' : 'locked');
+                    piece.style.backgroundImage = `url('https://images.chesscomfiles.com/chess-themes/pieces/neo/150/${sq.color}${sq.type}.png')`;
+                    div.appendChild(piece);
+                }
+                boardEl.appendChild(div);
+            }
+        }
+    }
+
+    async function handle1v1SquareClick(squareName, isMyTurn) {
+        if (!isMyTurn || current1v1Data.status !== 'active') return;
+
+        if (board1v1ValidMoves.includes(squareName)) {
+            const move = chess1v1.move({ from: board1v1SelectedSquare, to: squareName, promotion: 'q' });
+            if (move) {
+                const now = Date.now();
+                const timeDiff = now - current1v1Data.lastMoveTime;
+                const isCheck = chess1v1.in_check();
+                const isCapture = move.flags.includes('c') || move.flags.includes('e');
+                const isCastle = move.flags.includes('k') || move.flags.includes('q');
+                if (isCheck) window.playGameSound('check');
+                else if (isCapture) window.playGameSound('capture');
+                else if (isCastle) window.playGameSound('castle');
+                else window.playGameSound('move');
+
+                lastPlayedMoveCount1v1 = current1v1Data.moveCount + 1;
+                const updates = {
+                    fen: chess1v1.fen(),
+                    pgn: chess1v1.pgn(),
+                    lastMoveTime: now,
+                    moveCount: current1v1Data.moveCount + 1,
+                    lastMoveFlags: move.flags,
+                    isCheck: isCheck
+                };
+                if (chess1v1.turn() === 'b') updates.whiteTime = Math.max(0, current1v1Data.whiteTime - timeDiff);
+                else updates.blackTime = Math.max(0, current1v1Data.blackTime - timeDiff);
+
+                if (chess1v1.game_over()) {
+                    updates.status = 'finished';
+                    updates.winner = chess1v1.in_checkmate() ? (chess1v1.turn() === 'w' ? 'black' : 'white') : 'draw';
+                }
+
+                board1v1SelectedSquare = null;
+                board1v1ValidMoves = [];
+                draw1v1Board();
+                await updateDoc(doc(db, 'games_1v1', current1v1Id), updates);
+                return;
+            }
+        }
+
+        const piece = chess1v1.get(squareName);
+        if (piece && piece.color === chess1v1.turn()) {
+            board1v1SelectedSquare = squareName;
+            board1v1ValidMoves = chess1v1.moves({ square: squareName, verbose: true }).map(function(move) { return move.to; });
+        } else {
+            board1v1SelectedSquare = null;
+            board1v1ValidMoves = [];
+        }
+        draw1v1Board();
+    }
+
+    window.leave1v1GameConfirm = async () => {
+        const result = await Swal.fire({
+            title: 'Oyundan Çık?',
+            text: 'Rakibin hükmen kazanabilir.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            background: 'rgba(30,30,35,0.95)',
+            color: '#fff'
+        });
+        if (result.isConfirmed) leave1v1Lobby();
+    };
+
+    window.load1v1History = async () => {
+        document.getElementById('history1v1Modal').style.display = 'flex';
+        const list = document.getElementById('history1v1List');
+        list.innerHTML = '<p style="text-align:center;">Yükleniyor...</p>';
+        try {
+            const snapshot = await getDocs(query(collection(db, 'games_1v1'), where('participantIds', 'array-contains', currentUser.uid)));
+            const games = [];
+            snapshot.forEach(function(docSnap) {
+                if (docSnap.data().status === 'finished') games.push(docSnap.data());
+            });
+            games.sort(function(a, b) {
+                return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+            });
+
+            if (!games.length) {
+                list.innerHTML = '<p style="text-align:center; color:#888;">Henüz tamamlanmış 1v1 maçın yok.</p>';
+                return;
+            }
+
+            list.innerHTML = '';
+            games.forEach(function(game) {
+                const myPlayer = game.players.find(function(player) { return player.uid === currentUser.uid; });
+                if (!myPlayer) return;
+                const opponent = game.players.find(function(player) { return player.uid && player.uid !== currentUser.uid; });
+                const isWin = game.winner === myPlayer.team;
+                const isDraw = game.winner === 'draw';
+                const resultColor = isWin ? 'var(--success)' : (isDraw ? 'var(--text-muted)' : 'var(--danger)');
+                const resultText = isWin ? 'KAZANDIN' : (isDraw ? 'BERABERE' : 'KAYBETTİN');
+                const safeGame = encodeURIComponent(JSON.stringify(game));
+                const date = game.createdAt ? new Date(game.createdAt.seconds * 1000).toLocaleDateString() : '-';
+                list.innerHTML += `
+                    <div class="history-item" style="border-left: 4px solid ${resultColor}">
+                        <div>
+                            <div style="font-weight:bold; color:${resultColor}">${resultText}</div>
+                            <div style="font-size:0.8rem; color:#aaa;">${date} • Rakip: ${escapeHtml((opponent && opponent.name) || 'Bilinmiyor')}</div>
+                        </div>
+                        <div>
+                            <button class="secondary icon-btn" onclick="openAnalysisFromEncodedGame('${safeGame}')">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
+                        </div>
+                    </div>`;
+            });
+        } catch (e) {
+            console.error(e);
+            list.innerHTML = '<p style="text-align:center; color:var(--danger);">Bir hata oluştu.</p>';
+        }
+    };
+
+    window.closeHistory1v1 = () => document.getElementById('history1v1Modal').style.display = 'none';
+
     window.create2v2Game = async () => {
         window.playGameSound('nav');
         const code = makeId(5);
         const gameData = {
             code: code,
             hostId: currentUser.uid,
+            gameMode: '2v2',
             status: 'lobby',
             timeControl: 10,
             movesPerTurn: 5,
@@ -1879,8 +3130,13 @@ const [
     };
 
     window.enter2v2Game = (code) => {
+        releaseModeListeners('2v2');
         current2v2Id = code;
+        boardSelectedSquare = null;
+        boardValidMoves = [];
+        chess.reset();
         lastPlayedMoveCount = -1;
+        if(unsubscribeChat) unsubscribeChat();
         
         unsubscribe2v2 = onSnapshot(doc(db, "games_2v2", code), snap => {
             if(!snap.exists()) { showToast("Oyun bulunamadı.", "error"); leave2v2Lobby(); return; }
@@ -1912,6 +3168,7 @@ const [
     window.leave2v2Lobby = async () => {
         if(unsubscribe2v2) unsubscribe2v2();
         if(unsubscribeChat) unsubscribeChat();
+        if(gameTimerInterval) clearInterval(gameTimerInterval);
         
         if(current2v2Data && current2v2Data.status === 'lobby') {
              const newPlayers = current2v2Data.players.map(p => {
@@ -2287,12 +3544,19 @@ const [
     
     function showGameOverModal(d) {
         if(document.getElementById('gameOverModal').style.display === 'flex') return;
+        currentGameOverPayload = d;
         confetti({particleCount: 200, spread: 150, origin: { y: 0.6 }});
         window.playGameSound('gameEnd');
         let winnerText = "";
         let winners = [];
+        const is1v1 = d.gameMode === '1v1';
         if(d.winner === 'draw') { winnerText = "BERABERE"; winners = ["Dostluk Kazandı"]; } 
-        else { winnerText = d.winner === 'white' ? "KAZANAN: BEYAZ TAKIM" : "KAZANAN: SİYAH TAKIM"; winners = d.players.filter(p => p.team === d.winner).map(p => p.name); }
+        else {
+            winnerText = d.winner === 'white'
+                ? (is1v1 ? "KAZANAN: BEYAZ" : "KAZANAN: BEYAZ TAKIM")
+                : (is1v1 ? "KAZANAN: SİYAH" : "KAZANAN: SİYAH TAKIM");
+            winners = d.players.filter(p => p.team === d.winner).map(p => p.name);
+        }
         document.getElementById('winnerText').innerText = winnerText;
         document.getElementById('winnerText').style.color = d.winner === 'white' ? '#fff' : '#aaa';
         document.getElementById('winnerPlayers').innerText = winners.join(' & ');
@@ -2300,18 +3564,22 @@ const [
     }
     window.closeGameOver = () => { 
         document.getElementById('gameOverModal').style.display = 'none'; 
-        // Auto open analysis after game
-        if(current2v2Data && current2v2Data.pgn) {
-            openAnalysis(current2v2Data.pgn, current2v2Data.players);
+        if(currentGameOverPayload && currentGameOverPayload.pgn) {
+            openAnalysis(currentGameOverPayload.pgn, currentGameOverPayload.players, currentGameOverPayload.fen || null);
+        } else if (currentGameOverPayload && currentGameOverPayload.gameMode === '1v1') {
+            leave1v1Lobby();
         } else {
             leave2v2Lobby(); 
         }
+        currentGameOverPayload = null;
     };
 
     // --- TOURNAMENT LOGIC ---
     window.enterTournament = (id) => { 
+        releaseModeListeners('tournament');
         window.playGameSound('nav'); 
         currentTournamentId = id; 
+        if(unsubscribeChat) unsubscribeChat();
         unsubscribeTournament = onSnapshot(doc(db,"tournaments",id), snap=>{ 
             if(!snap.exists()) { showToast("Turnuva bulunamadı.", "error"); leaveTournament(); return; } 
             const d=snap.data(); 
@@ -2376,13 +3644,85 @@ const [
     window.showStats = (s) => { window.playGameSound('nav'); document.getElementById('modalAvatar').innerHTML = `<i class="fas ${s.avatar}"></i>`; document.getElementById('modalName').innerText = s.name; document.getElementById('statWins').innerText = s.w; document.getElementById('statDraws').innerText = s.d; document.getElementById('statLosses').innerText = s.l; document.getElementById('statPoints').innerText = s.pts; document.getElementById('statSB').innerText = s.sb.toFixed(2); const rate = s.p > 0 ? Math.round(((s.pts - (s.d * 0.5)) / s.p) * 100) : 0; document.getElementById('statRate').innerText = `%${rate}`; document.getElementById('statsModal').style.display = 'flex'; };
     window.closeStats = () => document.getElementById('statsModal').style.display='none';
     
-    window.onclick = (e) => { if(e.target.classList.contains('modal-overlay')) { closeStats(); closeRules(); closeHistory2v2(); } }
+    window.onclick = (e) => { if(e.target.classList.contains('modal-overlay')) { closeStats(); closeRules(); closeHistory2v2(); closeHistory1v1(); } }
     window.copyCode = () => { navigator.clipboard.writeText(document.getElementById('shareCode').innerText).then(()=>showToast("Kod kopyalandı!", "success")); };
     window.leaveTournamentConfirm = async () => { window.playGameSound('nav'); const res = await Swal.fire({ title: 'Çıkış?', text: 'Turnuva ekranından ayrılacaksın.', icon: 'question', showCancelButton: true, background: 'rgba(30,30,35,0.95)', color: '#fff', confirmButtonColor: '#555', cancelButtonColor: '#d33', confirmButtonText: 'Evet, Çık', cancelButtonText: 'Kal' }); if(res.isConfirmed) leaveTournament(); }
     window.leaveTournament = () => { if(unsubscribeTournament) unsubscribeTournament(); if(unsubscribeChat) unsubscribeChat(); currentTournamentId=null; hideChat(); switchView('view-dashboard'); };
     window.showTab = (t) => { window.playGameSound('nav'); document.getElementById('tab-fixtures').style.display=t==='fixtures'?'block':'none'; document.getElementById('tab-standings').style.display=t==='standings'?'block':'none'; };
-    window.openSettings = () => { window.playGameSound('nav'); renderAvatars('settingsAvatarGrid','settingsSelectedAvatar'); document.getElementById('settingsNameInput').value=currentUser.displayName; switchView('view-settings'); };
-    window.saveSettings = async() => { try { const newName = document.getElementById('settingsNameInput').value; const newAvatar = document.getElementById('settingsSelectedAvatar').value; await updateProfile(currentUser,{displayName:newName, photoURL:newAvatar}); const q = query(collection(db, "tournaments"), where("participantIds", "array-contains", currentUser.uid)); const querySnapshot = await getDocs(q); querySnapshot.forEach(async (docSnap) => { const tData = docSnap.data(); if(tData.status === 'finished') return; let updatedSlots = tData.slots.map(s => { if(s.ownerId === currentUser.uid) { return { ...s, name: newName, avatar: newAvatar }; } return s; }); if(JSON.stringify(updatedSlots) !== JSON.stringify(tData.slots)) { await updateDoc(doc(db, "tournaments", docSnap.id), { slots: updatedSlots }); } }); showToast("Profil ve aktif turnuvalar güncellendi!", "success"); switchView('view-dashboard'); } catch(e){ showToast(e.message, "error"); } };
+    window.openSettings = () => {
+        window.playGameSound('nav');
+        renderAvatars('settingsAvatarGrid','settingsSelectedAvatar');
+        document.getElementById('settingsNameInput').value = currentUser.displayName;
+        document.getElementById('settingsSelectedAvatar').value = currentUser.photoURL || avatarList[0];
+        Array.prototype.forEach.call(document.querySelectorAll('#settingsAvatarGrid .avatar-option'), function(option) {
+            option.classList.remove('selected');
+            var icon = option.querySelector('i');
+            if (icon && icon.classList.contains(currentUser.photoURL || avatarList[0])) option.classList.add('selected');
+        });
+        applyInactiveOpacity(getStoredInactiveOpacity());
+        switchView('view-settings');
+    };
+    window.saveSettings = async() => {
+        try {
+            const newName = document.getElementById('settingsNameInput').value.trim() || 'Oyuncu';
+            const newAvatar = document.getElementById('settingsSelectedAvatar').value || 'fa-chess-pawn';
+            const inactiveOpacity = applyInactiveOpacity(document.getElementById('inactiveOpacityRange').value);
+            localStorage.setItem('gm_inactive_piece_opacity', inactiveOpacity.toFixed(2));
+
+            await updateProfile(currentUser,{displayName:newName, photoURL:newAvatar});
+            await setDoc(doc(db, 'profiles', currentUser.uid), {
+                displayName: newName,
+                avatar: newAvatar,
+                lastActiveAt: Date.now(),
+                lastView: currentViewId
+            }, { merge: true });
+
+            document.getElementById('currentUserDisplay').innerText = newName;
+            document.getElementById('currentUserIcon').innerHTML = `<i class="fas ${newAvatar}" style="color:var(--primary)"></i>`;
+
+            const tournamentQuery = query(collection(db, "tournaments"), where("participantIds", "array-contains", currentUser.uid));
+            const tournamentSnapshot = await getDocs(tournamentQuery);
+            tournamentSnapshot.forEach(async (docSnap) => {
+                const tData = docSnap.data();
+                if(tData.status === 'finished') return;
+                let updatedSlots = tData.slots.map(s => {
+                    if(s.ownerId === currentUser.uid) return { ...s, name: newName, avatar: newAvatar };
+                    return s;
+                });
+                if(JSON.stringify(updatedSlots) !== JSON.stringify(tData.slots)) {
+                    await updateDoc(doc(db, "tournaments", docSnap.id), { slots: updatedSlots });
+                }
+            });
+
+            const game2v2Snapshot = await getDocs(query(collection(db, 'games_2v2'), where('participantIds', 'array-contains', currentUser.uid)));
+            game2v2Snapshot.forEach(async function(docSnap) {
+                const game = docSnap.data();
+                if (game.status === 'finished') return;
+                const updatedPlayers = game.players.map(function(player) {
+                    if (player.uid === currentUser.uid) return Object.assign({}, player, { name: newName, avatar: newAvatar });
+                    return player;
+                });
+                await updateDoc(doc(db, 'games_2v2', docSnap.id), { players: updatedPlayers });
+            });
+
+            const game1v1Snapshot = await getDocs(query(collection(db, 'games_1v1'), where('participantIds', 'array-contains', currentUser.uid)));
+            game1v1Snapshot.forEach(async function(docSnap) {
+                const game = docSnap.data();
+                if (game.status === 'finished') return;
+                const updatedPlayers = game.players.map(function(player) {
+                    if (player.uid === currentUser.uid) return Object.assign({}, player, { name: newName, avatar: newAvatar });
+                    return player;
+                });
+                await updateDoc(doc(db, 'games_1v1', docSnap.id), { players: updatedPlayers });
+            });
+
+            showToast("Profil ve aktif oyunlar güncellendi!", "success");
+            switchView('view-dashboard');
+        } catch(e){
+            console.error(e);
+            showToast(e.message, "error");
+        }
+    };
     
     const cw=document.getElementById('chatWidget'), cb=document.getElementById('chatToggleBtn');
     cb.onclick=()=>{ cw.style.display='flex'; cb.style.display='none'; document.getElementById('chatBadge').style.display='none'; scrollChat(); };
