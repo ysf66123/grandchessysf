@@ -1436,11 +1436,7 @@
                     resolve();
                 }
 
-                var workerCode = 'importScripts("https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js");';
-                var blob = new Blob([workerCode], {type: 'application/javascript'});
-                var blobUrl = URL.createObjectURL(blob);
-                sfWorker = new Worker(blobUrl);
-                URL.revokeObjectURL(blobUrl);
+                sfWorker = new Worker('vendor/stockfish-18-lite-single.js');
 
                 sfWorker.onmessage = function(event) {
                     handleStockfishMessage(event.data);
@@ -1491,8 +1487,7 @@
         if (line === 'uciok') {
             sfWorker.postMessage('setoption name MultiPV value 1');
             sfWorker.postMessage('setoption name Hash value 96');
-            var threads = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
-            sfWorker.postMessage('setoption name Threads value ' + threads);
+            sfWorker.postMessage('setoption name Threads value 1');
             sfWorker.postMessage('isready');
             return;
         }
