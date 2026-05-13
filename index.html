@@ -164,7 +164,7 @@
         .team-white .team-header { background: #f0f0f0; color: #333; }
         .team-black .team-header { background: #333; color: #f0f0f0; }
         
-        .board-container { width: 100%; max-width: 500px; aspect-ratio: 1; margin: 0 auto; display: grid; grid-template-columns: repeat(8, 1fr); border: 5px solid #444; user-select: none; position: relative; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        .board-container { width: 100%; max-width: 500px; aspect-ratio: 1; margin: 0 auto; display: grid; grid-template-columns: repeat(8, 1fr); border: 5px solid #444; border-radius: 10px; user-select: none; position: relative; overflow: hidden; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
         .square { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
         .square.white { background-color: var(--board-light); }
         .square.black { background-color: var(--board-dark); }
@@ -172,16 +172,17 @@
         .square.highlight::after { content: ''; position: absolute; width: 30%; height: 30%; background: rgba(0,0,0,0.2); border-radius: 50%; }
         .square.selected { background-color: var(--board-highlight) !important; }
         
-        .coord { position: absolute; font-size: 0.7rem; font-weight: bold; pointer-events: none; z-index: 1; font-family: sans-serif; }
+        .coord { position: absolute; font-size: 0.66rem; font-weight: 800; pointer-events: none; z-index: 1; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; line-height: 1; padding: 2px 4px; border-radius: 5px; text-transform: lowercase; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); }
         .coord-rank { top: 2px; left: 3px; }
-        .coord-file { bottom: 0px; right: 3px; }
-        .square.white .coord { color: var(--board-dark); }
-        .square.black .coord { color: var(--board-light); }
+        .coord-file { bottom: 2px; right: 3px; }
+        .square.white .coord { color: #3f582a; background: rgba(255,255,255,0.66); }
+        .square.black .coord { color: #f3f5e9; background: rgba(0,0,0,0.26); }
 
         .piece { width: 100%; height: 100%; background-size: cover; z-index: 2; transition: transform 0.1s, filter 0.2s, opacity 0.2s; }
         .piece.active { cursor: pointer; filter: drop-shadow(0 0 2px rgba(255,255,255,0.5)); }
         .piece.active:active { transform: scale(1.15); }
         .piece.locked { cursor: default; opacity: 0.7; filter: grayscale(100%) contrast(0.5); pointer-events: none; }
+        #analysisBoard .piece.locked { opacity: 1; filter: none; }
 
         .game-info-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--glass-border); }
         .player-tag { display: flex; align-items: center; gap: 8px; opacity: 0.5; transition: 0.3s; padding: 5px 10px; border-radius: 20px; border: 1px solid transparent; font-size: 0.9rem; }
@@ -295,8 +296,15 @@
         .move-list-row:hover { background: rgba(255,255,255,0.05); }
         .move-list-row.active { background: rgba(212, 175, 55, 0.2); border-left: 3px solid var(--primary); }
         .move-num { width: 30px; color: var(--text-muted); }
-        .move-san { flex: 1; display: flex; align-items: center; justify-content: center; }
+        .move-san { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 24px; }
         .move-san.empty { color: transparent; }
+        .move-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.03em; border-radius: 999px; padding: 2px 6px; border: 1px solid transparent; }
+        .move-tag.best { color: #0f172a; background: #4ade80; border-color: rgba(255,255,255,0.35); }
+        .move-tag.excellent { color: #0f172a; background: #a3e635; border-color: rgba(255,255,255,0.35); }
+        .move-tag.good { color: #082f49; background: #7dd3fc; border-color: rgba(255,255,255,0.25); }
+        .move-tag.inaccuracy { color: #1f2937; background: #facc15; border-color: rgba(255,255,255,0.25); }
+        .move-tag.mistake { color: #fff; background: #fb923c; border-color: rgba(255,255,255,0.25); }
+        .move-tag.blunder { color: #fff; background: #ef4444; border-color: rgba(255,255,255,0.25); }
         
         .analysis-controls { display: flex; gap: 5px; padding: 10px; background: rgba(0,0,0,0.2); border-top: 1px solid var(--glass-border); justify-content: center; }
         .analysis-btn { background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); width: 40px; height: 35px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -1284,226 +1292,562 @@
     let analysisChess = new Chess();
     let analysisHistory = [];
     let currentAnalysisIndex = 0;
-    
+    let analysisMoveReviews = [];
+    let analysisReviewToken = 0;
+    let liveEvalRequestId = 0;
+
     let sfWorker = null;
+    let sfInitPromise = null;
     let isSfReady = false;
     let sfPendingFen = null;
+    let sfQueue = [];
+    let sfActiveTask = null;
+
+    const SF_DEPTH_LIVE = 14;
+    const SF_DEPTH_REVIEW = 11;
+    const MOVE_CATEGORY_LABELS = {
+        best: "En iyi",
+        excellent: "Mukemmel",
+        good: "Iyi",
+        inaccuracy: "Tutarsizlik",
+        mistake: "Hata",
+        blunder: "Kritik hata"
+    };
+    const MOVE_CATEGORY_TAGS = {
+        best: "!!",
+        excellent: "!",
+        good: "OK",
+        inaccuracy: "?!",
+        mistake: "?",
+        blunder: "??"
+    };
+
+    function setStockfishStatus(state) {
+        var badge = document.getElementById('sfStatusBadge');
+        if (!badge) return;
+        if (state === 'active') {
+            badge.innerHTML = '<i class="fas fa-check-circle"></i> Stockfish Aktif';
+            badge.style.background = 'rgba(76,175,80,0.2)';
+            badge.style.color = '#4caf50';
+            badge.style.borderColor = '#4caf50';
+        } else if (state === 'loading') {
+            badge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Motor Yukleniyor';
+            badge.style.background = 'rgba(255,165,0,0.2)';
+            badge.style.color = 'orange';
+            badge.style.borderColor = 'orange';
+        } else {
+            badge.innerHTML = '<i class="fas fa-calculator"></i> Materyal Analiz';
+            badge.style.background = 'rgba(255,165,0,0.2)';
+            badge.style.color = 'orange';
+            badge.style.borderColor = 'orange';
+        }
+    }
+
+    function materialEvalWhiteCpFromFen(fen) {
+        try {
+            var temp = new Chess();
+            if (!temp.load(fen)) return 0;
+            var board = temp.board();
+            var score = 0;
+            var values = {p:100, n:320, b:330, r:500, q:900, k:0};
+            board.forEach(function(row) {
+                row.forEach(function(piece) {
+                    if (!piece) return;
+                    var val = values[piece.type] || 0;
+                    score += piece.color === 'w' ? val : -val;
+                });
+            });
+            return score;
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    function queueStockfishEval(fen, opts) {
+        opts = opts || {};
+        return new Promise(function(resolve) {
+            var mode = opts.mode || 'live';
+            var depth = opts.depth || SF_DEPTH_LIVE;
+            var requestId = opts.requestId || 0;
+
+            if (!sfWorker || !isSfReady) {
+                var turnMul = fen.split(' ')[1] === 'w' ? 1 : -1;
+                var cpFromTurn = materialEvalWhiteCpFromFen(fen) * turnMul;
+                resolve({
+                    cp: cpFromTurn,
+                    mate: null,
+                    bestMove: null,
+                    mode: mode,
+                    requestId: requestId,
+                    fallback: true
+                });
+                return;
+            }
+
+            sfQueue.push({
+                fen: fen,
+                depth: depth,
+                mode: mode,
+                requestId: requestId,
+                cp: null,
+                mate: null,
+                bestMove: null,
+                resolve: resolve
+            });
+            processStockfishQueue();
+        });
+    }
+
+    function processStockfishQueue() {
+        if (!sfWorker || !isSfReady || sfActiveTask || sfQueue.length === 0) return;
+        sfActiveTask = sfQueue.shift();
+        sfWorker.postMessage('stop');
+        sfWorker.postMessage('position fen ' + sfActiveTask.fen);
+        sfWorker.postMessage('go depth ' + sfActiveTask.depth);
+    }
 
     function initStockfish() {
-        if (sfWorker) return Promise.resolve();
-        return new Promise(function(resolve) {
+        if (sfWorker && isSfReady) return Promise.resolve();
+        if (sfInitPromise) return sfInitPromise;
+
+        sfInitPromise = new Promise(function(resolve) {
             try {
-                // Create a wrapper Worker that uses importScripts to load Stockfish
-                // This works even from file:// protocol
+                var resolved = false;
+                function finishInit() {
+                    if (resolved) return;
+                    resolved = true;
+                    sfInitPromise = null;
+                    resolve();
+                }
+
                 var workerCode = 'importScripts("https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js");';
                 var blob = new Blob([workerCode], {type: 'application/javascript'});
                 var blobUrl = URL.createObjectURL(blob);
                 sfWorker = new Worker(blobUrl);
-                
-                var resolved = false;
-                
+                URL.revokeObjectURL(blobUrl);
+
                 sfWorker.onmessage = function(event) {
                     handleStockfishMessage(event.data);
-                    if (event.data === 'readyok' && !resolved) {
-                        resolved = true;
-                        resolve();
-                    }
+                    if (event.data === 'readyok') finishInit();
                 };
-                
+
                 sfWorker.onerror = function(err) {
                     console.error("Stockfish Worker Error:", err);
                     sfWorker = null;
                     isSfReady = false;
-                    if (!resolved) { resolved = true; resolve(); }
+                    setStockfishStatus('fallback');
+
+                    if (sfActiveTask) {
+                        sfActiveTask.resolve({cp: null, mate: null, bestMove: null, mode: sfActiveTask.mode, requestId: sfActiveTask.requestId, fallback: true});
+                        sfActiveTask = null;
+                    }
+                    while (sfQueue.length > 0) {
+                        var waiting = sfQueue.shift();
+                        waiting.resolve({cp: null, mate: null, bestMove: null, mode: waiting.mode, requestId: waiting.requestId, fallback: true});
+                    }
+                    finishInit();
                 };
-                
+
                 sfWorker.postMessage('uci');
-            } catch(err) {
+            } catch (err) {
                 console.error("Stockfish init failed:", err);
                 sfWorker = null;
+                isSfReady = false;
+                setStockfishStatus('fallback');
+                sfInitPromise = null;
                 resolve();
             }
         });
+
+        return sfInitPromise;
     }
 
     function handleStockfishMessage(msg) {
         if (typeof msg !== 'string') return;
-        
-        if (msg === 'uciok') {
+        msg.split(/\r?\n/).forEach(function(line) {
+            var trimmed = line.trim();
+            if (!trimmed) return;
+            handleStockfishLine(trimmed);
+        });
+    }
+
+    function handleStockfishLine(line) {
+        if (line === 'uciok') {
+            sfWorker.postMessage('setoption name MultiPV value 1');
             sfWorker.postMessage('isready');
-        } else if (msg === 'readyok') {
-            isSfReady = true;
-            // If we have a pending position, analyze it now
-            if (sfPendingFen) {
-                var fen = sfPendingFen;
-                sfPendingFen = null;
-                sfWorker.postMessage('position fen ' + fen);
-                sfWorker.postMessage('go depth 14');
-            }
-        } else if (msg.indexOf('info depth') !== -1) {
-            var matchCp = msg.match(/score cp (-?\d+)/);
-            var matchMate = msg.match(/score mate (-?\d+)/);
-            
-            if (matchMate) {
-                updateEvalBarUI(null, parseInt(matchMate[1]));
-            } else if (matchCp) {
-                updateEvalBarUI(parseInt(matchCp[1]), null);
-            }
-        } else if (msg.indexOf('bestmove') !== -1) {
-            var parts = msg.split(' ');
-            var bestMove = parts[1];
-            if (bestMove && bestMove !== '(none)') {
-                document.getElementById('report-best').innerText = bestMove;
-            } else {
-                document.getElementById('report-best').innerText = "-";
-            }
+            return;
         }
+
+        if (line === 'readyok') {
+            isSfReady = true;
+            setStockfishStatus('active');
+            processStockfishQueue();
+            if (sfPendingFen) {
+                sfPendingFen = null;
+                runStockfish();
+            }
+            return;
+        }
+
+        if (!sfActiveTask) return;
+
+        if (line.indexOf('info depth') === 0) {
+            var matchCp = line.match(/score cp (-?\d+)/);
+            var matchMate = line.match(/score mate (-?\d+)/);
+
+            if (matchMate) {
+                sfActiveTask.mate = parseInt(matchMate[1], 10);
+                sfActiveTask.cp = null;
+            } else if (matchCp) {
+                sfActiveTask.cp = parseInt(matchCp[1], 10);
+                sfActiveTask.mate = null;
+            }
+
+            if (sfActiveTask.mode === 'live' && sfActiveTask.requestId === liveEvalRequestId) {
+                updateEvalBarUI(sfActiveTask.cp, sfActiveTask.mate, sfActiveTask.fen);
+            }
+            return;
+        }
+
+        if (line.indexOf('bestmove') === 0) {
+            var parts = line.split(' ');
+            sfActiveTask.bestMove = parts[1] || null;
+            var doneTask = sfActiveTask;
+            sfActiveTask = null;
+            doneTask.resolve({
+                cp: doneTask.cp,
+                mate: doneTask.mate,
+                bestMove: doneTask.bestMove,
+                mode: doneTask.mode,
+                requestId: doneTask.requestId,
+                fallback: false
+            });
+            processStockfishQueue();
+        }
+    }
+
+    function formatEngineMove(uci, fen) {
+        if (!uci || uci === '(none)' || uci.length < 4) return '-';
+        try {
+            var probe = new Chess();
+            if (!probe.load(fen)) return uci;
+            var moveObj = { from: uci.slice(0, 2), to: uci.slice(2, 4) };
+            if (uci.length > 4) moveObj.promotion = uci.slice(4, 5);
+            var played = probe.move(moveObj);
+            if (played && played.san) return played.san;
+        } catch (e) {}
+        return uci;
     }
 
     function runStockfish() {
         var fen = analysisChess.fen();
-        
+        var bestEl = document.getElementById('report-best');
+        if (bestEl) bestEl.innerText = "Hesaplaniyor...";
+
         if (!sfWorker) {
-            // Fallback: material-based eval
-            updateEvalBarFallback();
+            updateEvalBarFallback(fen);
+            if (bestEl) bestEl.innerText = "-";
+            setStockfishStatus('fallback');
             return;
         }
-        
-        document.getElementById('report-best').innerText = "Hesaplanıyor...";
-        
+
         if (!isSfReady) {
             sfPendingFen = fen;
+            updateEvalBarFallback(fen);
+            setStockfishStatus('loading');
             return;
         }
-        
-        sfWorker.postMessage('stop');
-        sfWorker.postMessage('position fen ' + fen);
-        sfWorker.postMessage('go depth 14');
-    }
 
-    function updateEvalBarFallback() {
-        // Simple material count fallback
-        var board = analysisChess.board();
-        var score = 0;
-        board.forEach(function(row) { row.forEach(function(p) {
-            if(p) {
-                var val = {p:1, n:3, b:3, r:5, q:9, k:0}[p.type] || 0;
-                score += (p.color === 'w' ? val : -val);
+        var requestId = ++liveEvalRequestId;
+        sfQueue = sfQueue.filter(function(task) { return task.mode !== 'live'; });
+        queueStockfishEval(fen, { depth: SF_DEPTH_LIVE, mode: 'live', requestId: requestId }).then(function(result) {
+            if (requestId !== liveEvalRequestId) return;
+
+            if (result.mate !== null && result.mate !== undefined) {
+                updateEvalBarUI(null, result.mate, fen);
+            } else if (result.cp !== null && result.cp !== undefined) {
+                updateEvalBarUI(result.cp, null, fen);
+            } else {
+                updateEvalBarFallback(fen);
             }
-        })});
-        updateEvalBarUI(score * 100, null);
+
+            if (bestEl) {
+                if (result.bestMove && result.bestMove !== '(none)') {
+                    bestEl.innerText = formatEngineMove(result.bestMove, fen);
+                } else {
+                    bestEl.innerText = "-";
+                }
+            }
+        });
     }
 
-    function updateEvalBarUI(cp, mate) {
+    function updateEvalBarFallback(fen) {
+        var activeFen = fen || analysisChess.fen();
+        var turnMul = activeFen.split(' ')[1] === 'w' ? 1 : -1;
+        var cpFromTurn = materialEvalWhiteCpFromFen(activeFen) * turnMul;
+        updateEvalBarUI(cpFromTurn, null, activeFen);
+    }
+
+    function updateEvalBarUI(cp, mate, fenForTurn) {
         var score = 0;
         var textScore = "0.0";
-        
-        var isWhiteTurn = analysisChess.turn() === 'w';
-        
+        var turnChar = ((fenForTurn || analysisChess.fen()).split(' ')[1] || 'w');
+        var isWhiteTurn = turnChar === 'w';
+
         if (mate !== null && mate !== undefined) {
-            // Stockfish reports mate relative to the side to move
             score = mate > 0 ? 1000 : -1000;
             if (!isWhiteTurn) score = -score;
-            textScore = (score > 0 ? '+' : '') + 'M' + Math.abs(mate);
+            textScore = mate === 0 ? 'M0' : (score > 0 ? '+' : '-') + 'M' + Math.abs(mate);
         } else if (cp !== null && cp !== undefined) {
             score = cp;
             if (!isWhiteTurn) score = -score;
-            textScore = (score > 0 ? '+' : '') + (score / 100).toFixed(1);
+            textScore = Math.abs(score) < 10 ? '0.0' : (score > 0 ? '+' : '') + (score / 100).toFixed(1);
         }
-        
-        // Map score to percentage (0-100), where 50 = even
-        var percent = 50 + (score / 20); 
+
+        var percent = 50 + (score / 20);
         percent = Math.max(3, Math.min(97, percent));
         if (mate !== null && mate !== undefined) {
-            percent = (score > 0) ? 97 : 3;
+            percent = score > 0 ? 97 : 3;
         }
-        
+
         var fill = document.getElementById('analysisEvalFill');
         var txt = document.getElementById('analysisEvalScore');
         var evalDisplay = document.getElementById('report-eval-display');
         if (fill) fill.style.height = percent + "%";
         if (txt) txt.innerText = textScore;
         if (evalDisplay) evalDisplay.innerText = textScore;
-        
-        // Update status badge to show engine is active
-        var badge = document.getElementById('sfStatusBadge');
-        if (badge && isSfReady) {
-            badge.innerHTML = '<i class="fas fa-check-circle"></i> Stockfish Aktif';
-            badge.style.background = 'rgba(76,175,80,0.2)';
-            badge.style.color = '#4caf50';
-            badge.style.borderColor = '#4caf50';
-        }
+
+        if (sfWorker && isSfReady) setStockfishStatus('active');
     }
 
-    
-    window.openAnalysis = async (pgn, players) => {
-        switchView('view-2v2-analysis');
-        
-        // Reset status badge
-        var badge = document.getElementById('sfStatusBadge');
-        if (badge) {
-            badge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Motor Yükleniyor';
-            badge.style.background = 'rgba(255,165,0,0.2)';
-            badge.style.color = 'orange';
-            badge.style.borderColor = 'orange';
+    function evalToWhiteScore(result, fen) {
+        if (!result) return null;
+        var turnIsWhite = fen.split(' ')[1] === 'w';
+
+        if (result.mate !== null && result.mate !== undefined) {
+            var sign = result.mate > 0 ? 1 : -1;
+            if (!turnIsWhite) sign = -sign;
+            return sign * 10000;
         }
-        
-        if (!sfWorker) {
-            document.getElementById('report-best').innerText = "Motor Yükleniyor...";
+
+        if (result.cp !== null && result.cp !== undefined) {
+            return turnIsWhite ? result.cp : -result.cp;
+        }
+
+        return materialEvalWhiteCpFromFen(fen);
+    }
+
+    async function evaluateFenDetailed(fen, depth, token) {
+        if (token !== analysisReviewToken) return null;
+        var evalResult = await queueStockfishEval(fen, { depth: depth, mode: 'review', requestId: token });
+        if (token !== analysisReviewToken) return null;
+        evalResult.whiteScore = evalToWhiteScore(evalResult, fen);
+        evalResult.fen = fen;
+        return evalResult;
+    }
+
+    function classifyMoveByCpl(cpl, bestMove, moveObj) {
+        var playedUci = moveObj.from + moveObj.to + (moveObj.promotion || '');
+        if (bestMove && bestMove === playedUci && cpl <= 15) return 'best';
+        if (cpl <= 20) return 'excellent';
+        if (cpl <= 60) return 'good';
+        if (cpl <= 120) return 'inaccuracy';
+        if (cpl <= 250) return 'mistake';
+        return 'blunder';
+    }
+
+    function calculateAccuracy(reviews) {
+        if (!reviews.length) return 100;
+        var avgCpl = reviews.reduce(function(total, r) { return total + r.cpl; }, 0) / reviews.length;
+        var mistakes = reviews.filter(function(r) { return r.category === 'mistake'; }).length;
+        var blunders = reviews.filter(function(r) { return r.category === 'blunder'; }).length;
+        var accuracy = 100 - (avgCpl * 0.36) - (mistakes * 1.0) - (blunders * 2.2);
+        return Math.max(35, Math.min(99, Math.round(accuracy)));
+    }
+
+    function updateAccuracyRing(id, value) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var color = '#ef4444';
+        if (value >= 88) color = '#4caf50';
+        else if (value >= 75) color = '#f59e0b';
+        el.innerText = value + "%";
+        el.style.color = color;
+        el.style.borderColor = color;
+    }
+
+    async function runDetailedGameReview(token) {
+        if (!analysisHistory.length) {
+            updateAccuracyRing('acc-white', 100);
+            updateAccuracyRing('acc-black', 100);
+            document.getElementById('report-blunder').innerText = "Hamle kaydi yok.";
+            return;
+        }
+
+        var progressEl = document.getElementById('report-blunder');
+        if (progressEl) progressEl.innerText = "Derin analiz baslatiliyor...";
+
+        analysisMoveReviews = new Array(analysisHistory.length);
+        renderMoveList();
+        highlightMoveRow();
+
+        var probeChess = new Chess();
+        var previousEval = await evaluateFenDetailed(probeChess.fen(), SF_DEPTH_REVIEW, token);
+        if (!previousEval || token !== analysisReviewToken) return;
+
+        for (var i = 0; i < analysisHistory.length; i++) {
+            if (token !== analysisReviewToken) return;
+
+            var move = analysisHistory[i];
+            probeChess.move(move.san);
+            var currentEval = await evaluateFenDetailed(probeChess.fen(), SF_DEPTH_REVIEW, token);
+            if (!currentEval || token !== analysisReviewToken) return;
+
+            var before = previousEval.whiteScore;
+            var after = currentEval.whiteScore;
+            var cpl = 0;
+            if (before !== null && after !== null) {
+                cpl = move.color === 'w'
+                    ? Math.max(0, Math.round(before - after))
+                    : Math.max(0, Math.round(after - before));
+            }
+
+            var category = classifyMoveByCpl(cpl, previousEval.bestMove, move);
+            analysisMoveReviews[i] = {
+                index: i,
+                moveSan: move.san,
+                moveColor: move.color,
+                cpl: cpl,
+                category: category,
+                bestMove: previousEval.bestMove || null
+            };
+
+            previousEval = currentEval;
+
+            if (progressEl && (i % 4 === 0 || i === analysisHistory.length - 1)) {
+                progressEl.innerText = "Analiz: " + (i + 1) + "/" + analysisHistory.length + " hamle";
+            }
+            if (i % 6 === 0 || i === analysisHistory.length - 1) {
+                renderMoveList();
+                highlightMoveRow();
+            }
+        }
+
+        if (token !== analysisReviewToken) return;
+
+        var whiteReviews = analysisMoveReviews.filter(function(r) { return r && r.moveColor === 'w'; });
+        var blackReviews = analysisMoveReviews.filter(function(r) { return r && r.moveColor === 'b'; });
+        updateAccuracyRing('acc-white', calculateAccuracy(whiteReviews));
+        updateAccuracyRing('acc-black', calculateAccuracy(blackReviews));
+
+        var worst = null;
+        analysisMoveReviews.forEach(function(r) {
+            if (!r) return;
+            if (!worst || r.cpl > worst.cpl) worst = r;
+        });
+
+        if (progressEl) {
+            if (!worst || worst.cpl < 120) {
+                progressEl.innerText = "Belirgin kritik hata yok.";
+            } else {
+                var side = worst.moveColor === 'w' ? 'Beyaz' : 'Siyah';
+                var moveNo = Math.ceil((worst.index + 1) / 2);
+                var loss = (worst.cpl / 100).toFixed(1);
+                var label = MOVE_CATEGORY_LABELS[worst.category] || 'Hata';
+                progressEl.innerText = side + " tarafin " + moveNo + ". hamlesi (" + worst.moveSan + ") - " + label + ", ~" + loss + " piyon kaybi";
+            }
+        }
+
+        renderMoveList();
+        highlightMoveRow();
+    }
+
+    window.openAnalysis = async (pgn, players, fallbackFen = null) => {
+        switchView('view-2v2-analysis');
+        analysisReviewToken++;
+        var thisReviewToken = analysisReviewToken;
+        analysisMoveReviews = [];
+        liveEvalRequestId++;
+
+        setStockfishStatus('loading');
+        document.getElementById('report-best').innerText = "Motor Yukleniyor...";
+
+        if (!sfWorker || !isSfReady) {
             await initStockfish();
         }
-        
-        // Update badge after init
-        if (sfWorker && isSfReady) {
-            if (badge) {
-                badge.innerHTML = '<i class="fas fa-check-circle"></i> Stockfish Aktif';
-                badge.style.background = 'rgba(76,175,80,0.2)';
-                badge.style.color = '#4caf50';
-                badge.style.borderColor = '#4caf50';
+        if (sfWorker && isSfReady) setStockfishStatus('active');
+        else setStockfishStatus('fallback');
+
+        const safePlayers = Array.isArray(players) ? players : [];
+        const wTeam = safePlayers.filter(p => p.team === 'white').map(p => p.name).join(' & ');
+        const bTeam = safePlayers.filter(p => p.team === 'black').map(p => p.name).join(' & ');
+        document.getElementById('an-white-player').innerText = wTeam || "Beyaz Takim";
+        document.getElementById('an-black-player').innerText = bTeam || "Siyah Takim";
+
+        analysisChess.reset();
+        let pgnLoaded = false;
+        try {
+            if (typeof pgn === 'string' && pgn.trim()) {
+                pgnLoaded = analysisChess.load_pgn(pgn.trim());
             }
-        } else if (!sfWorker) {
-            if (badge) {
-                badge.innerHTML = '<i class="fas fa-calculator"></i> Materyal Analiz';
-                badge.style.background = 'rgba(255,165,0,0.2)';
-                badge.style.color = 'orange';
-                badge.style.borderColor = 'orange';
+        } catch (e) {
+            pgnLoaded = false;
+        }
+
+        if (!pgnLoaded && fallbackFen) {
+            try {
+                pgnLoaded = analysisChess.load(fallbackFen);
+            } catch (e) {
+                pgnLoaded = false;
             }
         }
-        
-        // Setup Players
-        const wTeam = players.filter(p => p.team === 'white').map(p => p.name).join(' & ');
-        const bTeam = players.filter(p => p.team === 'black').map(p => p.name).join(' & ');
-        document.getElementById('an-white-player').innerText = wTeam || "Beyaz Takım";
-        document.getElementById('an-black-player').innerText = bTeam || "Siyah Takım";
-        
-        // Init Chess
-        analysisChess.reset();
-        analysisChess.load_pgn(pgn || "");
-        analysisHistory = analysisChess.history({ verbose: true });
-        
-        // Go to end of game by default
+
+        if (!pgnLoaded) analysisChess.reset();
+        analysisHistory = (pgnLoaded && typeof pgn === 'string' && pgn.trim())
+            ? analysisChess.history({ verbose: true })
+            : [];
         currentAnalysisIndex = analysisHistory.length;
-        
-        // Accurate Game Result
+
         let result = "Devam Ediyor";
-        if(pgn && pgn.includes("1-0")) result = "Beyaz Kazandı";
-        else if(pgn && pgn.includes("0-1")) result = "Siyah Kazandı";
-        else if(pgn && pgn.includes("1/2")) result = "Berabere";
-        
+        if (analysisChess.in_checkmate()) {
+            result = analysisChess.turn() === 'w' ? "Siyah Kazandi" : "Beyaz Kazandi";
+        } else if (analysisChess.in_draw()) {
+            result = "Berabere";
+        } else if (pgn && pgn.includes("1-0")) {
+            result = "Beyaz Kazandi";
+        } else if (pgn && pgn.includes("0-1")) {
+            result = "Siyah Kazandi";
+        } else if (pgn && pgn.includes("1/2")) {
+            result = "Berabere";
+        }
+
         document.getElementById('report-result').innerText = result;
-        document.getElementById('report-blunder').innerText = analysisHistory.length > 0 ? "Analiz Ediliyor..." : "-";
+        document.getElementById('report-blunder').innerText = analysisHistory.length > 0 ? "Derin analiz hazirlaniyor..." : "Hamle kaydi yok.";
+        document.getElementById('acc-white').innerText = "--";
+        document.getElementById('acc-black').innerText = "--";
 
-        // Accuracy estimates
-        const simAccW = Math.floor(Math.random() * 15) + 78;
-        const simAccB = Math.floor(Math.random() * 15) + 72;
-        document.getElementById('acc-white').innerText = simAccW + "%";
-        document.getElementById('acc-black').innerText = simAccB + "%";
-
-        // Render Initial
         renderAnalysisBoard();
         renderMoveList();
+        highlightMoveRow();
         runStockfish();
         switchAnalysisTab('review');
+
+        if (analysisHistory.length > 0) {
+            runDetailedGameReview(thisReviewToken);
+        } else {
+            updateAccuracyRing('acc-white', 100);
+            updateAccuracyRing('acc-black', 100);
+        }
+    };
+
+    window.openAnalysisFromEncodedGame = (encodedGame) => {
+        try {
+            const parsed = JSON.parse(decodeURIComponent(encodedGame));
+            window.openAnalysis(parsed.pgn || '', parsed.players || [], parsed.fen || null);
+        } catch (e) {
+            console.error(e);
+            showToast('Mac verisi okunamadi.', 'error');
+        }
     };
 
     window.switchAnalysisTab = (tab) => {
@@ -1511,30 +1855,29 @@
         document.getElementById(`tab-btn-${tab}`).classList.add('active');
         document.getElementById('tab-content-review').style.display = tab === 'review' ? 'block' : 'none';
         document.getElementById('tab-content-moves').style.display = tab === 'moves' ? 'block' : 'none';
-        if(tab === 'moves') {
-             // Scroll to bottom
-             const ml = document.getElementById('analysisMoveList');
-             ml.scrollTop = ml.scrollHeight;
+        if (tab === 'moves') {
+            const ml = document.getElementById('analysisMoveList');
+            ml.scrollTop = ml.scrollHeight;
         }
     };
 
     window.navAnalysis = (action) => {
-        if(action === 'start') {
+        if (action === 'start') {
             currentAnalysisIndex = 0;
             analysisChess.reset();
-        } else if(action === 'prev') {
-            if(currentAnalysisIndex > 0) {
+        } else if (action === 'prev') {
+            if (currentAnalysisIndex > 0) {
                 currentAnalysisIndex--;
                 analysisChess.undo();
             }
-        } else if(action === 'next') {
-            if(currentAnalysisIndex < analysisHistory.length) {
+        } else if (action === 'next') {
+            if (currentAnalysisIndex < analysisHistory.length) {
                 const move = analysisHistory[currentAnalysisIndex];
                 analysisChess.move(move.san);
                 currentAnalysisIndex++;
             }
-        } else if(action === 'end') {
-            while(currentAnalysisIndex < analysisHistory.length) {
+        } else if (action === 'end') {
+            while (currentAnalysisIndex < analysisHistory.length) {
                 const move = analysisHistory[currentAnalysisIndex];
                 analysisChess.move(move.san);
                 currentAnalysisIndex++;
@@ -1542,51 +1885,61 @@
         }
         renderAnalysisBoard();
         highlightMoveRow();
-        runStockfish(); // Update eval and best move
+        runStockfish();
     };
 
     window.jumpToMove = (index) => {
         analysisChess.reset();
-        for(let i=0; i<index; i++) {
+        for (let i = 0; i < index; i++) {
             analysisChess.move(analysisHistory[i].san);
         }
         currentAnalysisIndex = index;
         renderAnalysisBoard();
         highlightMoveRow();
-        runStockfish(); // Update eval and best move
+        runStockfish();
     };
 
     function renderAnalysisBoard() {
         const boardEl = document.getElementById('analysisBoard');
         boardEl.innerHTML = '';
         const boardArray = analysisChess.board();
-        
-        // Check if flipped
         const isFlipped = boardEl.classList.contains('flipped');
 
-        for(let r=0; r<8; r++) {
-            for(let c=0; c<8; c++) {
-                const row = isFlipped ? 7-r : r;
-                const col = isFlipped ? 7-c : c;
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const row = isFlipped ? 7 - r : r;
+                const col = isFlipped ? 7 - c : c;
                 const sq = boardArray[row][col];
-                
+
                 const div = document.createElement('div');
-                div.className = `square ${(r+c)%2===0 ? 'white' : 'black'}`;
-                
-                // Highlight last move
+                div.className = `square ${(r + c) % 2 === 0 ? 'white' : 'black'}`;
+
                 const lastMove = analysisHistory[currentAnalysisIndex - 1];
-                if(lastMove) {
-                    const fromRow = 8 - parseInt(lastMove.from[1]);
+                if (lastMove) {
+                    const fromRow = 8 - parseInt(lastMove.from[1], 10);
                     const fromCol = lastMove.from.charCodeAt(0) - 97;
-                    const toRow = 8 - parseInt(lastMove.to[1]);
+                    const toRow = 8 - parseInt(lastMove.to[1], 10);
                     const toCol = lastMove.to.charCodeAt(0) - 97;
-                    
-                    if((row === fromRow && col === fromCol) || (row === toRow && col === toCol)) {
+
+                    if ((row === fromRow && col === fromCol) || (row === toRow && col === toCol)) {
                         div.style.background = "rgba(255, 255, 0, 0.4)";
                     }
                 }
 
-                if(sq) {
+                if (c === 0) {
+                    const rankEl = document.createElement('span');
+                    rankEl.className = 'coord coord-rank';
+                    rankEl.innerText = (8 - row);
+                    div.appendChild(rankEl);
+                }
+                if (r === 7) {
+                    const fileEl = document.createElement('span');
+                    fileEl.className = 'coord coord-file';
+                    fileEl.innerText = String.fromCharCode(97 + col);
+                    div.appendChild(fileEl);
+                }
+
+                if (sq) {
                     const piece = document.createElement('div');
                     piece.className = 'piece locked';
                     const url = `https://images.chesscomfiles.com/chess-themes/pieces/neo/150/${sq.color}${sq.type}.png`;
@@ -1598,35 +1951,63 @@
         }
     }
 
+    function buildMoveCell(moveObj, reviewIndex, jumpIndex) {
+        const cell = document.createElement('div');
+        if (!moveObj) {
+            cell.className = 'move-san empty';
+            cell.innerText = '...';
+            return cell;
+        }
+
+        cell.className = 'move-san';
+        cell.onclick = () => jumpToMove(jumpIndex);
+
+        const sanText = document.createElement('span');
+        sanText.innerText = moveObj.san;
+        cell.appendChild(sanText);
+
+        const review = analysisMoveReviews[reviewIndex];
+        if (review) {
+            const tag = document.createElement('span');
+            tag.className = `move-tag ${review.category}`;
+            tag.innerText = MOVE_CATEGORY_TAGS[review.category] || '';
+            tag.title = `${MOVE_CATEGORY_LABELS[review.category] || 'Hamle'} | CPL: ${review.cpl}`;
+            cell.appendChild(tag);
+        }
+
+        return cell;
+    }
+
     function renderMoveList() {
         const list = document.getElementById('analysisMoveList');
         list.innerHTML = '';
-        for(let i=0; i<analysisHistory.length; i+=2) {
-            const moveNum = (i/2) + 1;
+
+        for (let i = 0; i < analysisHistory.length; i += 2) {
+            const moveNum = (i / 2) + 1;
             const wMove = analysisHistory[i];
-            const bMove = analysisHistory[i+1];
-            
-            const div = document.createElement('div');
-            div.className = 'move-list-row';
-            div.id = `move-row-${i}`;
-            div.innerHTML = `
-                <div class="move-num">${moveNum}.</div>
-                <div class="move-san" onclick="jumpToMove(${i+1})">${wMove.san}</div>
-                <div class="move-san ${!bMove ? 'empty' : ''}" onclick="${bMove ? `jumpToMove(${i+2})` : ''}">${bMove ? bMove.san : '...'}</div>
-            `;
-            list.appendChild(div);
+            const bMove = analysisHistory[i + 1];
+
+            const row = document.createElement('div');
+            row.className = 'move-list-row';
+            row.id = `move-row-${i}`;
+
+            const num = document.createElement('div');
+            num.className = 'move-num';
+            num.innerText = moveNum + '.';
+            row.appendChild(num);
+
+            row.appendChild(buildMoveCell(wMove, i, i + 1));
+            row.appendChild(buildMoveCell(bMove, i + 1, i + 2));
+            list.appendChild(row);
         }
     }
 
     function highlightMoveRow() {
         document.querySelectorAll('.move-list-row').forEach(r => r.classList.remove('active'));
-        if(currentAnalysisIndex > 0) {
-            // Find which row contains this index
-            // Index is 1-based in terms of half-moves logic for display mapping
-            // row 0 has moves 0, 1. row 1 has 2, 3.
+        if (currentAnalysisIndex > 0) {
             const rowIdx = Math.floor((currentAnalysisIndex - 1) / 2);
-            const el = document.getElementById(`move-row-${rowIdx*2}`);
-            if(el) {
+            const el = document.getElementById(`move-row-${rowIdx * 2}`);
+            if (el) {
                 el.classList.add('active');
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
@@ -2592,7 +2973,7 @@
                             <div style="font-size:0.8rem; color:#aaa;">${date} • Partner: ${partner}</div>
                         </div>
                         <div>
-                             <button class="secondary icon-btn" onclick="openAnalysis(decodeURIComponent('${safeGame}').pgn || '', JSON.parse(decodeURIComponent('${safeGame}')).players)">
+                             <button class="secondary icon-btn" onclick="openAnalysisFromEncodedGame('${safeGame}')">
                                 <i class="fas fa-search-plus"></i>
                              </button>
                         </div>
