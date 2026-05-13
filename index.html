@@ -1481,9 +1481,8 @@
         analysisChess.load_pgn(pgn || "");
         analysisHistory = analysisChess.history({ verbose: true });
         
-        // Reset to Start
-        analysisChess.reset();
-        currentAnalysisIndex = 0;
+        // Go to end of game by default
+        currentAnalysisIndex = analysisHistory.length;
         
         // Accurate Game Result
         let result = "Devam Ediyor";
@@ -1531,13 +1530,13 @@
         } else if(action === 'next') {
             if(currentAnalysisIndex < analysisHistory.length) {
                 const move = analysisHistory[currentAnalysisIndex];
-                analysisChess.move(move);
+                analysisChess.move(move.san);
                 currentAnalysisIndex++;
             }
         } else if(action === 'end') {
             while(currentAnalysisIndex < analysisHistory.length) {
                 const move = analysisHistory[currentAnalysisIndex];
-                analysisChess.move(move);
+                analysisChess.move(move.san);
                 currentAnalysisIndex++;
             }
         }
@@ -1549,7 +1548,7 @@
     window.jumpToMove = (index) => {
         analysisChess.reset();
         for(let i=0; i<index; i++) {
-            analysisChess.move(analysisHistory[i]);
+            analysisChess.move(analysisHistory[i].san);
         }
         currentAnalysisIndex = index;
         renderAnalysisBoard();
@@ -2338,7 +2337,11 @@
     // --- CHESS GAME LOGIC ---
 
     function update2v2Game(d) {
-        chess.load(d.fen);
+        if (d.pgn) {
+            chess.load_pgn(d.pgn);
+        } else {
+            chess.load(d.fen);
+        }
         
         if(d.moveCount > lastPlayedMoveCount) {
             if(lastPlayedMoveCount !== -1) {
