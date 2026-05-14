@@ -74,6 +74,8 @@
         .hero-card h3 { font-size: 1.8rem; margin-bottom: 5px; color: #fff; text-shadow: 0 0 15px var(--primary); }
         .hero-card p { max-width: 500px; margin: 0 auto 20px auto; color: #ddd; font-size: 0.95rem; }
         .hero-actions { display: flex; gap: 15px; width: 100%; max-width: 400px; }
+        .dashboard-head-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; }
+        .dashboard-head-actions { display:flex; align-items:center; gap:10px; }
         .dashboard-quick-grid { margin-bottom: 20px; }
         .friends-card { background: linear-gradient(145deg, rgba(0, 242, 255, 0.08), rgba(0,0,0,0.35)); border-color: rgba(0, 242, 255, 0.25); }
         .friends-card h3 { color: var(--accent); }
@@ -141,6 +143,20 @@
         .team-slot { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 2px dashed var(--glass-border); display: flex; align-items: center; justify-content: space-between; transition:0.2s; position: relative; }
         .team-slot.taken { border-style: solid; background: rgba(255,255,255,0.05); border-color: var(--glass-border); }
         .team-slot.ready { border-color: var(--success); box-shadow: 0 0 10px rgba(76, 175, 80, 0.2); }
+        #view-1v1-lobby .team-slot { align-items: stretch; min-height: 126px; cursor: pointer; }
+        .seat-shell { width:100%; display:grid; gap:12px; }
+        .seat-main { display:grid; gap:8px; }
+        .seat-title { display:flex; align-items:center; justify-content:space-between; gap:12px; font-weight:800; }
+        .seat-title span { display:inline-flex; align-items:center; gap:10px; }
+        .seat-sub { text-align:left; font-size:0.8rem; color:var(--text-muted); line-height:1.45; }
+        .seat-actions { display:flex; gap:8px; flex-wrap:wrap; }
+        .seat-bot-picker { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:8px; }
+        .seat-bot-btn { padding:10px 8px; font-size:0.72rem; }
+        .seat-bot-btn.easy { border-color: rgba(125, 211, 252, 0.42); color:#7dd3fc; }
+        .seat-bot-btn.medium { border-color: rgba(250, 204, 21, 0.42); color:#facc15; }
+        .seat-bot-btn.hard { border-color: rgba(251, 113, 133, 0.42); color:#fb7185; }
+        .bot-pill { display:inline-flex; align-items:center; justify-content:center; padding:5px 10px; border-radius:999px; font-size:0.68rem; font-weight:900; letter-spacing:0.08em; color: var(--bot-accent, var(--accent)); border:1px solid var(--bot-accent, var(--accent)); background: rgba(255,255,255,0.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
+        .bot-remove-btn { width:100%; }
         .team-header { grid-column: span 2; text-align: center; font-weight: bold; margin-bottom: 5px; padding: 5px; border-radius: 4px; }
         .team-white .team-header { background: #f0f0f0; color: #333; }
         .team-black .team-header { background: #333; color: #f0f0f0; }
@@ -438,6 +454,8 @@
             .friends-layout { grid-template-columns: 1fr; }
             .dm-panel { min-height: auto; }
             .dm-thread { height: 320px; }
+            .dashboard-head-row { align-items:flex-start; }
+            .dashboard-head-actions { justify-content:flex-end; }
             .top-bar { align-items:flex-start; }
             .top-bar-actions { justify-content:flex-start; }
             .top-brand-copy strong, .top-brand-copy span { white-space:normal; }
@@ -478,10 +496,12 @@
             .analysis-shell { min-height: 0; }
             .board-expand-btn { width: 34px; height: 34px; top: 10px; right: 10px; }
             .live-actions, .mode-utility-row, .game-utility-bar, .modal-head-row, .notification-card, .profile-line { grid-template-columns: none; flex-direction:column; }
+            .dashboard-head-row, .dashboard-head-actions, .seat-title { flex-direction:column; align-items:stretch; }
             .notification-card { display:grid; grid-template-columns:1fr; }
             .friend-profile-grid { grid-template-columns:1fr 1fr; }
             .friend-actions { width:100%; }
             .friend-actions button { flex:1; }
+            .seat-bot-picker { grid-template-columns:1fr; }
             .live-presence-pill, .utility-btn { width:100%; justify-content:center; }
             .fullscreen-board-overlay { padding: 20px 10px; }
             .board-fullscreen-close { top: 12px; right: 12px; width: 36px; height: 36px; }
