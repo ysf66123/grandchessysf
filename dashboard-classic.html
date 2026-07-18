@@ -1,0 +1,231 @@
+            <div class="dashboard-head-row">
+                <h2>Oyun Menüsü</h2>
+                <div class="dashboard-head-actions">
+                    <button class="secondary icon-btn" onclick="watchLiveGamePrompt()" title="Canlı izle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="secondary icon-btn" onclick="openChessComImportPrompt()"
+                        title="Chess.com maçı içe aktar">
+                        <i class="fas fa-arrow-down-wide-short"></i>
+                    </button>
+                    <button class="secondary icon-btn" onclick="openSettings()" title="Ayarlar">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="hero-card ultimate-2v2-card">
+                <div class="ultimate-card-grid">
+                    <div class="ultimate-copy">
+                        <div class="ultimate-kicker"><i class="fas fa-bolt"></i> Premier takım modu</div>
+                        <h3><i class="fas fa-chess-board"></i> 2v2 Ultimate Chess</h3>
+                        <p>Arkadaşınla aynı tahta üstünde ritim kur; değişmeli turlar, baskı zincirleri ve ortak
+                            planlarla gerçek takım satrancı oyna.</p>
+                        <div class="ultimate-badges">
+                            <span><i class="fas fa-users"></i> 4 Oyuncu</span>
+                            <span><i class="fas fa-shuffle"></i> Değişmeli Tur</span>
+                            <span><i class="fas fa-satellite-dish"></i> Canlı Tempo</span>
+                        </div>
+                    </div>
+                    <div class="ultimate-preview" aria-hidden="true">
+                        <div class="ultimate-preview-board">
+                            <span class="light"></span><span class="dark"></span><span class="light"></span><span
+                                class="dark"></span>
+                            <span class="dark"></span><span class="light"></span><span class="dark"></span><span
+                                class="light"></span>
+                            <span class="light"></span><span class="dark"></span><span class="light"></span><span
+                                class="dark"></span>
+                            <span class="dark"></span><span class="light"></span><span class="dark"></span><span
+                                class="light"></span>
+                        </div>
+                        <div class="ultimate-seat seat-white-a"><i class="fas fa-chess-king"></i></div>
+                        <div class="ultimate-seat seat-white-b"><i class="fas fa-chess-bishop"></i></div>
+                        <div class="ultimate-seat seat-black-a"><i class="fas fa-chess-queen"></i></div>
+                        <div class="ultimate-seat seat-black-b"><i class="fas fa-chess-knight"></i></div>
+                        <div class="ultimate-beam beam-main"></div>
+                        <div class="ultimate-beam beam-alt"></div>
+                    </div>
+                </div>
+                <div class="hero-actions ultimate-actions">
+                    <button onclick="create2v2Game()" class="ultimate-primary-btn">
+                        <i class="fas fa-plus-circle"></i> OYUN OLUŞTUR
+                    </button>
+                    <button onclick="join2v2Prompt()" class="secondary ultimate-join-btn">
+                        <i class="fas fa-sign-in-alt"></i> KATIL
+                    </button>
+                </div>
+                <button class="secondary ultimate-history-btn" onclick="load2v2History()">
+                    <i class="fas fa-history"></i> Geçmiş Maçlarım
+                </button>
+            </div>
+
+            <div class="dashboard-quick-grid sub-grid">
+                <div class="dash-card">
+                    <div>
+                        <h3><i class="fas fa-chess-knight"></i> 1v1 Klasik Satranç</h3>
+                        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:18px;">Bire bir klasik
+                            satranç kapışması. Oda kur, arkadaşını davet et ve hemen başla.</p>
+                    </div>
+                    <div>
+                        <div style="display:flex; gap:10px; margin-bottom:10px;">
+                            <button onclick="create1v1Game()"
+                                style="flex:1; background:linear-gradient(45deg, #4ade80, #22c55e); color:#052e16;">
+                                <i class="fas fa-plus-circle"></i> OYUN OLUŞTUR
+                            </button>
+                            <button onclick="join1v1Prompt()" class="secondary"
+                                style="flex:1; border-color:#4ade80; color:#4ade80;">
+                                <i class="fas fa-sign-in-alt"></i> KATIL
+                            </button>
+                        </div>
+                        <button onclick="startQuickMatch1v1()"
+                            style="width:100%; margin-bottom:10px; background:linear-gradient(90deg, #16a34a, #38bdf8); color:#031712;">
+                            <i class="fas fa-bolt"></i> Hızlı Eşleşme
+                        </button>
+                        <button class="secondary" onclick="load1v1History()" style="width:100%; font-size:0.78rem;">
+                            <i class="fas fa-clock-rotate-left"></i> 1v1 Geçmişi
+                        </button>
+                    </div>
+                </div>
+
+                <div id="soloTrainingEntryCard" class="dash-card solo-training-entry-card" style="display:none;">
+                    <div>
+                        <h3><i class="fas fa-chess-board"></i> Solo Usta Antrenmani</h3>
+                        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:18px;">Iki tarafi da kendin
+                            yonet, Stockfish'in beyaz ve siyah icin canli onerilerini hamle hamle izle.</p>
+                    </div>
+                    <button onclick="openSoloTrainingMode()"
+                        style="width:100%; background:linear-gradient(90deg, #facc15, #38bdf8); color:#07111f;">
+                        <i class="fas fa-brain"></i> SOLO PANELI AC
+                    </button>
+                </div>
+
+                <div class="dash-card friends-card">
+                    <div>
+                        <h3><i class="fas fa-user-group"></i> Arkadaşlar</h3>
+                        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:18px;">KOLAY GELSİN</p>
+                        <div class="friends-stat-row">
+                            <div class="friends-stat-pill"><span id="friendsOnlineCount">0</span> çevrim içi</div>
+                            <div class="friends-stat-pill"><span id="friendsRequestCount">0</span> istek</div>
+                            <div class="friends-stat-pill"><span id="friendsInviteCount">0</span> davet</div>
+                        </div>
+                    </div>
+                    <button onclick="openFriendsView()"
+                        style="width:100%; background:linear-gradient(90deg, #00f2ff, #0ea5e9); color:#082f49;">
+                        <i class="fas fa-comments"></i> ARKADAŞLARI AÇ
+                    </button>
+                </div>
+            </div>
+
+            <div class="dash-card story-entry-card">
+                <div class="story-entry-copy">
+                    <div class="story-kicker"><i class="fas fa-book-open"></i> Hikaye Modu</div>
+                    <h3>Tahtanın Kronikleri</h3>
+                    <p>40 görevlik ilerleyen satranç serüveninde taktik çözer, Taç Puanı toplar ve özel taş setleri
+                        açarsın.</p>
+                </div>
+                <div class="story-entry-actions">
+                    <button onclick="openStoryMode()">
+                        <i class="fas fa-map-location-dot"></i> MACERAYA BASLA
+                    </button>
+                    <button class="secondary" onclick="openStoryShop()">
+                        <i class="fas fa-store"></i> MAGAZA
+                    </button>
+                </div>
+            </div>
+
+            <!-- NEW QUIZ MODE SECTION -->
+            <div class="dash-card quiz-card" style="margin-bottom:20px;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <div style="text-align:left;">
+                        <h3 style="color:#ff0055;"><i class="fas fa-question-circle"></i> Bilgi Yarışması</h3>
+                        <p style="font-size:0.8rem; color:#ddd; margin:0;">Kahoot tarzı interaktif yarışma. Soruları
+                            hazırla, arkadaşlarını davet et!</p>
+                    </div>
+                    <div style="min-width:150px; text-align:right;">
+                        <button onclick="switchView('view-quiz-menu')"
+                            style="background:linear-gradient(45deg, #ff0055, #ff5e00); color:white; padding:10px 15px; font-size:0.9rem;">
+                            <i class="fas fa-gamepad"></i> OYNA / KUR
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IDRIS CLICKER SECTION -->
+            <div class="dash-card"
+                style="margin-bottom:20px; background: linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%); border:none; position:relative; overflow:hidden;">
+                <div
+                    style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:rgba(255,255,255,0.1); border-radius:50%;">
+                </div>
+                <div
+                    style="position:absolute; bottom:-50px; right:-50px; width:150px; height:150px; background:rgba(255,255,255,0.1); border-radius:50%;">
+                </div>
+
+                <div style="display:flex; flex-direction:column; align-items:center; position:relative; z-index:2;">
+                    <h3 style="color:white; margin:0; text-shadow:0 2px 5px rgba(0,0,0,0.3);"><i
+                            class="fas fa-hand-pointer"></i> İDRİS'E BAS!</h3>
+                    <div id="idrisGlobalCounter"
+                        style="font-size:3.5rem; font-weight:800; color:#fff; text-shadow:0 0 20px rgba(255,255,255,0.6); margin:10px 0;">
+                        0</div>
+                    <p style="color:rgba(255,255,255,0.8); font-size:0.9rem; margin-top:-10px; margin-bottom:20px;">Kez
+                        İdris'e Basıldı</p>
+
+                    <button id="btnIdrisClick" onclick="clickIdris()"
+                        style="background:white; color:#4A00E0; font-size:1.2rem; padding:15px 50px; border-radius:50px; border:none; box-shadow:0 10px 20px rgba(0,0,0,0.3); transition:all 0.2s;">
+                        <i class="fas fa-fingerprint"></i> BAS
+                    </button>
+                    <div id="idrisCooldownText"
+                        style="margin-top:10px; height:20px; font-size:0.8rem; color:rgba(255,255,255,0.8);"></div>
+                </div>
+            </div>
+
+            <div class="sub-grid">
+                <div class="dash-card">
+                    <div>
+                        <h3><i class="fas fa-trophy"></i> Turnuva Modu</h3>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">Lig usulü fikstür ve
+                            puan tablosu.</p>
+                    </div>
+                    <div>
+                        <input type="text" id="newTournamentName" placeholder="Turnuva Adı">
+                        <div
+                            style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:10px;">
+                            <select id="playerCount" style="width:auto; margin:0;">
+                                <option value="4">4 Kişi</option>
+                                <option value="5">5 Kişi</option>
+                                <option value="6">6 Kişi</option>
+                                <option value="8">8 Kişi</option>
+                            </select>
+                        </div>
+                        <button id="btnCreateTournament" style="width:100%; margin-bottom:10px;">OLUŞTUR</button>
+                        <div style="border-top:1px solid var(--glass-border); padding-top:10px; margin-top:5px;">
+                            <input type="text" id="joinCodeInput" placeholder="KOD (Örn: A7X)"
+                                style="text-align:center; letter-spacing:2px; font-weight:bold; text-transform:uppercase; margin-bottom:5px;">
+                            <button id="btnJoinTournament" class="secondary"
+                                style="width:100%; font-size:0.7rem;">TURNUVAYA GİR</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dash-card"
+                    style="background:linear-gradient(145deg, rgba(255,255,255,0.03), rgba(0, 123, 255, 0.05)); border-color: rgba(0, 123, 255, 0.2);">
+                    <div>
+                        <h3 style="color:#38e4ff;"><i class="fas fa-magic"></i> Deste Ustası</h3>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">Clash Royale için
+                            yapay zeka destekli meta desteler.</p>
+                    </div>
+                    <div style="display:flex; flex-direction:column; justify-content:center; flex:1;">
+                        <i class="fas fa-cards"
+                            style="font-size:3rem; color:rgba(56, 228, 255, 0.2); margin-bottom:15px;"></i>
+                        <button onclick="openClashGenerator()"
+                            style="width:100%; background:linear-gradient(90deg, #38e4ff, #007bff); color:white;">
+                            DESTE OLUŞTUR
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:30px;">
+                <h3 style="font-size:1rem; border-bottom:1px solid var(--glass-border); padding-bottom:5px;">
+                    Turnuvalarım</h3>
+                <div id="myTournamentsList" class="history-list"></div>
+            </div>

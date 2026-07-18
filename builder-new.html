@@ -1,0 +1,57 @@
+        <!-- 2. Quiz Builder -->
+        <div id="view-quiz-builder" class="view">
+            <!-- Top Toolbar -->
+            <div class="studio-topbar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; background: rgba(0,0,0,0.4); padding: 10px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="display:flex; align-items:center; gap: 10px; flex-grow: 1;">
+                    <i class="fas fa-edit" style="color: var(--quiz-color);"></i>
+                    <input type="text" id="builderQuizName" placeholder="Quiz Başlığı..." style="font-size: 1.2rem; font-weight: bold; background: transparent; border: none; border-bottom: 2px solid transparent; color: white; padding: 5px; flex-grow: 1; max-width: 400px; transition: 0.2s;" onfocus="this.style.borderBottomColor='var(--quiz-color)'" onblur="this.style.borderBottomColor='transparent'">
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="saveAndStartQuiz()" class="primary" style="background:var(--quiz-color);"><i class="fas fa-play"></i> LOBİ KUR</button>
+                    <button class="secondary icon-btn" onclick="switchView('view-quiz-menu')"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+
+            <div class="studio-workspace" style="display: flex; gap: 20px; height: calc(100vh - 160px); min-height: 500px;">
+                
+                <!-- Left Pane: Slides Navigator -->
+                <div id="quizBuilderSidebar" class="studio-slides-pane" style="width: 220px; flex-shrink: 0; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; overflow: hidden;">
+                    <div style="padding: 15px; font-size: 0.85rem; font-weight: bold; color: rgba(255,255,255,0.6); text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                        <span>Slaytlar <span id="builderSummary" style="font-size:0.75rem; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:10px; margin-left:5px;">0</span></span>
+                    </div>
+                    
+                    <div id="quizBuilderOrderList" style="flex-grow: 1; overflow-y: auto; padding: 15px 10px; display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Slides will be injected here -->
+                    </div>
+
+                    <div style="padding: 10px; border-top: 1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:8px;">
+                        <button onclick="addQuizQuestionUI()" style="width: 100%; background: rgba(255,255,255,0.1); color: white; border: 1px dashed rgba(255,255,255,0.3);"><i class="fas fa-plus"></i> YENİ SLAYT</button>
+                        <button onclick="openQuizQuestionLibrary()" style="width: 100%; background: transparent; color: #aaa; border: 1px solid rgba(255,255,255,0.1); font-size: 0.8rem;"><i class="fas fa-book"></i> KÜTÜPHANEDEN AL</button>
+                    </div>
+                </div>
+
+                <!-- Right Pane: Active Canvas -->
+                <div class="studio-canvas-pane" style="flex-grow: 1; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; position: relative; overflow-y: auto; padding: 20px;">
+                    <div id="quizBuilderList" style="width: 100%; max-width: 800px; margin: 0 auto;">
+                        <!-- Active Question Details will be injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide-out Drawer Panel for Library -->
+            <div id="quizLibraryPanel" class="quiz-library-panel modern-studio-library" style="display:none; flex-direction: column;">
+                <div class="quiz-library-head">
+                    <div>
+                        <h3><i class="fas fa-layer-group" style="color:var(--quiz-color);"></i> Soru Bankası</h3>
+                        <span>Kendi sorularından veya topluluğun oluşturduğu harika sorulardan ekle.</span>
+                    </div>
+                    <button class="secondary icon-btn" onclick="closeQuizQuestionLibrary()"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="library-tabs-row" style="display:flex; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:10px;">
+                    <button id="tabMyLibrary" class="quiz-lib-tab active" onclick="switchQuizLibraryTab('my')" style="flex:1; background:transparent; border:none; color:#fff; padding:10px; border-bottom:2px solid var(--quiz-color);">Kendi Kitaplığım</button>
+                    <button id="tabCommunityLibrary" class="quiz-lib-tab" onclick="switchQuizLibraryTab('community')" style="flex:1; background:transparent; border:none; color:#888; padding:10px; border-bottom:2px solid transparent;">Topluluk Havuzu</button>
+                </div>
+                <div id="quizLibraryList" class="quiz-library-list" style="overflow-y:auto; flex:1;"></div>
+                <div id="quizCommunityLibraryList" class="quiz-library-list" style="display:none; overflow-y:auto; flex:1;"></div>
+            </div>
+        </div>

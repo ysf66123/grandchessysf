@@ -1,0 +1,163 @@
+            <div class="dashboard-head-row">
+                <h2>Oyun Menüsü</h2>
+                <div class="dashboard-head-actions">
+                    <button class="secondary icon-btn" onclick="watchLiveGamePrompt()" title="Canlı izle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="secondary icon-btn" onclick="openChessComImportPrompt()"
+                        title="Chess.com maçı içe aktar">
+                        <i class="fas fa-arrow-down-wide-short"></i>
+                    </button>
+                    <button class="secondary icon-btn" onclick="openSettings()" title="Ayarlar">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="esports-slider-container">
+                <div class="esports-slider" id="mainDashboardSlider">
+                    <!-- 2v2 Ultimate -->
+                    <div class="esports-card" style="--card-color: #f59e0b; --card-bg: linear-gradient(135deg, #451a03, #b45309);">
+                        <div class="esports-card-content">
+                            <div class="esports-card-icon"><i class="fas fa-chess-board"></i></div>
+                            <div class="esports-card-badge">PREMIER MOD</div>
+                            <h3>2v2 Ultimate Chess</h3>
+                            <p>Takım arkadaşınla ritim kur, ortak planlarla zafer kazan.</p>
+                            <div class="esports-card-actions">
+                                <button onclick="create2v2Game()" class="primary-action"><i class="fas fa-plus"></i> ODA KUR</button>
+                                <button onclick="join2v2Prompt()" class="secondary-action"><i class="fas fa-sign-in-alt"></i> KATIL</button>
+                            </div>
+                            <button class="text-action" onclick="load2v2History()"><i class="fas fa-history"></i> Geçmiş</button>
+                        </div>
+                    </div>
+
+                    <!-- 1v1 Klasik -->
+                    <div class="esports-card" style="--card-color: #22c55e; --card-bg: linear-gradient(135deg, #052e16, #16a34a);">
+                        <div class="esports-card-content">
+                            <div class="esports-card-icon"><i class="fas fa-chess-knight"></i></div>
+                            <div class="esports-card-badge">REKABETÇİ</div>
+                            <h3>1v1 Klasik</h3>
+                            <p>Bire bir satranç kapışması. Kendi seviyeni kanıtla.</p>
+                            <div class="esports-card-actions">
+                                <button onclick="create1v1Game()" class="primary-action"><i class="fas fa-plus"></i> ODA KUR</button>
+                                <button onclick="startQuickMatch1v1()" class="secondary-action" style="background:var(--card-color); color:#000;"><i class="fas fa-bolt"></i> HIZLI BUL</button>
+                            </div>
+                            <button class="text-action" onclick="join1v1Prompt()"><i class="fas fa-sign-in-alt"></i> Kodla Katıl</button>
+                        </div>
+                    </div>
+
+                    <!-- Hikaye Modu -->
+                    <div class="esports-card" style="--card-color: #a855f7; --card-bg: linear-gradient(135deg, #2e1065, #7e22ce);">
+                        <div class="esports-card-content">
+                            <div class="esports-card-icon"><i class="fas fa-book-open"></i></div>
+                            <div class="esports-card-badge">MACERA</div>
+                            <h3>Tahtanın Kronikleri</h3>
+                            <p>40 görevlik serüvende taktik çöz, özel taş setlerini aç.</p>
+                            <div class="esports-card-actions">
+                                <button onclick="openStoryMode()" class="primary-action" style="width:100%"><i class="fas fa-play"></i> BAŞLA</button>
+                            </div>
+                            <button class="text-action" onclick="openStoryShop()"><i class="fas fa-store"></i> Mağaza</button>
+                        </div>
+                    </div>
+
+                    <!-- Quiz -->
+                    <div class="esports-card" style="--card-color: #ff0055; --card-bg: linear-gradient(135deg, #4a0018, #d10046);">
+                        <div class="esports-card-content">
+                            <div class="esports-card-icon"><i class="fas fa-question-circle"></i></div>
+                            <div class="esports-card-badge">EĞLENCE</div>
+                            <h3>Bilgi Yarışması</h3>
+                            <p>Kahoot tarzı interaktif yarışma. Kendi testlerini tasarla!</p>
+                            <div class="esports-card-actions">
+                                <button onclick="switchView('view-quiz-menu')" class="primary-action" style="width:100%"><i class="fas fa-gamepad"></i> OYNA / KUR</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Turnuva -->
+                    <div class="esports-card" style="--card-color: #3b82f6; --card-bg: linear-gradient(135deg, #0f172a, #1d4ed8);">
+                        <div class="esports-card-content">
+                            <div class="esports-card-icon"><i class="fas fa-trophy"></i></div>
+                            <div class="esports-card-badge">LİG</div>
+                            <h3>Turnuva Modu</h3>
+                            <p>Lig usulü fikstür ve puan tablosu ile şampiyonu belirle.</p>
+                            
+                            <div class="mini-form">
+                                <input type="text" id="newTournamentName" placeholder="Turnuva Adı">
+                                <select id="playerCount">
+                                    <option value="4">4 Kişi</option><option value="5">5 Kişi</option><option value="6">6 Kişi</option><option value="8">8 Kişi</option>
+                                </select>
+                            </div>
+                            
+                            <div class="esports-card-actions">
+                                <button id="btnCreateTournament" class="primary-action"><i class="fas fa-plus"></i> OLUŞTUR</button>
+                                <button onclick="document.getElementById('joinCodeInput').focus()" class="secondary-action"><i class="fas fa-sign-in-alt"></i> KATIL</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Solo Usta -->
+                    <div class="esports-card" id="soloTrainingEntryCard" style="--card-color: #facc15; --card-bg: linear-gradient(135deg, #422006, #ca8a04); display:none;">
+                        <div class="esports-card-content">
+                            <div class="esports-card-icon"><i class="fas fa-brain"></i></div>
+                            <div class="esports-card-badge">ANTRENMAN</div>
+                            <h3>Solo Usta</h3>
+                            <p>Stockfish önerileriyle iki tarafı da yöneterek çalış.</p>
+                            <div class="esports-card-actions">
+                                <button onclick="openSoloTrainingMode()" class="primary-action" style="width:100%; color:#000;"><i class="fas fa-bolt"></i> AÇ</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Arkadaşlar -->
+                    <div class="esports-card" style="--card-color: #06b6d4; --card-bg: linear-gradient(135deg, #083344, #0891b2);">
+                        <div class="esports-card-content">
+                            <div class="esports-card-icon"><i class="fas fa-user-group"></i></div>
+                            <div class="esports-card-badge">SOSYAL</div>
+                            <h3>Arkadaşlar</h3>
+                            <div class="friends-mini-stats">
+                                <div><span id="friendsOnlineCount">0</span><span>Çevrim İçi</span></div>
+                                <div><span id="friendsRequestCount">0</span><span>İstek</span></div>
+                            </div>
+                            <div class="esports-card-actions">
+                                <button onclick="openFriendsView()" class="primary-action" style="width:100%"><i class="fas fa-comments"></i> ARKADAŞLARI AÇ</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Deste Ustası -->
+                    <div class="esports-card" style="--card-color: #38e4ff; --card-bg: linear-gradient(135deg, #001f3f, #0056b3);">
+                        <div class="esports-card-content">
+                            <div class="esports-card-icon"><i class="fas fa-magic"></i></div>
+                            <div class="esports-card-badge">ARAÇ</div>
+                            <h3>Deste Ustası</h3>
+                            <p>Clash Royale yapay zeka meta desteleri.</p>
+                            <div class="esports-card-actions">
+                                <button onclick="openClashGenerator()" class="primary-action" style="width:100%"><i class="fas fa-cards"></i> OLUŞTUR</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Idris Clicker -->
+                    <div class="esports-card" style="--card-color: #8E2DE2; --card-bg: linear-gradient(135deg, #2a0845, #6441A5);">
+                        <div class="esports-card-content">
+                            <div class="esports-card-icon"><i class="fas fa-hand-pointer"></i></div>
+                            <div class="esports-card-badge">MİNİ OYUN</div>
+                            <h3>İdris'e Bas!</h3>
+                            <div id="idrisGlobalCounter" class="idris-big-counter">0</div>
+                            <p>Kez Basıldı</p>
+                            <div class="esports-card-actions">
+                                <button id="btnIdrisClick" onclick="clickIdris()" class="primary-action" style="width:100%; font-size:1.2rem; background:white; color:#6441A5;"><i class="fas fa-fingerprint"></i> BAS</button>
+                            </div>
+                            <div id="idrisCooldownText" style="margin-top:10px; font-size:0.8rem; color:rgba(255,255,255,0.8);"></div>
+                        </div>
+                    </div>
+
+                </div>
+                
+                <div class="esports-slider-indicators" id="mainDashboardIndicators"></div>
+            </div>
+
+            <div style="margin-top:20px; padding: 0 20px;">
+                <h3 style="font-size:1rem; border-bottom:1px solid var(--glass-border); padding-bottom:5px;">Turnuvalarım</h3>
+                <div id="myTournamentsList" class="history-list"></div>
+            </div>
