@@ -31,13 +31,16 @@ const BOT_LEVEL_CONFIG = {
     },
     hard: {
         level: 'hard',
-        label: 'Zor AI',
-        shortLabel: 'ZOR',
+        label: 'Zor AI (2000-2500 ELO)',
+        shortLabel: 'ZOR (2300)',
         avatar: 'fa-brain',
-        depth: 14,
-        altMoveChance: 0.03,
+        elo: 2300,
+        minElo: 2000,
+        maxElo: 2500,
+        depth: 12,
+        altMoveChance: 0.0,
         altMoveMaxGap: 18,
-        thinkDelayRange: [950, 1500],
+        thinkDelayRange: [180, 320],
         accent: '#fb7185'
     }
 };
@@ -60,6 +63,7 @@ function get1v1SeatLabel(team) {
 
 function makeBotPlayer(team, level) {
     var bot = getBotConfig(level);
+    var botElo = bot.elo || (level === 'hard' ? 2300 : (level === 'medium' ? 1500 : 900));
     return {
         uid: BOT_UID_PREFIX + bot.level + '_' + team,
         name: bot.label,
@@ -68,7 +72,8 @@ function makeBotPlayer(team, level) {
         index: 0,
         isReady: true,
         isBot: true,
-        botLevel: level
+        botLevel: level,
+        elo: botElo
     };
 }
 
@@ -548,7 +553,7 @@ function render1v1Lobby(data) {
                 + (isHost ? '<div class="seat-actions seat-bot-picker">'
                     + '<button class="secondary seat-bot-btn easy" onclick="event.stopPropagation(); add1v1Bot(\'' + player.team + '\', \'easy\')">Kolay AI</button>'
                     + '<button class="secondary seat-bot-btn medium" onclick="event.stopPropagation(); add1v1Bot(\'' + player.team + '\', \'medium\')">Orta AI</button>'
-                    + '<button class="secondary seat-bot-btn hard" onclick="event.stopPropagation(); add1v1Bot(\'' + player.team + '\', \'hard\')">Zor AI</button>'
+                    + '<button class="secondary seat-bot-btn hard" onclick="event.stopPropagation(); add1v1Bot(\'' + player.team + '\', \'hard\')">Zor AI (2000-2500)</button>'
                 + '</div>' : '')
             + '</div>';
         }
@@ -1798,7 +1803,7 @@ window.saveAndStartQuiz = async () => {
     }
 
     const name = document.getElementById('newQuizName').value.trim();
-    const hostPlays = false;
+    const hostPlays = document.getElementById('hostPlaysToggleBuilder').checked;
     const code = window.makeId(4);
 
     const initialPlayers = [];

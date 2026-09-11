@@ -236,9 +236,6 @@ function drawStoryBoard() {
             const squareName = String.fromCharCode(97 + col) + (8 - row);
             const div = document.createElement('div');
             div.className = 'square ' + (((row + col) % 2 === 0) ? 'white' : 'black');
-            const history = storyChess.history({verbose: true});
-            const lastMove = history.length ? history[history.length - 1] : null;
-            if (lastMove && (squareName === lastMove.from || squareName === lastMove.to)) div.classList.add("last-move");
             if (storySelectedSquare === squareName) div.classList.add('selected');
             if (storyValidMoves.indexOf(squareName) !== -1) div.classList.add('valid-move');
             div.onclick = function() { handleStorySquareClick(squareName, isUserTurn); };

@@ -1,0 +1,16 @@
+=== GRANDMASTER PRO YEREL SUNUCU KURULUMU ===
+
+Bu dosyalari (server.js, package.json, baslat.bat, vb.)
+sitenizin ana klasorune (index.html'nin bulundugu yere) kopyalayin.
+
+Eger Windows kullaniyorsaniz:
+- "baslat.bat" dosyasina cift tiklayin. Ilk acilista modulleri kurup sunucuyu baslatacaktir.
+- Her sitenize gireceginizde bu BAT dosyasini calistirip acik birakmaniz yeterlidir.
+
+Eger Mac veya Linux kullaniyorsaniz:
+- Terminali o klasorde acip sirasiyla sunlari yazin:
+  chmod +x baslat-mac-linux.sh
+  ./baslat-mac-linux.sh
+
+NOT: Bilgisayarinizda Node.js kurulu olmalidir. Eger kurulu degilse veya baslatilirken hata veriyorsa:
+https://nodejs.org/ adresinden indirip varsayilan ayarlarla kurabilirsiniz.

@@ -11,16 +11,16 @@ const CLOUD_EVAL_MIN_DEPTH = 18;
 const CLOUD_EVAL_TIMEOUT_MS = 1600;
 
 const MOVE_CATEGORY_META = {
-    brilliant: { tag: '!!', tr: 'Muazzam', en: 'Brilliant' },
-    great: { tag: '!', tr: 'Harika', en: 'Great' },
+    brilliant: { tag: '!!', tr: 'Mükemmel Fedakar', en: 'Brilliant' },
+    great: { tag: '!', tr: 'Kritik Hamle', en: 'Great' },
     best: { tag: '★', tr: 'En İyi', en: 'Best' },
-    book: { tag: '📖', tr: 'Kitap', en: 'Book' },
-    excellent: { tag: '✓', tr: 'Mükemmel', en: 'Excellent' },
+    book: { tag: '📖', tr: 'Teori', en: 'Book' },
+    excellent: { tag: '✓', tr: 'Harika', en: 'Excellent' },
     good: { tag: '✓', tr: 'İyi', en: 'Good' },
-    inaccuracy: { tag: '?!', tr: 'Hatalı', en: 'Inaccuracy' },
+    inaccuracy: { tag: '?!', tr: 'Hassas Değil', en: 'Inaccuracy' },
     mistake: { tag: '?', tr: 'Hata', en: 'Mistake' },
     miss: { tag: '✕', tr: 'Kaçan Fırsat', en: 'Miss' },
-    blunder: { tag: '??', tr: 'Çift Soru', en: 'Blunder' }
+    blunder: { tag: '??', tr: 'Büyük Hata', en: 'Blunder' }
 };
 
 const OPENING_BOOK = {
@@ -537,6 +537,10 @@ function handleStockfishLine(line) {
         sfActiveTask.bestMove = parts[1] || sfActiveTask.bestMove || null;
         const doneTask = sfActiveTask;
         sfActiveTask = null;
+        if (doneTask.timeoutTimer) {
+            clearTimeout(doneTask.timeoutTimer);
+            doneTask.timeoutTimer = null;
+        }
         const rankedLines = Object.keys(doneTask.topLines)
             .map(function(key) { return doneTask.topLines[key]; })
             .sort(function(a, b) { return a.rank - b.rank; });
@@ -553,12 +557,19 @@ function handleStockfishLine(line) {
     }
 }
 
+function getTaskPriority(mode, priority) {
+    if (priority === 'high' || mode === 'bot' || mode === 'live') return 1;
+    if (mode === 'solo_training_white' || mode === 'solo_training_black' || mode === 'training_assist_1v1' || mode === 'review') return 2;
+    return 3;
+}
+
 function queueStockfishEval(fen, opts) {
     opts = opts || {};
     return new Promise(function(resolve) {
         const mode = opts.mode || 'live';
         const depth = opts.depth || SF_DEPTH_LIVE;
         const requestId = opts.requestId || 0;
+        const priority = getTaskPriority(mode, opts.priority);
 
         if (!sfWorker || !isSfReady) {
             const turnMul = fen.split(' ')[1] === 'w' ? 1 : -1;
@@ -575,18 +586,50 @@ function queueStockfishEval(fen, opts) {
             return;
         }
 
-        sfQueue.push({
+        // Drop obsolete tasks from queue to prevent queue clogging
+        if (priority === 1) {
+            for (let i = sfQueue.length - 1; i >= 0; i--) {
+                const qTask = sfQueue[i];
+                if (qTask.mode === mode || (qTask.priority >= 3 && sfQueue.length > 2)) {
+                    sfQueue.splice(i, 1);
+                    try {
+                        qTask.resolve({
+                            cp: null, mate: null, bestMove: null, topLines: [], mode: qTask.mode, requestId: qTask.requestId, fallback: true
+                        });
+                    } catch (e) {}
+                }
+            }
+            if (sfActiveTask && (sfActiveTask.priority >= 3 || sfActiveTask.mode === 'warm_review')) {
+                sfWorker.postMessage('stop');
+            }
+        }
+
+        const task = {
             fen: fen,
             depth: depth,
             mode: mode,
             requestId: requestId,
+            priority: priority,
             skillLevel: opts.skillLevel,
+            elo: opts.elo,
+            multiPv: opts.multiPv,
+            timeoutMs: opts.timeoutMs,
+            timeoutTimer: null,
             cp: null,
             mate: null,
             bestMove: null,
             topLines: {},
             resolve: resolve
-        });
+        };
+
+        if (priority === 1) {
+            const insertIdx = sfQueue.findIndex(function(t) { return t.priority > 1; });
+            if (insertIdx === -1) sfQueue.push(task);
+            else sfQueue.splice(insertIdx, 0, task);
+        } else {
+            sfQueue.push(task);
+        }
+
         processStockfishQueue();
     });
 }
@@ -595,13 +638,38 @@ function processStockfishQueue() {
     if (!sfWorker || !isSfReady || sfActiveTask || sfQueue.length === 0) return;
     sfActiveTask = sfQueue.shift();
     sfWorker.postMessage('stop');
-    if (sfActiveTask.skillLevel !== undefined) {
+
+    // Dynamic MultiPV: bot calculations only need 1 line for maximum speed (3-4x faster!)
+    if (sfActiveTask.mode === 'bot' || sfActiveTask.multiPv === 1) {
+        sfWorker.postMessage('setoption name MultiPV value 1');
+    } else {
+        sfWorker.postMessage('setoption name MultiPV value ' + (sfActiveTask.multiPv || SF_MULTI_PV));
+    }
+
+    // Dynamic ELO & Skill Level
+    if (sfActiveTask.elo !== undefined && sfActiveTask.elo !== null) {
+        sfWorker.postMessage('setoption name UCI_LimitStrength value true');
+        sfWorker.postMessage('setoption name UCI_Elo value ' + sfActiveTask.elo);
+        const skill = sfActiveTask.skillLevel !== undefined ? sfActiveTask.skillLevel : (sfActiveTask.elo >= 2200 ? 16 : 14);
+        sfWorker.postMessage('setoption name Skill Level value ' + skill);
+    } else if (sfActiveTask.skillLevel !== undefined) {
         sfWorker.postMessage('setoption name UCI_LimitStrength value true');
         sfWorker.postMessage('setoption name Skill Level value ' + sfActiveTask.skillLevel);
     } else {
         sfWorker.postMessage('setoption name UCI_LimitStrength value false');
         sfWorker.postMessage('setoption name Skill Level value 20');
     }
+
+    // Safety timeout to prevent engine hangs
+    if (sfActiveTask.timeoutMs && sfActiveTask.timeoutMs > 0) {
+        const targetTask = sfActiveTask;
+        targetTask.timeoutTimer = setTimeout(function() {
+            if (sfActiveTask === targetTask) {
+                sfWorker.postMessage('stop');
+            }
+        }, sfActiveTask.timeoutMs);
+    }
+
     sfWorker.postMessage('position fen ' + sfActiveTask.fen);
     sfWorker.postMessage('go depth ' + sfActiveTask.depth);
 }
@@ -722,8 +790,8 @@ function processAnalysisWarmQueue() {
     (async function() {
         try {
             while (analysisWarmQueue.length > 0) {
-                if (window.currentViewId === 'view-2v2-analysis' || sfActiveTask || sfQueue.length > 0) {
-                    await new Promise(function(resolve) { setTimeout(resolve, 900); });
+                if (window.currentViewId === 'view-2v2-analysis' || window.currentViewId === 'view-1v1-game' || window.currentViewId === 'view-solo-training' || sfActiveTask || sfQueue.length > 0) {
+                    await new Promise(function(resolve) { setTimeout(resolve, 600); });
                     continue;
                 }
                 const item = analysisWarmQueue.shift();
@@ -1395,7 +1463,7 @@ function buildMoveCell(moveObj, reviewIndex, jumpIndex) {
         const tag = document.createElement('span');
             tag.className = 'move-tag ' + review.category;
             tag.innerHTML = '<i class="fas ' + getMoveCategoryIconClass(review.category) + '"></i>';
-            const accLabel = getAnalysisLang() === 'en' ? 'Accuracy (Stockfish AI)' : 'Doğruluk (Stockfish AI)';
+            const accLabel = getAnalysisLang() === 'en' ? 'Accuracy' : 'Doğruluk';
             tag.title = getMoveCategoryLabel(review.category) + ' | CPL: ' + review.cpl + ' | ' + accLabel + ': ' + (review.moveAccuracy || 0) + '%';
         cell.appendChild(tag);
     }
