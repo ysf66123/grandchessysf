@@ -1088,3 +1088,21 @@ const [
         alert('HATA: ' + (err.message || err) + '\n\nDosya: ' + (err.stack ? err.stack.split('\n').slice(0, 3).join('\n') : 'bilinmiyor'));
     }
 });
+\n
+// === Mobile UI Mode Toggle ===
+document.addEventListener('DOMContentLoaded', () => {
+    const savedUi = localStorage.getItem('gm_mobile_ui') || 'modern';
+    document.body.classList.toggle('mobile-ui-modern', savedUi === 'modern');
+    document.body.classList.toggle('mobile-ui-classic', savedUi === 'classic');
+    
+    const uiSelect = document.getElementById('settingsMobileUI');
+    if (uiSelect) {
+        uiSelect.value = savedUi;
+        uiSelect.addEventListener('change', (e) => {
+            const val = e.target.value;
+            localStorage.setItem('gm_mobile_ui', val);
+            document.body.classList.toggle('mobile-ui-modern', val === 'modern');
+            document.body.classList.toggle('mobile-ui-classic', val === 'classic');
+        });
+    }
+});
