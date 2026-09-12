@@ -89,53 +89,53 @@
                     <button id="btnAuthAction" style="width:100%; margin-top:10px;">GİRİŞ YAP</button>
                     <div style="margin-top:15px; display:flex; gap:10px;">
                         <button id="btnSwitchLogin" class="secondary" style="flex:1; font-size:0.7rem;">Giriş</button>
-                        <button id="btnSwitchRegister" class="secondary" style="flex:1; font-size:0.7rem;">Kayıt
-                            Ol</button>
+                        <button id="btnSwitchRegister" class="secondary" style="flex:1; font-size:0.7rem;">Kayıt Ol</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <div id="view-dashboard" class="view">
-            <div class="dashboard-head-row">
-                <h2>Oyun Menüsü</h2>
-                <div class="dashboard-head-actions">
-                    <button class="secondary icon-btn" onclick="watchLiveGamePrompt()" title="Canlı izle">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="secondary icon-btn" onclick="openChessComImportPrompt()"
-                        title="Chess.com maçı içe aktar">
-                        <i class="fas fa-arrow-down-wide-short"></i>
-                    </button>
-                    <button class="secondary icon-btn" onclick="openSettings()" title="Ayarlar">
-                        <i class="fas fa-cog"></i>
-                    </button>
+            <div class="dashboard-head-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; flex-wrap:wrap; gap:10px;">
+                <h2 style="margin:0;"><i class="fas fa-gamepad"></i> Oyun Alanı</h2>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="secondary" onclick="openProfileModal()"><i class="fas fa-user-circle"></i> Profil</button>
+                    <button class="secondary" onclick="openLeaderboardModal()"><i class="fas fa-trophy"></i> Liderlik</button>
+                    <button class="secondary" onclick="openMatchmakingModal()"><i class="fas fa-random"></i> Eşleşme Bul</button>
                 </div>
             </div>
 
-            <div class="hero-card ultimate-2v2-card">
-                <div class="ultimate-card-grid">
-                    <div class="ultimate-copy">
-                        <div class="ultimate-kicker"><i class="fas fa-bolt"></i> Premier takım modu</div>
-                        <h3><i class="fas fa-chess-board"></i> 2v2 Ultimate Chess</h3>
-                        <p>Arkadaşınla aynı tahta üstünde ritim kur; değişmeli turlar, baskı zincirleri ve ortak
-                            planlarla gerçek takım satrancı oyna.</p>
-                        <div class="ultimate-badges">
-                            <span><i class="fas fa-users"></i> 4 Oyuncu</span>
-                            <span><i class="fas fa-shuffle"></i> Değişmeli Tur</span>
-                            <span><i class="fas fa-satellite-dish"></i> Canlı Tempo</span>
+            <!-- Mobile Category Switcher Pills -->
+            <div class="mobile-category-pills" id="mobileCategoryPills">
+                <button class="cat-pill active" onclick="filterMobileDashboard('all', this)"><i class="fas fa-th-large"></i> Tümü</button>
+                <button class="cat-pill" onclick="filterMobileDashboard('play', this)"><i class="fas fa-play"></i> Oyna</button>
+                <button class="cat-pill" onclick="filterMobileDashboard('train', this)"><i class="fas fa-graduation-cap"></i> Antrenman</button>
+                <button class="cat-pill" onclick="filterMobileDashboard('social', this)"><i class="fas fa-users"></i> Sosyal</button>
+                <button class="cat-pill" onclick="filterMobileDashboard('story', this)"><i class="fas fa-book"></i> Hikaye</button>
+            </div>
+
+            <div class="dash-card hero-card ultimate-hero-card" data-mobile-cat="play">
+                <div class="ultimate-hero-ambient" aria-hidden="true"></div>
+                <div class="ultimate-hero-layout">
+                    <div class="ultimate-hero-content">
+                        <div class="ultimate-tag">
+                            <span class="ultimate-pulse"></span>
+                            <span>EFSANE MOD</span>
+                        </div>
+                        <h3><i class="fas fa-chess-board"></i> 2v2 Eşli Satranç Arenası</h3>
+                        <p>Dört oyuncu, tek arena, ortak tahta stratejisi! Takım arkadaşınla koordine ol, hamlelerini senkronize et ve tahtaya hükmet.</p>
+                        <div class="ultimate-features">
+                            <span><i class="fas fa-users"></i> 4 Oyunculu Eşzamanlı</span>
+                            <span><i class="fas fa-shield-halved"></i> Ortak Taş Dağılımı</span>
+                            <span><i class="fas fa-fire"></i> Dinamik Hamle Sırası</span>
                         </div>
                     </div>
                     <div class="ultimate-preview" aria-hidden="true">
                         <div class="ultimate-preview-board">
-                            <span class="light"></span><span class="dark"></span><span class="light"></span><span
-                                class="dark"></span>
-                            <span class="dark"></span><span class="light"></span><span class="dark"></span><span
-                                class="light"></span>
-                            <span class="light"></span><span class="dark"></span><span class="light"></span><span
-                                class="dark"></span>
-                            <span class="dark"></span><span class="light"></span><span class="dark"></span><span
-                                class="light"></span>
+                            <span class="light"></span><span class="dark"></span><span class="light"></span><span class="dark"></span>
+                            <span class="dark"></span><span class="light"></span><span class="dark"></span><span class="light"></span>
+                            <span class="light"></span><span class="dark"></span><span class="light"></span><span class="dark"></span>
+                            <span class="dark"></span><span class="light"></span><span class="dark"></span><span class="light"></span>
                         </div>
                         <div class="ultimate-seat seat-white-a"><i class="fas fa-chess-king"></i></div>
                         <div class="ultimate-seat seat-white-b"><i class="fas fa-chess-bishop"></i></div>
@@ -159,7 +159,7 @@
             </div>
 
             <div class="dashboard-quick-grid sub-grid">
-                <div class="dash-card">
+                <div class="dash-card" data-mobile-cat="play">
                     <div>
                         <h3><i class="fas fa-chess-knight"></i> 1v1 Klasik Satranç</h3>
                         <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:18px;">Bire bir klasik
@@ -186,7 +186,7 @@
                     </div>
                 </div>
 
-                <div id="soloTrainingEntryCard" class="dash-card solo-training-entry-card" style="display:none;">
+                <div id="soloTrainingEntryCard" class="dash-card solo-training-entry-card" data-mobile-cat="train" style="display:none;">
                     <div>
                         <h3><i class="fas fa-chess-board"></i> Solo Usta Antrenmani</h3>
                         <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:18px;">Iki tarafi da kendin
@@ -198,7 +198,7 @@
                     </button>
                 </div>
 
-                <div class="dash-card friends-card">
+                <div class="dash-card friends-card" data-mobile-cat="social">
                     <div>
                         <h3><i class="fas fa-user-group"></i> Arkadaşlar</h3>
                         <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:18px;">KOLAY GELSİN</p>
@@ -215,7 +215,7 @@
                 </div>
             </div>
 
-            <div class="dash-card story-entry-card">
+            <div class="dash-card story-entry-card" data-mobile-cat="story">
                 <div class="story-entry-copy">
                     <div class="story-kicker"><i class="fas fa-book-open"></i> Hikaye Modu</div>
                     <h3>Tahtanın Kronikleri</h3>
@@ -233,7 +233,7 @@
             </div>
 
             <!-- NEW QUIZ MODE SECTION -->
-            <div class="dash-card quiz-card" style="margin-bottom:20px;">
+            <div class="dash-card quiz-card" data-mobile-cat="social" style="margin-bottom:20px;">
                 <div style="display:flex; align-items:center; justify-content:space-between;">
                     <div style="text-align:left;">
                         <h3 style="color:#ff0055;"><i class="fas fa-question-circle"></i> Bilgi Yarışması</h3>
@@ -250,7 +250,7 @@
             </div>
 
             <!-- IDRIS CLICKER SECTION -->
-            <div class="dash-card"
+            <div class="dash-card idris-card" data-mobile-cat="social"
                 style="margin-bottom:20px; background: linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%); border:none; position:relative; overflow:hidden;">
                 <div
                     style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:rgba(255,255,255,0.1); border-radius:50%;">
@@ -278,7 +278,7 @@
             </div>
 
             <div class="sub-grid">
-                <div class="dash-card">
+                <div class="dash-card tournament-card" data-mobile-cat="play">
                     <div>
                         <h3><i class="fas fa-trophy"></i> Turnuva Modu</h3>
                         <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">Lig usulü fikstür ve
@@ -305,7 +305,7 @@
                     </div>
                 </div>
 
-                <div class="dash-card"
+                <div class="dash-card clash-card" data-mobile-cat="train"
                     style="background:linear-gradient(145deg, rgba(255,255,255,0.03), rgba(0, 123, 255, 0.05)); border-color: rgba(0, 123, 255, 0.2);">
                     <div>
                         <h3 style="color:#38e4ff;"><i class="fas fa-magic"></i> Deste Ustası</h3>
@@ -1873,6 +1873,30 @@
                     class="fas fa-paper-plane"></i></button>
         </form>
     </div>
+
+        <!-- Mobile Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Mobil Gezinme Menüsü">
+        <button class="nav-tab active" data-tab="play" onclick="handleMobileNavTab('play', this)">
+            <i class="fas fa-gamepad"></i>
+            <span>Oyna</span>
+        </button>
+        <button class="nav-tab" data-tab="train" onclick="handleMobileNavTab('train', this)">
+            <i class="fas fa-graduation-cap"></i>
+            <span>Antrenman</span>
+        </button>
+        <button class="nav-tab" data-tab="review" onclick="handleMobileNavTab('review', this)">
+            <i class="fas fa-chart-line"></i>
+            <span>Analiz</span>
+        </button>
+        <button class="nav-tab" data-tab="social" onclick="handleMobileNavTab('social', this)">
+            <i class="fas fa-users"></i>
+            <span>Sosyal</span>
+        </button>
+        <button class="nav-tab" data-tab="profile" onclick="handleMobileNavTab('profile', this)">
+            <i class="fas fa-user"></i>
+            <span>Profil</span>
+        </button>
+    </nav>
 
     <script type="module" src="./app-v2.js?v=20260713c"></script>
 

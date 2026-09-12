@@ -885,6 +885,87 @@ const [
         if (window.currentUser && window.pushProfilePresence) window.pushProfilePresence();
         if (window.syncSoloTrainingAccess) window.syncSoloTrainingAccess();
         if (id === 'view-dashboard' && window.scheduleDashboardReconnectPrompt) window.scheduleDashboardReconnectPrompt();
+        if (window.syncMobileNavTabs) {
+            if (id === 'view-dashboard') {
+                const active = document.querySelector('.mobile-bottom-nav .nav-tab.active');
+                if (!active) window.syncMobileNavTabs('play');
+            } else if (id === 'view-solo-training') {
+                window.syncMobileNavTabs('train');
+            } else if (id === 'view-2v2-analysis') {
+                window.syncMobileNavTabs('review');
+            } else if (id === 'view-friends') {
+                window.syncMobileNavTabs('social');
+            }
+        }
+    };
+
+    // === Mobile Card Category Filtering & Bottom Nav Controller ===
+    window.filterMobileDashboard = function(category, btnEl) {
+        window.playGameSound('nav');
+        const pills = document.querySelectorAll('.mobile-category-pills .cat-pill');
+        pills.forEach(p => p.classList.remove('active'));
+        if (btnEl) {
+            btnEl.classList.add('active');
+        } else {
+            const match = document.querySelector(`.mobile-category-pills .cat-pill[onclick*="'${category}'"]`);
+            if (match) match.classList.add('active');
+        }
+
+        const cards = document.querySelectorAll('#view-dashboard [data-mobile-cat]');
+        cards.forEach(card => {
+            const cat = card.getAttribute('data-mobile-cat');
+            if (category === 'all' || cat === category) {
+                card.classList.remove('mobile-card-hidden');
+            } else {
+                card.classList.add('mobile-card-hidden');
+            }
+        });
+    };
+
+    window.syncMobileNavTabs = function(tabName) {
+        const tabs = document.querySelectorAll('.mobile-bottom-nav .nav-tab');
+        tabs.forEach(t => {
+            t.classList.toggle('active', t.getAttribute('data-tab') === tabName);
+        });
+    };
+
+    window.handleMobileNavTab = function(tabName, btnEl) {
+        window.playGameSound('nav');
+        window.syncMobileNavTabs(tabName);
+
+        if (tabName === 'play') {
+            if (window.currentViewId !== 'view-dashboard') {
+                window.switchView('view-dashboard');
+            }
+            window.filterMobileDashboard('play');
+        } else if (tabName === 'train') {
+            if (window.openSoloTrainingMode) {
+                window.openSoloTrainingMode();
+            } else {
+                if (window.currentViewId !== 'view-dashboard') {
+                    window.switchView('view-dashboard');
+                }
+                window.filterMobileDashboard('train');
+            }
+        } else if (tabName === 'review') {
+            if (window.currentAnalysisReport) {
+                window.switchView('view-2v2-analysis');
+            } else if (window.load1v1History) {
+                window.load1v1History();
+            } else {
+                if (window.showToast) window.showToast('Geçmiş maç seçerek analize başlayabilirsiniz.', 'info');
+            }
+        } else if (tabName === 'social') {
+            if (window.openFriendsView) {
+                window.openFriendsView();
+            } else {
+                window.switchView('view-friends');
+            }
+        } else if (tabName === 'profile') {
+            if (window.openProfileModal) {
+                window.openProfileModal();
+            }
+        }
     };
 
     window.openSettings = () => {
