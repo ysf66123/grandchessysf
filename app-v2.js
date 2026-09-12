@@ -885,21 +885,14 @@ const [
         if (window.currentUser && window.pushProfilePresence) window.pushProfilePresence();
         if (window.syncSoloTrainingAccess) window.syncSoloTrainingAccess();
         if (id === 'view-dashboard' && window.scheduleDashboardReconnectPrompt) window.scheduleDashboardReconnectPrompt();
-        if (window.syncMobileNavTabs) {
-            if (id === 'view-dashboard') {
-                const active = document.querySelector('.mobile-bottom-nav .nav-tab.active');
-                if (!active) window.syncMobileNavTabs('play');
-            } else if (id === 'view-solo-training') {
-                window.syncMobileNavTabs('train');
-            } else if (id === 'view-2v2-analysis') {
-                window.syncMobileNavTabs('review');
-            } else if (id === 'view-friends') {
-                window.syncMobileNavTabs('social');
-            }
-        }
     };
 
-    // === Mobile Card C// === Authentication handlers ===
+    window.openSettings = () => {
+        syncSettingsFormFromCurrentUser();
+        window.switchView('view-settings');
+    };
+
+    // === Authentication handlers ===
     let isReg = false;
     document.getElementById('btnSwitchLogin').onclick=()=>{isReg=false; toggleAuth();};
     document.getElementById('btnSwitchRegister').onclick=()=>{isReg=true; toggleAuth();};
@@ -1085,24 +1078,6 @@ const [
     console.error('App boot failed:', err);
     window.__appBootError = err;
     if (typeof alert === 'function') {
-        alert('HATA: ' + (err.message || err) + '\nDosya: ' + (err.stack ? err.stack.split('\n').slice(0, 3).join('\n') : 'bilinmiyor'));
-    }
-});
-
-// === Mobile UI Mode Toggle ===
-document.addEventListener('DOMContentLoaded', () => {
-    const savedUi = localStorage.getItem('gm_mobile_ui') || 'modern';
-    document.body.classList.toggle('mobile-ui-modern', savedUi === 'modern');
-    document.body.classList.toggle('mobile-ui-classic', savedUi === 'classic');
-    
-    const uiSelect = document.getElementById('settingsMobileUI');
-    if (uiSelect) {
-        uiSelect.value = savedUi;
-        uiSelect.addEventListener('change', (e) => {
-            const val = e.target.value;
-            localStorage.setItem('gm_mobile_ui', val);
-            document.body.classList.toggle('mobile-ui-modern', val === 'modern');
-            document.body.classList.toggle('mobile-ui-classic', val === 'classic');
-        });
+        alert('HATA: ' + (err.message || err) + '\n\nDosya: ' + (err.stack ? err.stack.split('\n').slice(0, 3).join('\n') : 'bilinmiyor'));
     }
 });

@@ -31,7 +31,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css?v=20260713c">
+    <link rel="stylesheet" href="./styles.css?v=20260618c">
     <link rel="stylesheet" href="./analysis-premium.css?v=20260617b">
 </head>
 
@@ -89,59 +89,53 @@
                     <button id="btnAuthAction" style="width:100%; margin-top:10px;">GİRİŞ YAP</button>
                     <div style="margin-top:15px; display:flex; gap:10px;">
                         <button id="btnSwitchLogin" class="secondary" style="flex:1; font-size:0.7rem;">Giriş</button>
-                        <button id="btnSwitchRegister" class="secondary" style="flex:1; font-size:0.7rem;">Kayıt Ol</button>
+                        <button id="btnSwitchRegister" class="secondary" style="flex:1; font-size:0.7rem;">Kayıt
+                            Ol</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <div id="view-dashboard" class="view">
-            <div class="dashboard-head-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; flex-wrap:wrap; gap:10px;">
-                <h2 style="margin:0;"><i class="fas fa-gamepad"></i> Oyun Alanı</h2>
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button class="secondary" onclick="openProfileModal()"><i class="fas fa-user-circle"></i> Profil</button>
-                    <button class="secondary" onclick="openLeaderboardModal()"><i class="fas fa-trophy"></i> Liderlik</button>
-                    <button class="secondary" onclick="openMatchmakingModal()"><i class="fas fa-random"></i> Eşleşme Bul</button>
+            <div class="dashboard-head-row">
+                <h2>Oyun Menüsü</h2>
+                <div class="dashboard-head-actions">
+                    <button class="secondary icon-btn" onclick="watchLiveGamePrompt()" title="Canlı izle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="secondary icon-btn" onclick="openChessComImportPrompt()"
+                        title="Chess.com maçı içe aktar">
+                        <i class="fas fa-arrow-down-wide-short"></i>
+                    </button>
+                    <button class="secondary icon-btn" onclick="openSettings()" title="Ayarlar">
+                        <i class="fas fa-cog"></i>
+                    </button>
                 </div>
             </div>
 
-            <!-- Mobile Category Switcher Pills -->
-            <div class="mobile-category-pills" id="mobileCategoryPills">
-                <button class="cat-pill active" onclick="filterMobileDashboard('all', this)"><i class="fas fa-th-large"></i> Tümü</button>
-                <button class="cat-pill" onclick="filterMobileDashboard('play', this)"><i class="fas fa-play"></i> Oyna</button>
-                <button class="cat-pill" onclick="filterMobileDashboard('train', this)"><i class="fas fa-graduation-cap"></i> Antrenman</button>
-                <button class="cat-pill" onclick="filterMobileDashboard('social', this)"><i class="fas fa-users"></i> Sosyal</button>
-                <button class="cat-pill" onclick="filterMobileDashboard('story', this)"><i class="fas fa-book"></i> Hikaye</button>
-            </div>
-
-            
-
-            
-            
-            <div class="mobile-hero-carousel" id="mobileHeroCarousel">
-
-            <div class="dash-card hero-card ultimate-hero-card">
-                <div class="ultimate-hero-ambient" aria-hidden="true"></div>
-                <div class="ultimate-hero-layout">
-                    <div class="ultimate-hero-content">
-                        <div class="ultimate-tag">
-                            <span class="ultimate-pulse"></span>
-                            <span>EFSANE MOD</span>
-                        </div>
-                        <h3><i class="fas fa-chess-board"></i> 2v2 Eşli Satranç Arenası</h3>
-                        <p>Dört oyuncu, tek arena, ortak tahta stratejisi! Takım arkadaşınla koordine ol, hamlelerini senkronize et ve tahtaya hükmet.</p>
-                        <div class="ultimate-features">
-                            <span><i class="fas fa-users"></i> 4 Oyunculu Eşzamanlı</span>
-                            <span><i class="fas fa-shield-halved"></i> Ortak Taş Dağılımı</span>
-                            <span><i class="fas fa-fire"></i> Dinamik Hamle Sırası</span>
+            <div class="hero-card ultimate-2v2-card">
+                <div class="ultimate-card-grid">
+                    <div class="ultimate-copy">
+                        <div class="ultimate-kicker"><i class="fas fa-bolt"></i> Premier takım modu</div>
+                        <h3><i class="fas fa-chess-board"></i> 2v2 Ultimate Chess</h3>
+                        <p>Arkadaşınla aynı tahta üstünde ritim kur; değişmeli turlar, baskı zincirleri ve ortak
+                            planlarla gerçek takım satrancı oyna.</p>
+                        <div class="ultimate-badges">
+                            <span><i class="fas fa-users"></i> 4 Oyuncu</span>
+                            <span><i class="fas fa-shuffle"></i> Değişmeli Tur</span>
+                            <span><i class="fas fa-satellite-dish"></i> Canlı Tempo</span>
                         </div>
                     </div>
                     <div class="ultimate-preview" aria-hidden="true">
                         <div class="ultimate-preview-board">
-                            <span class="light"></span><span class="dark"></span><span class="light"></span><span class="dark"></span>
-                            <span class="dark"></span><span class="light"></span><span class="dark"></span><span class="light"></span>
-                            <span class="light"></span><span class="dark"></span><span class="light"></span><span class="dark"></span>
-                            <span class="dark"></span><span class="light"></span><span class="dark"></span><span class="light"></span>
+                            <span class="light"></span><span class="dark"></span><span class="light"></span><span
+                                class="dark"></span>
+                            <span class="dark"></span><span class="light"></span><span class="dark"></span><span
+                                class="light"></span>
+                            <span class="light"></span><span class="dark"></span><span class="light"></span><span
+                                class="dark"></span>
+                            <span class="dark"></span><span class="light"></span><span class="dark"></span><span
+                                class="light"></span>
                         </div>
                         <div class="ultimate-seat seat-white-a"><i class="fas fa-chess-king"></i></div>
                         <div class="ultimate-seat seat-white-b"><i class="fas fa-chess-bishop"></i></div>
@@ -164,7 +158,8 @@
                 </button>
             </div>
 
-<div class="dash-card hero-card">
+            <div class="dashboard-quick-grid sub-grid">
+                <div class="dash-card">
                     <div>
                         <h3><i class="fas fa-chess-knight"></i> 1v1 Klasik Satranç</h3>
                         <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:18px;">Bire bir klasik
@@ -190,9 +185,7 @@
                         </button>
                     </div>
                 </div>
-            </div>
 
-            <div class="dashboard-quick-grid sub-grid mobile-secondary-grid">
                 <div id="soloTrainingEntryCard" class="dash-card solo-training-entry-card" style="display:none;">
                     <div>
                         <h3><i class="fas fa-chess-board"></i> Solo Usta Antrenmani</h3>
@@ -257,7 +250,7 @@
             </div>
 
             <!-- IDRIS CLICKER SECTION -->
-            <div class="dash-card idris-card"
+            <div class="dash-card"
                 style="margin-bottom:20px; background: linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%); border:none; position:relative; overflow:hidden;">
                 <div
                     style="position:absolute; top:-50px; left:-50px; width:150px; height:150px; background:rgba(255,255,255,0.1); border-radius:50%;">
@@ -285,7 +278,7 @@
             </div>
 
             <div class="sub-grid">
-                <div class="dash-card tournament-card">
+                <div class="dash-card">
                     <div>
                         <h3><i class="fas fa-trophy"></i> Turnuva Modu</h3>
                         <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">Lig usulü fikstür ve
@@ -312,7 +305,7 @@
                     </div>
                 </div>
 
-                <div class="dash-card clash-card"
+                <div class="dash-card"
                     style="background:linear-gradient(145deg, rgba(255,255,255,0.03), rgba(0, 123, 255, 0.05)); border-color: rgba(0, 123, 255, 0.2);">
                     <div>
                         <h3 style="color:#38e4ff;"><i class="fas fa-magic"></i> Deste Ustası</h3>
@@ -615,20 +608,6 @@
                 <input type="text" id="newQuizName" placeholder="Quiz Başlığı (Örn: Tarih Yarışması)">
                 <button onclick="startQuizBuilder()" style="width:100%; background:var(--quiz-color);">SORULARI
                     HAZIRLA</button>
-                <button onclick="openQuizTestLibrary()" class="secondary quiz-test-library-open">
-                    <i class="fas fa-layer-group"></i> TEST KÜTÜPHANESİ
-                </button>
-            </div>
-
-            <div id="quizTestLibraryPanel" class="quiz-library-panel quiz-test-library-panel" style="display:none;">
-                <div class="quiz-library-head">
-                    <div>
-                        <h3>Test Kütüphanesi</h3>
-                        <span>Oluşturduğun testleri sorularıyla birlikte tekrar lobi olarak aç.</span>
-                    </div>
-                    <button class="secondary icon-btn" onclick="closeQuizTestLibrary()"><i class="fas fa-times"></i></button>
-                </div>
-                <div id="quizTestLibraryList" class="quiz-library-list"></div>
             </div>
 
             <div class="dash-card">
@@ -651,21 +630,8 @@
                 <!-- Questions will be added here -->
             </div>
 
-            <div class="quiz-builder-actions">
-                <button onclick="addQuizQuestionUI()" class="secondary">+ SORU EKLE</button>
-                <button onclick="openQuizQuestionLibrary()" class="secondary"><i class="fas fa-book"></i> KÜTÜPHANE</button>
-            </div>
-
-            <div id="quizLibraryPanel" class="quiz-library-panel" style="display:none;">
-                <div class="quiz-library-head">
-                    <div>
-                        <h3>Soru Kütüphanesi</h3>
-                        <span>Daha önce kaydettiğin soruları bu quize ekle.</span>
-                    </div>
-                    <button class="secondary icon-btn" onclick="closeQuizQuestionLibrary()"><i class="fas fa-times"></i></button>
-                </div>
-                <div id="quizLibraryList" class="quiz-library-list"></div>
-            </div>
+            <button onclick="addQuizQuestionUI()" class="secondary"
+                style="width:100%; margin-bottom:10px; border-style:dashed;">+ SORU EKLE</button>
 
             <div class="dash-card" style="margin-top:20px;">
                 <h4 id="builderSummary">0 Soru</h4>
@@ -711,11 +677,6 @@
                                     onchange="toggleHostParticipation(this.checked)"><span class="slider"></span></div>
                             <span>Yönetici Katılsın</span>
                         </label>
-                        <label class="quiz-auto-next-label">
-                            <div class="switch"><input type="checkbox" id="quizAutoNextToggle" checked><span
-                                    class="slider"></span></div>
-                            <span>Yeni soruya otomatik geç</span>
-                        </label>
                     </div>
                     <button onclick="launchQuizGame()"
                         style="width:100%; margin-top:15px; background:var(--quiz-color); font-size:1.1rem;">BAŞLAT</button>
@@ -749,10 +710,8 @@
             </div>
 
             <div class="dash-card" style="margin-bottom:15px; min-height:150px; justify-content:center;">
-                <div id="quizQuestionValueBadge" class="quiz-question-value-badge">₺0</div>
                 <h2 id="quizQuestionText" style="font-size:1.4rem; color:white; margin:0;">Soru Yükleniyor...</h2>
                 <img id="quizQuestionImg" src=""
-                    onclick="openQuizImageModal(this.src)"
                     style="max-width:100%; max-height:200px; object-fit:contain; margin-top:15px; border-radius:8px; display:none;">
             </div>
 
@@ -786,9 +745,6 @@
                 <div id="quizTopList"
                     style="max-width:400px; margin:0 auto; background:rgba(0,0,0,0.3); border-radius:10px; padding:10px; max-height:300px; overflow-y:auto;">
                 </div>
-                <button id="quizManualNextQuestionBtn" class="secondary quiz-manual-next-btn" onclick="quizNextQuestionReal()" style="display:none;">
-                    SIRADAKI SORU <i class="fas fa-forward"></i>
-                </button>
                 <div id="autoNextTimer" style="margin-top:10px; font-size:0.8rem; color:var(--text-muted);">Sonraki
                     soruya geçiliyor...</div>
             </div>
@@ -826,7 +782,6 @@
                             <th>Sıra</th>
                             <th>İsim</th>
                             <th>Puan</th>
-                            <th>Kazanç</th>
                         </tr>
                     </thead>
                     <tbody id="quizFinalTableBody"></tbody>
@@ -1511,15 +1466,7 @@
                 <div
                     style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:15px; border-radius:8px; margin-top:20px; border:1px solid var(--glass-border);">
                     <span>Analiz Etiket Dili</span>
-                    
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:15px; border-radius:8px; margin-top:10px; border:1px solid var(--glass-border);">
-                    <span>Mobil Görünüm</span>
-                    <select id="settingsMobileUI" style="width:auto; min-width:140px; margin:0;">
-                        <option value="modern">Modern (Vitrin/Izgara)</option>
-                        <option value="classic">Klasik (Liste)</option>
-                    </select>
-<select id="settingsAnalysisLang" style="width:auto; min-width:140px; margin:0;">
+                    <select id="settingsAnalysisLang" style="width:auto; min-width:140px; margin:0;">
                         <option value="tr">Türkçe</option>
                         <option value="en">English</option>
                     </select>
@@ -1745,15 +1692,6 @@
         </div>
     </div>
 
-    <div id="quizImageModal" class="modal-overlay quiz-image-modal" aria-hidden="true" onclick="if(event.target === this) closeQuizImageModal()">
-        <div class="quiz-image-modal-content">
-            <button class="secondary quiz-image-close" onclick="closeQuizImageModal()">
-                <i class="fas fa-compress"></i> Küçült
-            </button>
-            <img id="quizImageModalImg" src="" alt="Soru resmi">
-        </div>
-    </div>
-
     <div id="gameOverModal" class="modal-overlay">
         <div class="modal-content game-over-content" style="max-width:500px;">
             <i class="fas fa-crown winner-crown"></i>
@@ -1889,9 +1827,7 @@
         </form>
     </div>
 
-        
-
-    <script type="module" src="./app-v2.js?v=20260713c"></script>
+    <script type="module" src="./app-v2.js?v=20260618c"></script>
 
 </body>
 
