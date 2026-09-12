@@ -1085,10 +1085,10 @@ const [
     console.error('App boot failed:', err);
     window.__appBootError = err;
     if (typeof alert === 'function') {
-        alert('HATA: ' + (err.message || err) + '\n\nDosya: ' + (err.stack ? err.stack.split('\n').slice(0, 3).join('\n') : 'bilinmiyor'));
+        alert('HATA: ' + (err.message || err) + '\nDosya: ' + (err.stack ? err.stack.split('\n').slice(0, 3).join('\n') : 'bilinmiyor'));
     }
 });
-\n
+
 // === Mobile UI Mode Toggle ===
 document.addEventListener('DOMContentLoaded', () => {
     const savedUi = localStorage.getItem('gm_mobile_ui') || 'modern';
