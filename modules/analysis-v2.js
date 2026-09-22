@@ -1,14 +1,14 @@
+import {AnalysisEngine} from './analysis-engine.mjs';
+import {REVIEW_VERSION, parseInfo, whiteScore, expectedScore, rootScore, accuracyFromLoss, classify, gameAccuracy, pvMoves, sacrificeEvidence, terminalResult, validPosition, uciOf} from './analysis-core.mjs';
+import {loadOpenings, normalizedOpeningKey, tablebase, tableExpected, explanation} from './analysis-data.mjs';
 // modules/analysis-v2.js - Chess Game Analysis Engine (Chess.com-style review)
 
 const SF_DEPTH_LIVE = 18;
 const SF_DEPTH_REVIEW = 14;
-const SF_MULTI_PV = 4;
-const SF_MULTI_PV_LIVE = 4;
-const ANALYSIS_CACHE_VERSION = 'sf18-lite-v3-depth18-mpv4';
+const SF_MULTI_PV = 3;
+const ANALYSIS_CACHE_VERSION = REVIEW_VERSION;
 const ANALYSIS_CACHE_DB = 'grandmaster_analysis_cache_v1';
 const ANALYSIS_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 45;
-const CLOUD_EVAL_MIN_DEPTH = 18;
-const CLOUD_EVAL_TIMEOUT_MS = 1600;
 
 const MOVE_CATEGORY_META = {
     brilliant: { tag: '!!', tr: 'Mükemmel Fedakar', en: 'Brilliant' },
@@ -23,15 +23,6 @@ const MOVE_CATEGORY_META = {
     blunder: { tag: '??', tr: 'Büyük Hata', en: 'Blunder' }
 };
 
-const OPENING_BOOK = {
-    'e4': true, 'd4': true, 'Nf3': true, 'c4': true, 'g3': true,
-    'e4 e5': true, 'e4 e5 Nf3': true, 'e4 e5 Nf3 Nc6': true,
-    'e4 e5 Nf3 Nc6 Bb5': true, 'e4 e5 Nf3 Nc6 Bc4': true,
-    'e4 c5': true, 'e4 c5 Nf3': true, 'e4 c5 Nf3 d6': true,
-    'e4 e6': true, 'e4 e6 d4': true, 'e4 c6': true, 'e4 c6 d4': true,
-    'd4 d5': true, 'd4 d5 c4': true, 'd4 Nf6': true, 'd4 Nf6 c4': true,
-    'd4 Nf6 c4 e6': true, 'd4 Nf6 c4 g6': true
-};
 
 let currentSharedAnalysisPayload = null;
 let pendingSharedAnalysisId = null;
@@ -80,7 +71,7 @@ function updateAnalysisContextLabels() {
         : 'Başlangıç';
 
     let turnText = 'Beyaz oynar';
-    if (currentAnalysisIndex >= analysisHistory.length) turnText = 'Maç sonu';
+    if (analysisChess.game_over()) turnText = 'Maç sonu';
     else if (analysisChess.turn() === 'b') turnText = 'Siyah oynar';
 
     if (currentMoveEl) currentMoveEl.innerText = currentMove ? currentMove.san : 'Başlangıç konumu';
@@ -91,42 +82,13 @@ function updateAnalysisContextLabels() {
 }
 
 function updateCoachFeedback() {
-    const qualityEl = document.getElementById('coachMoveQuality');
-    const textEl = document.getElementById('coachFeedbackText');
-    if (!qualityEl || !textEl) return;
-    
-    if (currentAnalysisIndex === 0) {
-        qualityEl.innerText = 'Başlangıç Konumu';
-        textEl.innerText = 'Maçın başlangıç dizilimi. Beyazın hafif bir merkez avantajı var.';
-        qualityEl.style.color = '#fff';
-        return;
-    }
-    
-    const review = analysisMoveReviews[currentAnalysisIndex - 1];
-    if (!review) {
-        qualityEl.innerText = 'Analiz Bekleniyor';
-        textEl.innerText = 'Motor henüz bu hamleyi incelemedi.';
-        qualityEl.style.color = '#aaa';
-        return;
-    }
-    
-    qualityEl.innerText = getMoveCategoryLabel(review.category);
-    let color = '#fff';
-    let msg = '';
-    
-    if (review.category === 'brilliant') { color = '#2dd4bf'; msg = 'Harika bir feda veya taktik buldun! Satranç tahtasında parlıyorsun.'; }
-    else if (review.category === 'great') { color = '#38bdf8'; msg = 'Zor bir konumda bulunabilecek tek doğru hamleyi yaptın. Tebrikler!'; }
-    else if (review.category === 'best') { color = '#10b981'; msg = 'Motorun önerdiği en güçlü hamle. Kusursuz oynuyorsun.'; }
-    else if (review.category === 'book') { color = '#d4af37'; msg = 'Teorik açılış hamlesi. Bilinen yollardan sağlam ilerliyorsun.'; }
-    else if (review.category === 'excellent') { color = '#4ade80'; msg = 'Çok güçlü bir hamle. Konum avantajını koruyorsun.'; }
-    else if (review.category === 'good') { color = '#a3e635'; msg = 'Kabul edilebilir sağlam bir hamle.'; }
-    else if (review.category === 'inaccuracy') { color = '#facc15'; msg = 'Bu hamle ile hafif bir avantaj kaybettin. Daha iyisi olabilirdi.'; }
-    else if (review.category === 'mistake') { color = '#f97316'; msg = 'Konumda belirgin bir zayıflık yarattın.'; }
-    else if (review.category === 'miss') { color = '#ef4444'; msg = 'Rakibi cezalandırmak veya materyal kazanmak için eline geçen fırsatı kaçırdın.'; }
-    else if (review.category === 'blunder') { color = '#dc2626'; msg = 'Ciddi bir hata! Taşı boşta bırakmış veya mat ağına girmiş olabilirsin.'; }
-    
-    qualityEl.style.color = color;
-    textEl.innerText = msg;
+    const quality = document.getElementById('coachMoveQuality');
+    const text = document.getElementById('coachFeedbackText');
+    if (!quality || !text) return;
+    const review = analysisMoveReviews[currentAnalysisIndex-1];
+    quality.textContent = review ? getMoveCategoryLabel(review.category) : 'Konumu incele';
+    text.textContent = review ? explanation(Chess,review) : 'Bir hamle seçerek değerlendirmeyi ve önerilen devamları inceleyebilirsin.';
+    renderReviewDetails();
 }
 
 function getAnalysisViewElement() {
@@ -185,11 +147,8 @@ window.refreshAnalysisLabels = function() {
 };
 
 let sfWorker = null;
-let sfInitPromise = null;
 let isSfReady = false;
 let sfPendingFen = null;
-let sfQueue = [];
-let sfActiveTask = null;
 
 let analysisChess = new Chess();
 let analysisHistory = [];
@@ -215,12 +174,6 @@ function clamp(value, min, max) {
 }
 
 let analysisCacheDbPromise = null;
-const analysisWarmCacheInFlight = new Map();
-const analysisWarmQueue = [];
-const analysisWarmQueuedKeys = new Set();
-let analysisWarmQueueRunning = false;
-const cloudEvalInFlight = new Map();
-let cloudEvalDisabledUntil = 0;
 
 function getAnalysisCacheDb() {
     if (!('indexedDB' in window)) return Promise.resolve(null);
@@ -236,33 +189,28 @@ function getAnalysisCacheDb() {
         request.onerror = function() { resolve(null); };
         request.onblocked = function() { resolve(null); };
     });
-    return analysisCacheDbPromise;
+    return analysisCacheDbPromise.catch(()=>null);
 }
 
-async function readCacheStore(storeName, key) {
-    const db = await getAnalysisCacheDb();
-    if (!db) return null;
-    return new Promise(function(resolve) {
-        const tx = db.transaction(storeName, 'readonly');
-        const req = tx.objectStore(storeName).get(key);
-        req.onsuccess = function() {
-            const value = req.result || null;
-            if (!value || (Date.now() - (value.createdAtMs || 0)) > ANALYSIS_CACHE_TTL_MS) return resolve(null);
-            resolve(value.payload || null);
-        };
-        req.onerror = function() { resolve(null); };
-    });
+async function readCacheStore(storeName,key) {
+    try {
+        const db=await getAnalysisCacheDb();if(!db)return null;
+        return await new Promise(resolve=>{
+            const tx=db.transaction(storeName,'readonly'),req=tx.objectStore(storeName).get(key);
+            req.onsuccess=()=>{const value=req.result;resolve(value && Date.now()-value.createdAtMs<=ANALYSIS_CACHE_TTL_MS?value.payload:null);};
+            req.onerror=tx.onabort=()=>resolve(null);
+        });
+    }catch{return null;}
 }
-
-async function writeCacheStore(storeName, key, payload) {
-    const db = await getAnalysisCacheDb();
-    if (!db || !payload) return;
-    return new Promise(function(resolve) {
-        const tx = db.transaction(storeName, 'readwrite');
-        tx.objectStore(storeName).put({ key: key, payload: payload, createdAtMs: Date.now() });
-        tx.oncomplete = function() { resolve(); };
-        tx.onerror = function() { resolve(); };
-    });
+async function writeCacheStore(storeName,key,payload) {
+    try {
+        const db=await getAnalysisCacheDb();if(!db || !payload)return;
+        await new Promise(resolve=>{
+            const tx=db.transaction(storeName,'readwrite');
+            tx.objectStore(storeName).put({key,payload,createdAtMs:Date.now()});
+            tx.oncomplete=tx.onerror=tx.onabort=()=>resolve();
+        });
+    }catch{/* Private browsing and quota errors do not change review results. */}
 }
 
 function hashText(value) {
@@ -275,96 +223,7 @@ function hashText(value) {
     return (hash >>> 0).toString(16);
 }
 
-function buildEvalCacheKey(fen, depth) {
-    return [ANALYSIS_CACHE_VERSION, 'eval', 'd' + depth, 'mpv' + SF_MULTI_PV, fen].join('|');
-}
-
-function normalizeFenForCloudEval(fen) {
-    return String(fen || '').split(' ').slice(0, 4).join(' ');
-}
-
-function cloudEvalToLocalResult(data, fen, requestId) {
-    if (!data || !Array.isArray(data.pvs) || !data.pvs.length) return null;
-    if ((data.depth || 0) < CLOUD_EVAL_MIN_DEPTH) return null;
-    const topLines = data.pvs.map(function(pv, index) {
-        const uci = pv && pv.moves ? String(pv.moves).split(' ')[0] : null;
-        return {
-            rank: index + 1,
-            uci: uci,
-            cp: pv && pv.cp !== undefined ? pv.cp : null,
-            mate: pv && pv.mate !== undefined ? pv.mate : null,
-            whiteScore: null
-        };
-    }).filter(function(line) { return line.uci; });
-    if (!topLines.length) return null;
-    const result = {
-        cp: topLines[0].cp,
-        mate: topLines[0].mate,
-        bestMove: topLines[0].uci,
-        topLines: topLines,
-        mode: 'cloud_review',
-        requestId: requestId || 0,
-        fallback: false,
-        cloud: true,
-        cloudDepth: data.depth || null,
-        fen: fen
-    };
-    result.whiteScore = evalToWhiteScore(result, fen);
-    result.topLines = result.topLines.map(function(line) {
-        return Object.assign({}, line, { whiteScore: engineLineToWhiteScore(line, fen) });
-    });
-    return result;
-}
-
-async function readCloudEval(fen, requestId) {
-    if (!window.fetch || Date.now() < cloudEvalDisabledUntil) return null;
-    const cloudFen = normalizeFenForCloudEval(fen);
-    if (!cloudFen) return null;
-    const key = cloudFen + '|mpv' + SF_MULTI_PV;
-    if (cloudEvalInFlight.has(key)) return cloudEvalInFlight.get(key);
-    const task = (async function() {
-        try {
-            const controller = window.AbortController ? new AbortController() : null;
-            const timer = controller ? setTimeout(function() { controller.abort(); }, CLOUD_EVAL_TIMEOUT_MS) : null;
-            const url = 'https://lichess.org/api/cloud-eval?fen=' + encodeURIComponent(cloudFen) + '&multiPv=' + SF_MULTI_PV;
-            const response = await window.fetch(url, {
-                method: 'GET',
-                cache: 'force-cache',
-                signal: controller ? controller.signal : undefined
-            });
-            if (timer) clearTimeout(timer);
-            if (response.status === 404) return null;
-            if (response.status === 429) {
-                cloudEvalDisabledUntil = Date.now() + 120000;
-                return null;
-            }
-            if (!response.ok) return null;
-            return cloudEvalToLocalResult(await response.json(), fen, requestId);
-        } catch (e) {
-            return null;
-        } finally {
-            cloudEvalInFlight.delete(key);
-        }
-    })();
-    cloudEvalInFlight.set(key, task);
-    return task;
-}
-
-async function writeEvalResultToCache(cacheKey, evalResult, fen) {
-    if (!evalResult || evalResult.fallback) return;
-    await writeCacheStore('evals', cacheKey, {
-        cp: evalResult.cp,
-        mate: evalResult.mate,
-        bestMove: evalResult.bestMove,
-        topLines: evalResult.topLines,
-        mode: evalResult.cloud ? 'cloud_review' : 'review',
-        fallback: false,
-        cloud: !!evalResult.cloud,
-        cloudDepth: evalResult.cloudDepth || null,
-        whiteScore: evalResult.whiteScore,
-        fen: fen
-    });
-}
+function buildEvalCacheKey(position, depth) { return [REVIEW_VERSION, depth, position].join('|'); }
 
 function buildReportCacheKey(pgn, fallbackFen) {
     return [ANALYSIS_CACHE_VERSION, 'report', 'd' + SF_DEPTH_REVIEW, hashText((pgn || '') + '|' + (fallbackFen || ''))].join('|');
@@ -406,591 +265,72 @@ function setStockfishStatus(state) {
         badge.style.color = 'orange';
         badge.style.borderColor = 'orange';
     } else {
-        badge.innerHTML = '<i class="fas fa-calculator"></i> Materyal Analiz';
+        badge.innerHTML = '<i class="fas fa-calculator"></i> Motor kullanılamıyor';
         badge.style.background = 'rgba(255,165,0,0.2)';
         badge.style.color = 'orange';
         badge.style.borderColor = 'orange';
     }
 }
 
-function initStockfish() {
-    if (sfWorker && isSfReady) return Promise.resolve();
-    if (sfInitPromise) return sfInitPromise;
+const reviewEngine = new AnalysisEngine();
+let reviewBusy = false;
+let openings = null;
+let variation = null;
+let livePositionResult = null;
+let variationRequest = 0;
+let retryReview = null;
+let reportStatus = 'Hazır';
 
-    sfInitPromise = new Promise(function(resolve) {
-        try {
-            let resolved = false;
-            function finishInit() {
-                if (resolved) return;
-                resolved = true;
-                sfInitPromise = null;
-                resolve();
-            }
-
-            sfWorker = new Worker('vendor/stockfish-18-lite-single.js');
-
-            sfWorker.onmessage = function(event) {
-                handleStockfishMessage(event.data);
-                if (event.data === 'readyok') finishInit();
-            };
-
-            sfWorker.onerror = function(err) {
-                console.error('Stockfish Worker Error:', err);
-                sfWorker = null;
-                isSfReady = false;
-                setStockfishStatus('fallback');
-                if (sfActiveTask) {
-                    sfActiveTask.resolve({
-                        cp: null, mate: null, bestMove: null, topLines: [],
-                        mode: sfActiveTask.mode, requestId: sfActiveTask.requestId, fallback: true
-                    });
-                    sfActiveTask = null;
-                }
-                while (sfQueue.length > 0) {
-                    const waiting = sfQueue.shift();
-                    waiting.resolve({
-                        cp: null, mate: null, bestMove: null, topLines: [],
-                        mode: waiting.mode, requestId: waiting.requestId, fallback: true
-                    });
-                }
-                finishInit();
-            };
-
-            sfWorker.postMessage('uci');
-            setStockfishStatus('loading');
-        } catch (err) {
-            console.error('Stockfish init failed:', err);
-            sfWorker = null;
-            isSfReady = false;
-            setStockfishStatus('fallback');
-            sfInitPromise = null;
-            resolve();
-        }
-    });
-
-    return sfInitPromise;
+async function initStockfish() {
+    setStockfishStatus('loading');
+    try { await reviewEngine.init(); sfWorker = reviewEngine.worker; isSfReady = true; setStockfishStatus('active'); }
+    catch (error) { sfWorker = null; isSfReady = false; setStockfishStatus('fallback'); throw error; }
 }
-
-function handleStockfishMessage(msg) {
-    if (typeof msg !== 'string') return;
-    msg.split(/\r?\n/).forEach(function(line) {
-        const trimmed = line.trim();
-        if (trimmed) handleStockfishLine(trimmed);
+function queueStockfishEval(fen, opts = {}) {
+    let legalCount = 1;
+    try { legalCount = new Chess(fen).moves().length || 1; } catch {}
+    return reviewEngine.evaluate(fen, {...opts,legalCount}).then(result=>{
+        sfWorker=reviewEngine.worker;isSfReady=reviewEngine.ready;
+        if(!isSfReady)setStockfishStatus('fallback');return result;
     });
 }
-
-function handleStockfishLine(line) {
-    if (line === 'uciok') {
-        sfWorker.postMessage('setoption name MultiPV value ' + SF_MULTI_PV);
-        sfWorker.postMessage('setoption name Hash value 96');
-        sfWorker.postMessage('setoption name Threads value 1');
-        sfWorker.postMessage('isready');
-        return;
-    }
-
-    if (line === 'readyok') {
-        isSfReady = true;
-        setStockfishStatus('active');
-        processStockfishQueue();
-        if (sfPendingFen) {
-            sfPendingFen = null;
-            runStockfish();
-        }
-        return;
-    }
-
-    if (!sfActiveTask) return;
-
-    if (line.indexOf('info depth') === 0) {
-        const matchPv = line.match(/\bmultipv (\d+)/);
-        const pvIndex = matchPv ? parseInt(matchPv[1], 10) : 1;
-        const matchCp = line.match(/score cp (-?\d+)/);
-        const matchMate = line.match(/score mate (-?\d+)/);
-        const matchPvMove = line.match(/\spv\s+([a-h][1-8][a-h][1-8][nbrq]?)/);
-        const lineData = sfActiveTask.topLines[pvIndex] || { rank: pvIndex, cp: null, mate: null, uci: null };
-
-        if (matchMate) {
-            lineData.mate = parseInt(matchMate[1], 10);
-            lineData.cp = null;
-        } else if (matchCp) {
-            lineData.cp = parseInt(matchCp[1], 10);
-            lineData.mate = null;
-        }
-
-        if (matchPvMove) lineData.uci = matchPvMove[1];
-        sfActiveTask.topLines[pvIndex] = lineData;
-
-        if (pvIndex === 1) {
-            sfActiveTask.cp = lineData.cp;
-            sfActiveTask.mate = lineData.mate;
-            if (lineData.uci) sfActiveTask.bestMove = lineData.uci;
-
-            if (sfActiveTask.mode === 'live' && sfActiveTask.requestId === liveEvalRequestId) {
-                updateEvalBarUI(sfActiveTask.cp, sfActiveTask.mate, sfActiveTask.fen);
-            }
-        }
-        return;
-    }
-
-    if (line.indexOf('bestmove') === 0) {
-        const parts = line.split(' ');
-        sfActiveTask.bestMove = parts[1] || sfActiveTask.bestMove || null;
-        const doneTask = sfActiveTask;
-        sfActiveTask = null;
-        if (doneTask.timeoutTimer) {
-            clearTimeout(doneTask.timeoutTimer);
-            doneTask.timeoutTimer = null;
-        }
-        const rankedLines = Object.keys(doneTask.topLines)
-            .map(function(key) { return doneTask.topLines[key]; })
-            .sort(function(a, b) { return a.rank - b.rank; });
-        doneTask.resolve({
-            cp: doneTask.cp,
-            mate: doneTask.mate,
-            bestMove: doneTask.bestMove,
-            topLines: rankedLines,
-            mode: doneTask.mode,
-            requestId: doneTask.requestId,
-            fallback: false
-        });
-        processStockfishQueue();
-    }
-}
-
-function getTaskPriority(mode, priority) {
-    if (priority === 'high' || mode === 'bot' || mode === 'live') return 1;
-    if (mode === 'solo_training_white' || mode === 'solo_training_black' || mode === 'training_assist_1v1' || mode === 'review') return 2;
-    return 3;
-}
-
-function queueStockfishEval(fen, opts) {
-    opts = opts || {};
-    return new Promise(function(resolve) {
-        const mode = opts.mode || 'live';
-        const depth = opts.depth || SF_DEPTH_LIVE;
-        const requestId = opts.requestId || 0;
-        const priority = getTaskPriority(mode, opts.priority);
-
-        if (!sfWorker || !isSfReady) {
-            const turnMul = fen.split(' ')[1] === 'w' ? 1 : -1;
-            const cpFromTurn = materialEvalWhiteCpFromFen(fen) * turnMul;
-            resolve({
-                cp: cpFromTurn,
-                mate: null,
-                bestMove: null,
-                topLines: [],
-                mode: mode,
-                requestId: requestId,
-                fallback: true
-            });
-            return;
-        }
-
-        // Drop obsolete tasks from queue to prevent queue clogging
-        if (priority === 1) {
-            for (let i = sfQueue.length - 1; i >= 0; i--) {
-                const qTask = sfQueue[i];
-                if (qTask.mode === mode || (qTask.priority >= 3 && sfQueue.length > 2)) {
-                    sfQueue.splice(i, 1);
-                    try {
-                        qTask.resolve({
-                            cp: null, mate: null, bestMove: null, topLines: [], mode: qTask.mode, requestId: qTask.requestId, fallback: true
-                        });
-                    } catch (e) {}
-                }
-            }
-            if (sfActiveTask && (sfActiveTask.priority >= 3 || sfActiveTask.mode === 'warm_review')) {
-                sfWorker.postMessage('stop');
-            }
-        }
-
-        const task = {
-            fen: fen,
-            depth: depth,
-            mode: mode,
-            requestId: requestId,
-            priority: priority,
-            skillLevel: opts.skillLevel,
-            elo: opts.elo,
-            multiPv: opts.multiPv,
-            timeoutMs: opts.timeoutMs,
-            timeoutTimer: null,
-            cp: null,
-            mate: null,
-            bestMove: null,
-            topLines: {},
-            resolve: resolve
-        };
-
-        if (priority === 1) {
-            const insertIdx = sfQueue.findIndex(function(t) { return t.priority > 1; });
-            if (insertIdx === -1) sfQueue.push(task);
-            else sfQueue.splice(insertIdx, 0, task);
-        } else {
-            sfQueue.push(task);
-        }
-
-        processStockfishQueue();
-    });
-}
-
-function processStockfishQueue() {
-    if (!sfWorker || !isSfReady || sfActiveTask || sfQueue.length === 0) return;
-    sfActiveTask = sfQueue.shift();
-    sfWorker.postMessage('stop');
-
-    // Dynamic MultiPV: bot calculations only need 1 line for maximum speed (3-4x faster!)
-    if (sfActiveTask.mode === 'bot' || sfActiveTask.multiPv === 1) {
-        sfWorker.postMessage('setoption name MultiPV value 1');
-    } else {
-        sfWorker.postMessage('setoption name MultiPV value ' + (sfActiveTask.multiPv || SF_MULTI_PV));
-    }
-
-    // Dynamic ELO & Skill Level
-    if (sfActiveTask.elo !== undefined && sfActiveTask.elo !== null) {
-        sfWorker.postMessage('setoption name UCI_LimitStrength value true');
-        sfWorker.postMessage('setoption name UCI_Elo value ' + sfActiveTask.elo);
-        const skill = sfActiveTask.skillLevel !== undefined ? sfActiveTask.skillLevel : (sfActiveTask.elo >= 2200 ? 16 : 14);
-        sfWorker.postMessage('setoption name Skill Level value ' + skill);
-    } else if (sfActiveTask.skillLevel !== undefined) {
-        sfWorker.postMessage('setoption name UCI_LimitStrength value true');
-        sfWorker.postMessage('setoption name Skill Level value ' + sfActiveTask.skillLevel);
-    } else {
-        sfWorker.postMessage('setoption name UCI_LimitStrength value false');
-        sfWorker.postMessage('setoption name Skill Level value 20');
-    }
-
-    // Safety timeout to prevent engine hangs
-    if (sfActiveTask.timeoutMs && sfActiveTask.timeoutMs > 0) {
-        const targetTask = sfActiveTask;
-        targetTask.timeoutTimer = setTimeout(function() {
-            if (sfActiveTask === targetTask) {
-                sfWorker.postMessage('stop');
-            }
-        }, sfActiveTask.timeoutMs);
-    }
-
-    sfWorker.postMessage('position fen ' + sfActiveTask.fen);
-    sfWorker.postMessage('go depth ' + sfActiveTask.depth);
-}
-
-function evalToWhiteScore(result, fen) {
-    if (!result) return null;
-    const turnIsWhite = fen.split(' ')[1] === 'w';
-
-    if (result.mate !== null && result.mate !== undefined) {
-        let sign = result.mate > 0 ? 1 : -1;
-        if (!turnIsWhite) sign = -sign;
-        return sign * 10000;
-    }
-
-    if (result.cp !== null && result.cp !== undefined) {
-        return turnIsWhite ? result.cp : -result.cp;
-    }
-
-    return materialEvalWhiteCpFromFen(fen);
-}
-
-function engineLineToWhiteScore(line, fen) {
-    if (!line) return null;
-    return evalToWhiteScore({ cp: line.cp, mate: line.mate }, fen);
-}
-
-async function evaluateFenDetailed(fen, depth, token) {
-    if (token !== analysisReviewToken) return null;
-    const cacheKey = buildEvalCacheKey(fen, depth);
-    const cached = await readCacheStore('evals', cacheKey);
-    if (cached && token === analysisReviewToken) {
-        return Object.assign({}, cached, { cached: true, requestId: token });
-    }
-    const cloudEval = await readCloudEval(fen, token);
-    if (cloudEval && token === analysisReviewToken) {
-        await writeEvalResultToCache(cacheKey, cloudEval, fen);
-        return Object.assign({}, cloudEval, { cached: true, requestId: token });
-    }
-    const evalResult = await queueStockfishEval(fen, { depth: depth, mode: 'review', requestId: token });
-    if (token !== analysisReviewToken) return null;
-    evalResult.whiteScore = evalToWhiteScore(evalResult, fen);
-    evalResult.topLines = (evalResult.topLines || []).filter(function(line) {
-        return line && line.uci && ((line.cp !== null && line.cp !== undefined) || (line.mate !== null && line.mate !== undefined));
-    }).map(function(line) {
-        return {
-            rank: line.rank,
-            uci: line.uci || null,
-            cp: line.cp,
-            mate: line.mate,
-            whiteScore: engineLineToWhiteScore(line, fen)
-        };
-    });
-    evalResult.fen = fen;
-    writeEvalResultToCache(cacheKey, evalResult, fen);
-    return evalResult;
-}
-
-async function warmAnalysisCacheForFen(fen, depth) {
-    depth = depth || SF_DEPTH_REVIEW;
-    if (!fen || typeof fen !== 'string') return null;
-    const cacheKey = buildEvalCacheKey(fen, depth);
-    const cached = await readCacheStore('evals', cacheKey);
-    if (cached) return cached;
-    if (analysisWarmCacheInFlight.has(cacheKey)) return analysisWarmCacheInFlight.get(cacheKey);
-
-    const task = (async function() {
-        try {
-            const cloudEval = await readCloudEval(fen, Date.now());
-            if (cloudEval) {
-                await writeEvalResultToCache(cacheKey, cloudEval, fen);
-                return cloudEval;
-            }
-            await initStockfish();
-            const evalResult = await queueStockfishEval(fen, { depth: depth, mode: 'warm_review', requestId: Date.now() });
-            evalResult.whiteScore = evalToWhiteScore(evalResult, fen);
-            evalResult.topLines = (evalResult.topLines || []).filter(function(line) {
-                return line && line.uci && ((line.cp !== null && line.cp !== undefined) || (line.mate !== null && line.mate !== undefined));
-            }).map(function(line) {
-                return {
-                    rank: line.rank,
-                    uci: line.uci || null,
-                    cp: line.cp,
-                    mate: line.mate,
-                    whiteScore: engineLineToWhiteScore(line, fen)
-                };
-            });
-            evalResult.fen = fen;
-            await writeEvalResultToCache(cacheKey, evalResult, fen);
-            return evalResult;
-        } catch (e) {
-            return null;
-        } finally {
-            analysisWarmCacheInFlight.delete(cacheKey);
-        }
-    })();
-
-    analysisWarmCacheInFlight.set(cacheKey, task);
-    return task;
-}
-
-function enqueueAnalysisWarmFen(fen, depth) {
-    depth = depth || SF_DEPTH_REVIEW;
-    if (!fen || typeof fen !== 'string') return;
-    const cacheKey = buildEvalCacheKey(fen, depth);
-    if (analysisWarmQueuedKeys.has(cacheKey) || analysisWarmCacheInFlight.has(cacheKey)) return;
-    analysisWarmQueuedKeys.add(cacheKey);
-    analysisWarmQueue.push({ fen: fen, depth: depth, key: cacheKey });
-    if (analysisWarmQueue.length > 160) {
-        const dropped = analysisWarmQueue.splice(0, analysisWarmQueue.length - 160);
-        dropped.forEach(function(item) { analysisWarmQueuedKeys.delete(item.key); });
-    }
-    processAnalysisWarmQueue();
-}
-
-function processAnalysisWarmQueue() {
-    if (analysisWarmQueueRunning) return;
-    analysisWarmQueueRunning = true;
-    (async function() {
-        try {
-            while (analysisWarmQueue.length > 0) {
-                if (window.currentViewId === 'view-2v2-analysis' || window.currentViewId === 'view-1v1-game' || window.currentViewId === 'view-solo-training' || sfActiveTask || sfQueue.length > 0) {
-                    await new Promise(function(resolve) { setTimeout(resolve, 600); });
-                    continue;
-                }
-                const item = analysisWarmQueue.shift();
-                analysisWarmQueuedKeys.delete(item.key);
-                const cached = await readCacheStore('evals', item.key);
-                if (cached) continue;
-                await warmAnalysisCacheForFen(item.fen, item.depth);
-                await new Promise(function(resolve) { setTimeout(resolve, 180); });
-            }
-        } finally {
-            analysisWarmQueueRunning = false;
-            if (analysisWarmQueue.length > 0) setTimeout(processAnalysisWarmQueue, 500);
-        }
-    })();
-}
-
-function warmAnalysisCacheForGame(pgn, fallbackFen) {
+function evalToWhiteScore(result, fen) { return whiteScore(result,fen); }
+function engineLineToWhiteScore(line, fen) { return whiteScore(line,fen); }
+function warmAnalysisCacheForFen() { return Promise.resolve(); }
+function warmAnalysisCacheForGame() { /* Review cache is filled on demand, without competing with games. */ }
+function moveToUci(move) { return move ? uciOf(move) : ''; }
+function calculateAccuracy(reviews) { return gameAccuracy(reviews); }
+function gameAt(index) {
     const game = new Chess();
-    const fens = [game.fen()];
-    try {
-        if (pgn && String(pgn).trim()) {
-            const replay = new Chess();
-            if (replay.load_pgn(pgn)) {
-                const moves = replay.history({ verbose: true });
-                const probe = new Chess();
-                fens.length = 0;
-                fens.push(probe.fen());
-                moves.forEach(function(move) {
-                    probe.move({ from: move.from, to: move.to, promotion: move.promotion || 'q' });
-                    fens.push(probe.fen());
-                });
-            }
-        } else if (fallbackFen) {
-            fens.push(fallbackFen);
-        }
-    } catch (e) {
-        if (fallbackFen) fens.push(fallbackFen);
-    }
-    const recent = fens.slice(Math.max(0, fens.length - 80));
-    recent.forEach(function(fen) { enqueueAnalysisWarmFen(fen, SF_DEPTH_REVIEW); });
+    if (analysisBaseFen && !game.load(analysisBaseFen)) throw Error('Başlangıç konumu geçersiz.');
+    for (let i=0;i<index;i++) if (!game.move(getAnalysisReplayMove(analysisHistory[i]))) throw Error('Hamle geçmişi geçersiz.');
+    return game;
 }
-
-function moveToUci(moveObj) {
-    if (!moveObj || !moveObj.from || !moveObj.to) return '';
-    return moveObj.from + moveObj.to + (moveObj.promotion || '');
+function positionCommand(index, extra = []) {
+    return 'position fen ' + (analysisBaseFen || new Chess().fen()) +
+        ((index || extra.length) ? ' moves ' + analysisHistory.slice(0,index).map(uciOf).concat(extra).join(' ') : '');
 }
-
-function moverScoreFromWhite(whiteScore, moveColor) {
-    return moveColor === 'w' ? whiteScore : -whiteScore;
+async function rootEvaluation(index, depth, token, searchmoves) {
+    if (token !== analysisReviewToken) return null;
+    const game = gameAt(index), fen=game.fen(), position=positionCommand(index);
+    const key = buildEvalCacheKey(position + '|moves:' + (searchmoves || []).join(','),depth);
+    const cached = await readCacheStore('evals',key);
+    if (token !== analysisReviewToken) return null;
+    if (cached?.complete && cached.depth >= depth) return cached;
+    const result = await queueStockfishEval(fen,{mode:'review', depth, position, searchmoves,
+        multiPv:searchmoves ? searchmoves.length : SF_MULTI_PV, requestId:token,
+        timeoutMs:depth >= 18 ? 5500 : 1800});
+    if (token !== analysisReviewToken || result.cancelled) return null;
+    if (result.fallback || result.depth < 8) throw Error('Yeterli motor verisi alınamadı. Yeniden deneyin.');
+    if (result.complete) await writeCacheStore('evals',key,result);
+    return result;
 }
-
-function winChanceFromScore(score) {
-    if (score >= 9000) return 0.999;
-    if (score <= -9000) return 0.001;
-    return 1 / (1 + Math.exp(-score / 240));
-}
-
-function winChanceDeltaForMover(beforeMover, afterMover) {
-    return winChanceFromScore(afterMover) - winChanceFromScore(beforeMover);
-}
-
-function buildPgnPrefix(moveIndex) {
-    let prefix = '';
-    for (let i = 0; i <= moveIndex; i++) {
-        if (!analysisHistory[i]) continue;
-        prefix = prefix ? (prefix + ' ' + analysisHistory[i].san) : analysisHistory[i].san;
-    }
-    return prefix;
-}
-
-function isBookMove(moveNumber, pgnPrefix) {
-    if (moveNumber > 14) return false;
-    return !!OPENING_BOOK[pgnPrefix];
-}
-
-function isBrilliantMove(payload) {
-    if (!payload.playedIsBest || payload.engineFallback) return false;
-    if (payload.materialDeltaForMover > -140) return false;
-    if (payload.winChanceDelta < -0.03) return false;
-    if (payload.cpl > 8) return false;
-    return payload.moveAccuracy >= 98;
-}
-
-function isGreatMove(payload) {
-    if (!payload.playedIsBest || payload.engineFallback) return false;
-    if (payload.cpl > 12) return false;
-    const onlyMove = payload.legalMoveCount <= 1;
-    const hugeGap = payload.topGap !== null && payload.topGap >= 95;
-    const secondBad = payload.secondWinChance !== null && (payload.bestWinChance - payload.secondWinChance) >= 0.22;
-    return onlyMove || hugeGap || (secondBad && payload.moveAccuracy >= 96);
-}
-
-function isMissMove(payload) {
-    if (payload.playedIsBest || payload.engineFallback) return false;
-    const bestLoss = Math.max(0, payload.bestWinChance - payload.playedWinChance);
-    const missedWin = payload.bestWinChance >= 0.72 && payload.playedWinChance <= 0.52;
-    const bigSwing = payload.winChanceDelta <= -0.14 && payload.beforeWinChance >= 0.56;
-    const highCpl = payload.cpl >= 115;
-    const onlyTacticalResource = payload.topGap !== null && payload.topGap >= 170;
-    return (missedWin && highCpl) || (bigSwing && payload.cpl >= 85) || (onlyTacticalResource && bestLoss >= 0.12);
-}
-
-function moveAccuracyFromCpl(cpl) {
-    const loss = Math.max(0, cpl || 0);
-    if (loss <= 0) return 100;
-    if (loss >= 500) return 1;
-    return Math.max(1, Math.min(100, Math.round(100 * Math.exp(-0.0068 * loss - 0.00075 * loss * loss))));
-}
-
-function moveAccuracyFromEval(beforeWhite, bestAfterWhite, playedAfterWhite, moveColor, cpl) {
-    const bestMover = moverScoreFromWhite(bestAfterWhite, moveColor);
-    const playedMover = moverScoreFromWhite(playedAfterWhite, moveColor);
-    const beforeMover = moverScoreFromWhite(beforeWhite, moveColor);
-
-    const bestChance = winChanceFromScore(bestMover);
-    const playedChance = winChanceFromScore(playedMover);
-    const beforeChance = winChanceFromScore(beforeMover);
-
-    const chanceLoss = Math.max(0, bestChance - playedChance);
-    const cplAcc = moveAccuracyFromCpl(cpl);
-    const chanceAcc = Math.max(1, Math.min(100, Math.round(100 - chanceLoss * 112)));
-    const volatilityBonus = Math.max(0, (Math.abs(beforeChance - 0.5) - 0.2) * 6);
-
-    const accuracy = Math.round(cplAcc * 0.78 + chanceAcc * 0.22 + volatilityBonus);
-    return Math.max(1, Math.min(100, accuracy));
-}
-
-function refineMoveAccuracyForCategory(moveAccuracy, category, cpl) {
-    const caps = {
-        brilliant: { min: 98, max: 100 },
-        great: { min: 94, max: 100 },
-        best: { min: 92, max: 100 },
-        book: { min: 90, max: 100 },
-        excellent: { min: 85, max: 99 },
-        good: { min: 72, max: 96 },
-        inaccuracy: { min: 55, max: 82 },
-        mistake: { min: 32, max: 65 },
-        miss: { min: 18, max: 55 },
-        blunder: { min: 1, max: 35 }
-    };
-    const cap = caps[category] || { min: 1, max: 100 };
-    let value = Math.max(cap.min, Math.min(cap.max, moveAccuracy));
-    if (category === 'blunder' && cpl >= 280) value = Math.min(value, 22);
-    if (category === 'miss' && cpl >= 180) value = Math.min(value, 48);
-    return value;
-}
-
-function getTopLineByRank(lines, rank) {
-    if (!Array.isArray(lines)) return null;
-    for (let i = 0; i < lines.length; i++) {
-        if (lines[i] && lines[i].rank === rank) return lines[i];
-    }
-    return null;
-}
-
-function classifyMoveQuality(payload) {
-    const bestLoss = Math.max(0, (payload.bestWinChance || 0) - (payload.playedWinChance || 0));
-    const playedDrop = Math.max(0, (payload.beforeWinChance || 0) - (payload.playedWinChance || 0));
-
-    if (payload.engineFallback) {
-        if (payload.cpl <= 35 || payload.moveAccuracy >= 90) return 'good';
-        if (payload.cpl <= 135 || payload.moveAccuracy >= 64) return 'inaccuracy';
-        if (payload.cpl <= 285 || payload.moveAccuracy >= 42) return 'mistake';
-        return 'blunder';
-    }
-
-    if (isBookMove(payload.moveNumber, payload.pgnPrefix)) return 'book';
-    if (isBrilliantMove(payload)) return 'brilliant';
-    if (isGreatMove(payload)) return 'great';
-    if (payload.playedIsBest || (payload.cpl <= 6 && bestLoss <= 0.004)) return 'best';
-
-    const dW = payload.winChanceDelta;
-    if (isMissMove(payload)) return 'miss';
-
-    if (bestLoss <= 0.018 && payload.cpl <= 28 && dW >= -0.035) return 'excellent';
-    if (bestLoss <= 0.045 && payload.cpl <= 70 && dW >= -0.075) return 'good';
-    if (bestLoss <= 0.105 && payload.cpl <= 155 && playedDrop < 0.13) return 'inaccuracy';
-    if (bestLoss <= 0.215 && payload.cpl <= 330 && playedDrop < 0.25) return 'mistake';
-    return 'blunder';
-}
-
-function calculateAccuracy(reviews) {
-    if (!reviews.length) return 100;
-    let weighted = 0;
-    let total = 0;
-    reviews.forEach(function(r, idx) {
-        if (!r || typeof r.moveAccuracy !== 'number') return;
-        let phaseWeight = 1;
-        if (idx < 8) phaseWeight = 0.88;
-        else if (idx > 50) phaseWeight = 1.06;
-        if (r.category === 'blunder') phaseWeight *= 1.12;
-        else if (r.category === 'miss') phaseWeight *= 1.06;
-        else if (r.category === 'book') phaseWeight *= 0.82;
-        weighted += r.moveAccuracy * phaseWeight;
-        total += phaseWeight;
-    });
-    if (!total) return 100;
-    return Math.max(1, Math.min(100, Math.round(weighted / total)));
-}
+window.cancelAnalysisReview = function() {
+    analysisReviewToken++; liveEvalRequestId++; bestPreviewToken++; variationRequest++;
+    reviewBusy=false; variation=null; retryReview=null;
+    reviewEngine.cancel(t=>['review','live','variation'].includes(t.mode));
+    showLoadingOverlay(false);
+};
 
 function countMoveCategories(reviews) {
     const counts = {};
@@ -1035,7 +375,7 @@ function updateAccuracyRing(id, value) {
     if (value >= 90) color = '#10b981';
     else if (value >= 75) color = '#f59e0b';
     else if (value >= 55) color = '#0ea5e9';
-    el.innerText = value + '%';
+    el.innerText = value == null ? '—' : value + '%';
     el.style.color = color;
     
     const ringWrap = document.getElementById(id + '-ring');
@@ -1084,6 +424,16 @@ function tryApplyUciMove(chessInstance, uci, fen) {
     return !!played;
 }
 
+function decorateAnalysisPiece(piece,color,type) {
+    piece.style.backgroundImage='none';
+    const fallback=document.createElement('span');fallback.className='piece-fallback'+(color==='b'?' black-piece':'');
+    fallback.textContent={k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'}[type];
+    const img=document.createElement('img');img.alt='';img.draggable=false;
+    img.onload=()=>{fallback.hidden=true;};img.onerror=()=>img.remove();
+    img.src=window.getPieceAsset?window.getPieceAsset(color,type):'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/'+color+type+'.png';
+    piece.append(fallback,img);
+}
+
 function drawAnalysisBoardFromFen(fen, highlightUci) {
     const boardEl = document.getElementById('analysisBoard');
     if (!boardEl) return;
@@ -1110,6 +460,8 @@ function drawAnalysisBoardFromFen(fen, highlightUci) {
 
             const div = document.createElement('div');
             div.className = 'square ' + ((r + c) % 2 === 0 ? 'white' : 'black');
+            div.dataset.square=squareName;
+            div.setAttribute('aria-label',squareName);
 
             if (highlightFrom && highlightTo && (squareName === highlightFrom || squareName === highlightTo)) {
                 div.classList.add('analysis-preview-highlight');
@@ -1134,6 +486,7 @@ function drawAnalysisBoardFromFen(fen, highlightUci) {
                 piece.className = 'piece locked';
                 if (window.applyPieceSkin) window.applyPieceSkin(piece, sq.color, sq.type);
                 else piece.style.backgroundImage = `url('https://images.chesscomfiles.com/chess-themes/pieces/neo/150/${sq.color}${sq.type}.png')`;
+                decorateAnalysisPiece(piece,sq.color,sq.type);
                 div.appendChild(piece);
             }
             boardEl.appendChild(div);
@@ -1233,6 +586,9 @@ function getAnalysisReplayMove(move) {
 }
 
 function setAnalysisPosition(index) {
+    liveEvalRequestId++;
+    reviewEngine.cancel(t=>t.mode==='live' || t.mode==='variation');
+    variation = null; retryReview = null; livePositionResult=null; variationRequest++;
     const targetIndex = Math.max(0, Math.min(index, analysisHistory.length));
 
     if (analysisBaseFen) {
@@ -1285,8 +641,8 @@ window.clearAnalysisOverlayTimers = function() {};
 function updateEvalBarFallback(fen) {
     const activeFen = fen || analysisChess.fen();
     const turnMul = activeFen.split(' ')[1] === 'w' ? 1 : -1;
-    const cpFromTurn = materialEvalWhiteCpFromFen(activeFen) * turnMul;
-    updateEvalBarUI(cpFromTurn, null, activeFen);
+    document.getElementById('analysisEvalScore').textContent = '—';
+    document.getElementById('report-eval-display').textContent = '—';
 }
 
 function updateEvalBarUI(cp, mate, fenForTurn) {
@@ -1331,11 +687,21 @@ function updateEvalBarUI(cp, mate, fenForTurn) {
         evalDisplay.style.color = score >= 0 ? 'var(--success)' : 'var(--danger)';
     }
 
-    if (sfWorker && isSfReady) setStockfishStatus('active');
+    if (reviewEngine.ready) setStockfishStatus('active');
 }
 
 function runStockfish() {
     const fen = analysisChess.fen();
+    if (variation) return;
+    const terminal=terminalResult(analysisChess);
+    if(terminal){updateEvalBarUI(terminal.cp,terminal.mate,fen);return;}
+    const selectedReview=analysisMoveReviews[currentAnalysisIndex-1];
+    if(selectedReview) {
+        const mate=selectedReview.mateAfter==null?null:selectedReview.mateAfter*(analysisChess.turn()===selectedReview.moveColor?1:-1);
+        updateEvalBarUI(selectedReview.cpAfter*(analysisChess.turn()==='w'?1:-1),mate,fen);
+        refreshBestMoveButtonState();return;
+    }
+    if(reviewBusy){updateEvalBarFallback(fen);return;}
     const ctx = getCurrentReviewContext();
     if (ctx && ctx.review.bestMoveSan && ctx.review.bestMoveSan !== '-') {
         setBestMoveButton(ctx.review.bestMoveSan, ctx.review.bestMove, ctx.review.beforeFen);
@@ -1361,9 +727,9 @@ function runStockfish() {
     }
 
     const requestId = ++liveEvalRequestId;
-    sfQueue = sfQueue.filter(function(task) { return task.mode !== 'live'; });
-    queueStockfishEval(fen, { depth: SF_DEPTH_LIVE, mode: 'live', requestId: requestId }).then(function(result) {
-        if (requestId !== liveEvalRequestId) return;
+
+    queueStockfishEval(fen, { depth: SF_DEPTH_LIVE, mode: 'live', position:positionCommand(currentAnalysisIndex), requestId: requestId }).then(function(result) {
+        if (requestId !== liveEvalRequestId || variation || result.cancelled) return;
 
         if (result.mate !== null && result.mate !== undefined) {
             updateEvalBarUI(null, result.mate, fen);
@@ -1381,11 +747,15 @@ function runStockfish() {
             liveBestMoveFen = null;
         }
 
+        if(!analysisMoveReviews[currentAnalysisIndex-1]) {
+            livePositionResult={index:currentAnalysisIndex,beforeFen:fen,lines:result.topLines,depth:result.depth,complete:result.complete};renderReviewDetails();
+        }
         refreshBestMoveButtonState();
     });
 }
 
 function renderAnalysisBoard() {
+    if (variation) {drawAnalysisBoardFromFen(variation.game.fen(),variation.moves.at(-1));return;}
     const boardEl = document.getElementById('analysisBoard');
     if (!boardEl) return;
     boardEl.innerHTML = '';
@@ -1405,6 +775,8 @@ function renderAnalysisBoard() {
 
             const div = document.createElement('div');
             div.className = 'square ' + ((r + c) % 2 === 0 ? 'white' : 'black');
+            div.dataset.square=squareName;
+            div.setAttribute('aria-label',squareName);
 
             if (lastMove && (squareName === lastMove.from || squareName === lastMove.to)) {
                 div.style.background = 'rgba(255, 255, 0, 0.35)';
@@ -1428,6 +800,7 @@ function renderAnalysisBoard() {
                 piece.className = 'piece locked';
                 if (window.applyPieceSkin) window.applyPieceSkin(piece, sq.color, sq.type);
                 else piece.style.backgroundImage = `url('https://images.chesscomfiles.com/chess-themes/pieces/neo/150/${sq.color}${sq.type}.png')`;
+                decorateAnalysisPiece(piece,sq.color,sq.type);
                 div.appendChild(piece);
 
                 if (badgeSquare && currentReview && squareName === badgeSquare) {
@@ -1462,7 +835,7 @@ function buildMoveCell(moveObj, reviewIndex, jumpIndex) {
     if (review) {
         const tag = document.createElement('span');
             tag.className = 'move-tag ' + review.category;
-            tag.innerHTML = '<i class="fas ' + getMoveCategoryIconClass(review.category) + '"></i>';
+            tag.textContent = getMoveCategoryTag(review.category);
             const accLabel = getAnalysisLang() === 'en' ? 'Accuracy' : 'Doğruluk';
             tag.title = getMoveCategoryLabel(review.category) + ' | CPL: ' + review.cpl + ' | ' + accLabel + ': ' + (review.moveAccuracy || 0) + '%';
         cell.appendChild(tag);
@@ -1472,52 +845,27 @@ function buildMoveCell(moveObj, reviewIndex, jumpIndex) {
 }
 
 function renderMoveList() {
-    const list = document.getElementById('analysisMoveList');
-    if (!list) return;
-    list.innerHTML = '';
-
-    for (let i = 0; i < analysisHistory.length; i += 2) {
-        const moveNum = (i / 2) + 1;
-        const wMove = analysisHistory[i];
-        const bMove = analysisHistory[i + 1];
-
-        const row = document.createElement('div');
-        row.className = 'move-list-row';
-        row.id = 'move-row-' + i;
-
-        const num = document.createElement('div');
-        num.className = 'move-num';
-        num.innerText = moveNum + '.';
-        row.appendChild(num);
-
-        row.appendChild(buildMoveCell(wMove, i, i + 1));
-        row.appendChild(buildMoveCell(bMove, i + 1, i + 2));
-        list.appendChild(row);
-    }
-}
-
-function highlightMoveRow() {
-    document.querySelectorAll('.move-list-row').forEach(function(r) { r.classList.remove('active'); });
-    if (currentAnalysisIndex > 0) {
-        const rowIdx = Math.floor((currentAnalysisIndex - 1) / 2);
-        const el = document.getElementById('move-row-' + (rowIdx * 2));
-        if (el) {
-            el.classList.add('active');
-            const list = document.getElementById('analysisMoveList');
-            if (list) {
-                const targetTop = el.offsetTop;
-                const targetBottom = targetTop + el.offsetHeight;
-                const visibleTop = list.scrollTop;
-                const visibleBottom = visibleTop + list.clientHeight;
-                const padding = 18;
-
-                if (targetTop < visibleTop + padding || targetBottom > visibleBottom - padding) {
-                    const nextScrollTop = Math.max(0, targetTop - ((list.clientHeight - el.offsetHeight) / 2));
-                    list.scrollTo({ top: nextScrollTop, behavior: 'smooth' });
-                }
-            }
+    const list=document.getElementById('analysisMoveList');if(!list)return;list.replaceChildren();
+    const game=gameAt(0);let row;
+    analysisHistory.forEach((move,i)=>{
+        const number=Number(game.fen().split(' ')[5]);
+        if(move.color==='w'||!row){
+            row=document.createElement('div');row.className='move-list-row';
+            const num=document.createElement('div');num.className='move-num';num.textContent=number+'.';row.append(num);
+            if(move.color==='b')row.append(buildMoveCell(null,-1,0));list.append(row);
         }
-    }
+        const cell=buildMoveCell(move,i,i+1);cell.dataset.moveIndex=i+1;
+        cell.tabIndex=0;cell.setAttribute('role','button');cell.setAttribute('aria-label',number+'. '+move.san);
+        cell.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();window.jumpToMove(i+1);}};
+        row.append(cell);game.move(getAnalysisReplayMove(move));
+    });
+}
+function highlightMoveRow() {
+    document.querySelectorAll('#analysisMoveList .move-san').forEach(el=>{
+        const selected=Number(el.dataset.moveIndex)===currentAnalysisIndex;
+        el.classList.toggle('active',selected);el.setAttribute('aria-current',selected?'step':'false');
+        el.parentElement.classList.toggle('active',!!el.parentElement.querySelector('.move-san.active'));
+    });
 }
 
 function getChartEvals() {
@@ -1531,11 +879,7 @@ function getChartEvals() {
     }
     evals.push(clamp(initial, -10, 10));
 
-    analysisMoveReviews.forEach(function(review) {
-        if (!review) {
-            evals.push(evals[evals.length - 1] || 0);
-            return;
-        }
+    analysisMoveReviews.filter(Boolean).forEach(function(review) {
         let val = (review.cpAfter || 0) / 100;
         if (Math.abs(review.cpAfter || 0) >= 9000) {
             val = review.cpAfter > 0 ? 10 : -10;
@@ -1657,7 +1001,7 @@ function initChartEvents() {
         const rect = newCanvas.getBoundingClientRect();
         const closestIndex = findClosestIndex(e.clientX - rect.left, rect.width);
         if (closestIndex >= -1 && closestIndex <= analysisHistory.length) {
-            window.jumpToMove(closestIndex);
+            window.jumpToMove(closestIndex + 1);
         }
     });
 
@@ -1696,17 +1040,12 @@ function drawHoverPoint(idx) {
 }
 
 function getWorstMoveSummaryText() {
-    let worst = null;
-    analysisMoveReviews.forEach(function(r) {
-        if (!r) return;
-        if (!worst || r.cpl > worst.cpl) worst = r;
-    });
-    if (!worst || worst.cpl < 110) return 'Belirgin kritik hata yok.';
-    const side = worst.moveColor === 'w' ? 'Beyaz' : 'Siyah';
-    const moveNo = Math.ceil((worst.index + 1) / 2);
-    const loss = (worst.cpl / 100).toFixed(1);
-    const label = getMoveCategoryLabel(worst.category);
-    return side + ' tarafin ' + moveNo + '. hamlesi (' + worst.moveSan + ') - ' + label + ', ~' + loss + ' piyon kaybi';
+    const reviews = analysisMoveReviews.filter(Boolean);
+    if (!reviews.length) return 'Henüz tamamlanan hamle yok.';
+    const worst = reviews.reduce((a,b)=>a.loss>b.loss?a:b);
+    if (worst.loss < 0.05) return 'İncelenen hamlelerde belirgin değerlendirme kaybı yok.';
+    return (worst.moveColor === 'w' ? 'Beyaz' : 'Siyah') + ' · ' + worst.moveNumber + '. ' + worst.moveSan +
+        ' · ' + getMoveCategoryLabel(worst.category) + ' · beklenen puan kaybı ' + (worst.loss*100).toFixed(1);
 }
 
 function updateReportSummaryText(text) {
@@ -1715,8 +1054,8 @@ function updateReportSummaryText(text) {
 }
 
 function applyCachedGameReview(payload) {
-    if (!payload || !Array.isArray(payload.reviews) || payload.reviews.length !== analysisHistory.length) return false;
-    analysisMoveReviews = payload.reviews;
+    if (!payload || !payload.complete || !Array.isArray(payload.reviews) || payload.reviews.length !== analysisHistory.length) return false;
+    analysisMoveReviews = payload.reviews; reportStatus='Analiz tamamlandı';
     updateAccuracyRing('acc-white', payload.whiteAccuracy);
     updateAccuracyRing('acc-black', payload.blackAccuracy);
     renderMoveList();
@@ -1729,234 +1068,249 @@ function applyCachedGameReview(payload) {
     return true;
 }
 
-async function runDetailedGameReview(token) {
-    if (!analysisHistory.length) {
-        updateAccuracyRing('acc-white', 100);
-        updateAccuracyRing('acc-black', 100);
-        renderQualitySummary();
-        return;
+async function reviewMove(index, depth, token) {
+    const game=gameAt(index), beforeFen=game.fen(), legalCount=game.moves().length;
+    const move=analysisHistory[index], playedUci=uciOf(move);
+    const tb=await tablebase(gameAt(index));
+    let result=await rootEvaluation(index,depth,token);
+    if (!result) return null;
+    if (!result.topLines.some(l=>l.uci === playedUci) || (tb?.moves?.[0] && !result.topLines.some(l=>l.uci===tb.moves[0].uci))) {
+        const candidates=[...new Set(result.topLines.map(l=>l.uci).concat(playedUci,tb?.moves?.[0]?.uci || []).filter(Boolean))];
+        result=await rootEvaluation(index,depth,token,candidates);
+        if (!result) return null;
     }
-
-    analysisMoveReviews = new Array(analysisHistory.length);
-    renderMoveList();
-    highlightMoveRow();
-    renderQualitySummary();
-
-    const probeChess = new Chess();
-    if (analysisBaseFen) {
-        try { probeChess.load(analysisBaseFen); } catch (e) { probeChess.reset(); }
-    }
-
-    let previousEval = await evaluateFenDetailed(probeChess.fen(), SF_DEPTH_REVIEW, token);
-    if (!previousEval || token !== analysisReviewToken) return;
-
-    for (let i = 0; i < analysisHistory.length; i++) {
-        if (token !== analysisReviewToken) return;
-
-        updateLoadingProgress(i, analysisHistory.length);
-
-        const move = analysisHistory[i];
-        const beforeFen = probeChess.fen();
-        const legalMoveCount = probeChess.moves().length;
-        const playedUci = moveToUci(move);
-
-        probeChess.move(move.san);
-        const playedFen = probeChess.fen();
-        const givesCheck = probeChess.in_check();
-        const playedEval = await evaluateFenDetailed(playedFen, SF_DEPTH_REVIEW, token);
-        if (!playedEval || token !== analysisReviewToken) return;
-
-        let bestMoveUci = previousEval.bestMove || null;
-        let bestAfterEval = playedEval;
-        let bestFen = playedFen;
-
-        const needsBestLineEval = !!(bestMoveUci && bestMoveUci !== '(none)' && bestMoveUci !== playedUci);
-        if (needsBestLineEval) {
-            try {
-                const bestProbe = new Chess();
-                if (bestProbe.load(beforeFen)) {
-                    bestProbe.move({
-                        from: bestMoveUci.slice(0, 2),
-                        to: bestMoveUci.slice(2, 4),
-                        promotion: bestMoveUci.length > 4 ? bestMoveUci.slice(4, 5) : undefined
-                    });
-                    bestFen = bestProbe.fen();
-                    const maybeBest = await evaluateFenDetailed(bestFen, SF_DEPTH_REVIEW, token);
-                    if (maybeBest && token === analysisReviewToken) bestAfterEval = maybeBest;
-                }
-            } catch (e) {
-                bestAfterEval = playedEval;
-                bestFen = playedFen;
+    const lines=result.topLines;
+    let best={...lines[0]}, played={...lines.find(l=>l.uci === playedUci)};
+    if (!played.uci) throw Error('Oynanan hamle için karşılaştırılabilir veri eksik.');
+    if (!game.move(getAnalysisReplayMove(move))) throw Error('Geçersiz maç hamlesi.');
+    const terminal=terminalResult(game);
+    if (terminal) played={...played,cp:terminal.mate === 0 ? null : 0,mate:terminal.mate === 0 ? 1 : null,wdl:terminal.mate === 0 ? [1000,0,0] : [0,1000,0]};
+    if (best.uci === played.uci) best={...played};
+    if (token !== analysisReviewToken) return null;
+    let tbUsed=false;
+    if (tb) {
+        const bm=tb.moves[0], pm=tb.moves.find(m=>m.uci === playedUci);
+        const be=tableExpected(bm?.category), pe=tableExpected(pm?.category);
+        if (be != null && pe != null) {
+            // Tablebase child outcomes are from the opponent's point of view.
+            const known=lines.find(l=>l.uci===bm.uci);
+            if (known) {
+                best={...known,exactExpected:1-be};
+                played={...played,exactExpected:1-pe};
             }
-        } else {
-            bestAfterEval = playedEval;
-            bestFen = playedFen;
-        }
-
-        const beforeMoverScore = moverScoreFromWhite(previousEval.whiteScore, move.color);
-        const playedMoverScore = moverScoreFromWhite(playedEval.whiteScore, move.color);
-        const bestMoverScore = moverScoreFromWhite(bestAfterEval.whiteScore, move.color);
-        const secondLine = getTopLineByRank(previousEval.topLines, 2);
-        const secondMoverScore = secondLine && secondLine.whiteScore !== null && secondLine.whiteScore !== undefined
-            ? moverScoreFromWhite(secondLine.whiteScore, move.color)
-            : null;
-        const topGap = secondMoverScore === null || secondMoverScore === undefined
-            ? null
-            : Math.max(0, Math.round(bestMoverScore - secondMoverScore));
-        const cpl = Math.max(0, Math.round(bestMoverScore - playedMoverScore));
-
-        const beforeMaterial = materialEvalWhiteCpFromFen(beforeFen);
-        const playedMaterial = materialEvalWhiteCpFromFen(playedFen);
-        const materialDeltaForMover = move.color === 'w'
-            ? (playedMaterial - beforeMaterial)
-            : (beforeMaterial - playedMaterial);
-        const moveFlags = move.flags || '';
-        const isCapture = !!move.captured || moveFlags.indexOf('c') !== -1 || moveFlags.indexOf('e') !== -1;
-        const isPromotion = !!move.promotion || moveFlags.indexOf('p') !== -1;
-        const isCastle = moveFlags.indexOf('k') !== -1 || moveFlags.indexOf('q') !== -1;
-        const playedIsBest = !!bestMoveUci && bestMoveUci === playedUci;
-        const engineFallback = !!(previousEval.fallback || playedEval.fallback || bestAfterEval.fallback);
-        const moveNumber = Math.ceil((i + 1) / 2);
-
-        let moveAccuracy = moveAccuracyFromEval(
-            previousEval.whiteScore,
-            bestAfterEval.whiteScore,
-            playedEval.whiteScore,
-            move.color,
-            cpl
-        );
-
-        const beforeWinChance = winChanceFromScore(beforeMoverScore);
-        const playedWinChance = winChanceFromScore(playedMoverScore);
-        const bestWinChance = winChanceFromScore(bestMoverScore);
-        const secondWinChance = secondMoverScore === null || secondMoverScore === undefined
-            ? null
-            : winChanceFromScore(secondMoverScore);
-
-        const category = classifyMoveQuality({
-            playedIsBest: playedIsBest,
-            cpl: cpl,
-            moveAccuracy: moveAccuracy,
-            materialDeltaForMover: materialDeltaForMover,
-            beforeMoverScore: beforeMoverScore,
-            afterMoverScore: playedMoverScore,
-            winChanceDelta: winChanceDeltaForMover(beforeMoverScore, playedMoverScore),
-            beforeWinChance: beforeWinChance,
-            playedWinChance: playedWinChance,
-            bestWinChance: bestWinChance,
-            secondWinChance: secondWinChance,
-            topGap: topGap,
-            legalMoveCount: legalMoveCount,
-            isCapture: isCapture,
-            givesCheck: givesCheck,
-            isPromotion: isPromotion,
-            isCastle: isCastle,
-            moveNumber: moveNumber,
-            pgnPrefix: buildPgnPrefix(i),
-            engineFallback: engineFallback
-        });
-
-        moveAccuracy = refineMoveAccuracyForCategory(moveAccuracy, category, cpl);
-
-        const cpBefore = previousEval.whiteScore;
-        const cpAfter = playedEval.whiteScore;
-
-        analysisMoveReviews[i] = {
-            index: i,
-            moveSan: move.san,
-            moveColor: move.color,
-            cpl: cpl,
-            category: category,
-            moveAccuracy: moveAccuracy,
-            bestMove: bestMoveUci,
-            bestMoveSan: formatEngineMove(bestMoveUci, beforeFen),
-            beforeFen: beforeFen,
-            playedFen: playedFen,
-            bestFen: bestFen,
-            playedUci: playedUci,
-            cpBefore: cpBefore,
-            cpAfter: cpAfter
-        };
-
-        previousEval = playedEval;
-
-        if (i % 4 === 0 || i === analysisHistory.length - 1) {
-            if (typeof updateCoachFeedback === 'function') {
-                const coachText = document.getElementById('coachFeedbackText');
-                if (coachText) coachText.innerText = 'Analiz: ' + (i + 1) + '/' + analysisHistory.length + ' hamle değerlendiriliyor...';
-            }
-        }
-        if (i % 8 === 0 || i === analysisHistory.length - 1) {
-            renderMoveList();
-            highlightMoveRow();
-            renderQualitySummary();
-            drawEvaluationChart();
+            tbUsed=!!known;
         }
     }
-
-    if (token !== analysisReviewToken) return;
-
-    updateLoadingProgress(analysisHistory.length, analysisHistory.length);
-
-    const whiteReviews = analysisMoveReviews.filter(function(r) { return r && r.moveColor === 'w'; });
-    const blackReviews = analysisMoveReviews.filter(function(r) { return r && r.moveColor === 'b'; });
-    const whiteAccuracy = calculateAccuracy(whiteReviews);
-    const blackAccuracy = calculateAccuracy(blackReviews);
-    updateAccuracyRing('acc-white', whiteAccuracy);
-    updateAccuracyRing('acc-black', blackAccuracy);
-    renderQualitySummary();
-
-    let worst = null;
-    analysisMoveReviews.forEach(function(r) {
-        if (!r) return;
-        if (!worst || r.cpl > worst.cpl) worst = r;
-    });
-
-    // Update coach feedback with worst move info
-    const coachQuality = document.getElementById('coachMoveQuality');
-    const coachText = document.getElementById('coachFeedbackText');
-    if (coachQuality && coachText) {
-        if (!worst || worst.cpl < 110) {
-            coachQuality.innerText = 'Analiz Tamamlandı';
-            coachQuality.style.color = '#10b981';
-            coachText.innerText = 'Belirgin kritik hata yok. İyi oynamışsın!';
-        } else {
-            const side = worst.moveColor === 'w' ? 'Beyaz' : 'Siyah';
-            const moveNo = Math.ceil((worst.index + 1) / 2);
-            const loss = (worst.cpl / 100).toFixed(1);
-            const label = getMoveCategoryLabel(worst.category);
-            coachQuality.innerText = 'Analiz Tamamlandı';
-            coachQuality.style.color = '#f59e0b';
-            coachText.innerText = side + ' tarafın ' + moveNo + '. hamlesi (' + worst.moveSan + ') — ' + label + ', ~' + loss + ' piyon kaybı';
-        }
-    }
-
-    updateReportSummaryText(getWorstMoveSummaryText());
-    renderMoveList();
-    highlightMoveRow();
-    refreshBestMoveButtonState();
-    drawEvaluationChart();
-    if (currentAnalysisReportCacheKey) {
-        writeCacheStore('reports', currentAnalysisReportCacheKey, {
-            reviews: analysisMoveReviews,
-            whiteAccuracy: whiteAccuracy,
-            blackAccuracy: blackAccuracy,
-            summaryText: getWorstMoveSummaryText(),
-            moveCount: analysisHistory.length
-        });
+    const loss=Math.max(0,expectedScore(best)-expectedScore(played));
+    const second=lines.find(l=>l.uci !== best.uci);
+    best.alternativeExpected=second?expectedScore(second):null;
+    best.unique=legalCount>1 && !!second && expectedScore(best)-expectedScore(second)>=0.2;
+    const verified=result.complete && depth>=18;
+    const sacrifice=verified && sacrificeEvidence(Chess,beforeFen,played);
+    const opening=openings?.[normalizedOpeningKey(game)] || null;
+    const category=classify({best,played,legalCount,verified,sacrifice,book:!!opening,
+        previousOpponentLoss:analysisMoveReviews[index-1]?.loss || 0});
+    const bestGame=new Chess(beforeFen);tryApplyUciMove(bestGame,best.uci);
+    return {index,moveNumber:Number(beforeFen.split(' ')[5]),moveSan:move.san,moveColor:move.color,
+        loss,cpl:Math.max(0,Math.round(rootScore(best)-rootScore(played))),category,
+        moveAccuracy:accuracyFromLoss(loss),bestMove:best.uci,bestMoveSan:formatEngineMove(best.uci,beforeFen),
+        beforeFen,playedFen:game.fen(),bestFen:bestGame.fen(),playedUci,
+        cpBefore:whiteScore(best,beforeFen),cpAfter:whiteScore(played,beforeFen),
+        mateBefore:best.mate,mateAfter:played.mate,bestPv:best.pv,playedPv:played.pv,
+        lines,depth:result.depth,nodes:result.nodes || 0,source:result.source,verified,
+        complete:result.complete,tablebase:tbUsed,opening,
+        expectedBest:expectedScore(best),expectedPlayed:expectedScore(played),
+        critical:loss>=0.035 || best.mate!=null || played.mate!=null || best.unique ||
+            sacrificeEvidence(Chess,beforeFen,played) || [0.02,0.05,0.1,0.2].some(t=>Math.abs(loss-t)<0.008)};
+}
+function refreshReviewReport() {
+    updateAccuracyRing('acc-white',calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='w')));
+    updateAccuracyRing('acc-black',calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='b')));
+    renderMoveList(); highlightMoveRow(); renderQualitySummary(); drawEvaluationChart();
+    updateCoachFeedback(); refreshBestMoveButtonState(); renderAnalysisBoard();
+    const r=analysisMoveReviews[currentAnalysisIndex-1];
+    if (r && !variation) {
+        const mate=r.mateAfter==null?null:r.mateAfter*(analysisChess.turn()===r.moveColor?1:-1);
+        const terminal=terminalResult(analysisChess);
+        updateEvalBarUI(terminal?terminal.cp:r.cpAfter*(analysisChess.turn()==='w'?1:-1),terminal?terminal.mate:mate,analysisChess.fen());
     }
 }
+async function runDetailedGameReview(token) {
+    reviewBusy=true;
+    try {
+        openings=await loadOpenings();
+        if (token!==analysisReviewToken) return;
+        analysisMoveReviews=new Array(analysisHistory.length);
+        showLoadingOverlay(false);
+        reportStatus='İlk inceleme';
+        for(let i=0;i<analysisHistory.length;i++) {
+            const review=await reviewMove(i,SF_DEPTH_REVIEW,token);
+            if (!review || token!==analysisReviewToken) return;
+            analysisMoveReviews[i]=review;
+            reportStatus='İlk inceleme · '+(i+1)+' / '+analysisHistory.length;
+            refreshReviewReport();
+        }
+        const critical=analysisMoveReviews.filter(r=>r.critical || !r.complete).map(r=>r.index);
+        for(let n=0;n<critical.length;n++) {
+            if (token!==analysisReviewToken) return;
+            reportStatus='Kritik konumlar derinleştiriliyor · '+(n+1)+' / '+critical.length;
+            renderReviewDetails();
+            const review=await reviewMove(critical[n],18,token);
+            if (!review || token!==analysisReviewToken) return;
+            analysisMoveReviews[critical[n]]=review;
+            refreshReviewReport();
+        }
+        if (token!==analysisReviewToken) return;
+        const complete=analysisMoveReviews.every(r=>r?.complete);
+        reportStatus=complete?'Analiz tamamlandı':'İnceleme tamamlandı · bazı konumlar süre sınırında';
+        updateReportSummaryText(getWorstMoveSummaryText());
+        refreshReviewReport();
+        if (complete && currentAnalysisReportCacheKey) await writeCacheStore('reports',currentAnalysisReportCacheKey,{
+            complete:true,reviews:analysisMoveReviews,
+            whiteAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r.moveColor==='w')),
+            blackAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r.moveColor==='b')),
+            summaryText:getWorstMoveSummaryText()});
+    } finally { if (token===analysisReviewToken) {reviewBusy=false;renderReviewDetails();} }
+}
+
+function renderReviewDetails() {
+    const r=analysisMoveReviews[currentAnalysisIndex-1] || livePositionResult;
+    const status=document.getElementById('reviewProgressText');
+    if (!status) return;
+    status.textContent=reportStatus;
+    document.getElementById('reviewProgress').value=analysisHistory.length?100*analysisMoveReviews.filter(Boolean).length/analysisHistory.length:0;
+    document.getElementById('reviewDepth').textContent=r ? 'Stockfish 18 · d'+r.depth+(r.verified?' · derin':r.complete?' · ilk inceleme':' · süre sınırı') : 'Hamle seç';
+    document.getElementById('reviewRetry').disabled=!analysisMoveReviews[currentAnalysisIndex-1] || reviewBusy;
+    document.getElementById('reviewDeepen').disabled=!analysisMoveReviews[currentAnalysisIndex-1] || reviewBusy;
+    document.getElementById('reviewOpening').textContent=r?.opening ? r.opening.eco+' · '+r.opening.name : '';
+    const el=document.getElementById('reviewLines');el.replaceChildren();
+    if (retryReview) { el.textContent='En güçlü hamleyi tahtada bul. Yanıtı görmek için Maça dön.'; return; }
+    if (!r) {el.textContent='Motor sonuçları hesaplandıkça burada görünecek.';return;}
+    for (const line of r.lines || []) {
+        const row=document.createElement('div');row.className='review-pv';
+        const score=document.createElement('strong');
+        const white=whiteScore(line,r.beforeFen);
+        score.textContent=line.mate!=null ? (white>=0?'+':'−')+'M'+Math.abs(line.mate) : (white>0?'+':'')+(white/100).toFixed(2);
+        score.title='Beyaz açısından değerlendirme';row.append(score);
+        const moves=document.createElement('div');
+        pvMoves(Chess,r.beforeFen,line.pv).slice(0,12).forEach((move,n)=>{
+            const button=document.createElement('button');button.className='review-pv-move';
+            button.textContent=(move.turn==='w'?move.number+'. ':n===0?move.number+'… ':'')+move.san;
+            button.title='Bu konumu tahtada göster';
+            button.onclick=()=>startVariation(r.index,line.pv.slice(0,n+1));
+            moves.append(button);
+        });row.append(moves);el.append(row);
+    }
+}
+function showVariationStatus(text) { const el=document.getElementById('variationStatus');if(el)el.textContent=text; }
+function startVariation(index,moves=[]) {
+    bestPreviewToken++;liveEvalRequestId++;variationRequest++;
+    const game=gameAt(index);
+    const applied=[];
+    for(const u of moves) { if (!tryApplyUciMove(game,u)) break;applied.push(u); }
+    variation={game,index,moves:applied,selected:null};
+    drawAnalysisBoardFromFen(game.fen(),applied.at(-1));
+    showVariationStatus('Alternatif devam · '+(applied.length?applied.length+' yarım hamle':'hamleni tahtada oyna'));
+    if (applied.length) evaluateVariation();
+}
+async function evaluateVariation() {
+    if (!variation) return;
+    const branch=variation, request=++variationRequest, game=branch.game;
+    const end=terminalResult(game);
+    if (end) { updateEvalBarUI(end.cp,end.mate,game.fen());showVariationStatus(game.in_checkmate()?'Şah mat.':'Berabere konum.');return; }
+    const result=await queueStockfishEval(game.fen(),{mode:'variation',depth:18,multiPv:1,
+        position:positionCommand(branch.index,branch.moves),timeoutMs:3500});
+    if (request!==variationRequest || branch!==variation || result.cancelled) return;
+    if (result.fallback) {showVariationStatus('Bu alternatif için motor verisi alınamadı.');return;}
+    updateEvalBarUI(result.cp,result.mate,game.fen());
+    const continuation=pvMoves(Chess,game.fen(),result.topLines[0]?.pv).slice(0,6).map(m=>m.san).join(' ');
+    showVariationStatus('Alternatif · derinlik '+result.depth+' · önerilen devam: '+continuation);
+}
+window.returnToAnalysisGame=function() {
+    variationRequest++;variation=null;retryReview=null;
+    reviewEngine.cancel(t=>t.mode==='variation');
+    setAnalysisPosition(currentAnalysisIndex);renderAnalysisBoard();updateCoachFeedback();
+    showVariationStatus('Tahtada bir taşa, ardından hedef kareye tıklayarak alternatif deneyebilirsin.');
+    runStockfish();
+};
+window.undoAnalysisVariation=function() {
+    if (!variation || !variation.moves.length) return;
+    variation.game.undo();variation.moves.pop();variation.selected=null;variationRequest++;
+    drawAnalysisBoardFromFen(variation.game.fen(),variation.moves.at(-1));evaluateVariation();
+};
+window.jumpToCriticalMove=function(direction) {
+    const indices=analysisMoveReviews.filter(r=>r && r.loss>=0.05).map(r=>r.index+1);
+    if (!indices.length) {showVariationStatus('İncelenen hamlelerde kritik kayıp yok.');return;}
+    const target=direction>0 ? indices.find(i=>i>currentAnalysisIndex)??indices[0] : [...indices].reverse().find(i=>i<currentAnalysisIndex)??indices.at(-1);
+    window.jumpToMove(target);
+};
+window.restartAnalysisReview=function() {
+    if(currentSharedAnalysisPayload) window.openAnalysis(currentSharedAnalysisPayload.pgn,analysisPlayers,currentSharedAnalysisPayload.fen);
+};
+window.retryAnalysisMove=function() {
+    const r=analysisMoveReviews[currentAnalysisIndex-1];if (!r || reviewBusy) return;
+    retryReview=r;startVariation(r.index);renderReviewDetails();
+    document.getElementById('coachMoveQuality').textContent='Sıra sende';
+    document.getElementById('coachFeedbackText').textContent='Bu konumda daha güçlü bir hamle bul. Taşı ve hedef kareyi seç.';
+};
+window.deepenAnalysisMove=async function() {
+    const index=currentAnalysisIndex-1;if (index<0 || reviewBusy) return;
+    const token=analysisReviewToken;reviewBusy=true;reportStatus='Seçili hamle derinleştiriliyor';renderReviewDetails();
+    try {
+        await initStockfish();const r=await reviewMove(index,22,token);
+        if (r && token===analysisReviewToken) {analysisMoveReviews[index]=r;reportStatus='Seçili hamle güncellendi';refreshReviewReport();}
+    } catch(e) {if(token===analysisReviewToken)showVariationStatus(e.message);}
+    finally {if(token===analysisReviewToken){reviewBusy=false;renderReviewDetails();}}
+};
+document.getElementById('analysisBoard')?.addEventListener('click',async function(event) {
+    const square=event.target.closest('[data-square]')?.dataset.square;if(!square)return;
+    if (!variation) startVariation(currentAnalysisIndex);
+    const branch=variation, game=branch.game, piece=game.get(square);
+    if (!branch.selected || piece?.color===game.turn()) {
+        if (piece?.color!==game.turn()) return;
+        branch.selected=square;drawAnalysisBoardFromFen(game.fen());
+        const legal=game.moves({square,verbose:true}).map(m=>m.to);
+        document.querySelectorAll('#analysisBoard [data-square]').forEach(el=>{
+            el.classList.toggle('review-selected',el.dataset.square===square);
+            el.classList.toggle('review-legal',legal.includes(el.dataset.square));
+        });return;
+    }
+    const move=game.move({from:branch.selected,to:square,promotion:document.getElementById('reviewPromotion').value});
+    if(!move){showVariationStatus('Bu hamle yasal değil. İşaretli hedeflerden birini seç.');return;}
+    const u=uciOf(move);branch.moves.push(u);branch.selected=null;
+    drawAnalysisBoardFromFen(game.fen(),u);
+    if(retryReview) {
+        const r=retryReview;retryReview=null;
+        showVariationStatus('Hamlen kontrol ediliyor…');
+        const request=++variationRequest;
+        const compared=await queueStockfishEval(r.beforeFen,{mode:'variation',depth:18,multiPv:2,
+            position:positionCommand(r.index),searchmoves:[...new Set([r.bestMove,u])],timeoutMs:5500});
+        if(request!==variationRequest || variation!==branch)return;
+        const played=compared.topLines?.find(l=>l.uci===u),best=compared.topLines?.[0];
+        showVariationStatus(!played || !best?'Yeterli motor verisi alınamadı.':expectedScore(best)-expectedScore(played)<0.02?
+            'Güçlü bir devam buldun! Derinlik '+compared.depth+'.':'Daha güçlü seçenek: '+formatEngineMove(best.uci,r.beforeFen)+'. Derinlik '+compared.depth+'.');
+        renderReviewDetails();
+    } else evaluateVariation();
+});
+document.addEventListener('keydown',event=>{
+    if (window.currentViewId!=='view-2v2-analysis' || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || event.target.isContentEditable) return;
+    const actions={ArrowLeft:'prev',ArrowRight:'next',Home:'start',End:'end'};
+    if(actions[event.key]){event.preventDefault();window.navAnalysis(actions[event.key]);}
+    if(event.key==='Escape')window.returnToAnalysisGame();
+});
 
 window.openAnalysis = async function(pgn, players, fallbackFen) {
+    window.cancelAnalysisReview();
     window.switchView('view-2v2-analysis');
     window.setAnalysisMobileTab('review');
     window.toggleAnalysisMovesPanel(false);
     bestPreviewToken++;
     analysisReviewToken++;
-    window.analysisReviewToken = analysisReviewToken;
+    reportStatus = 'İlk inceleme'; variation=null; variationRequest++; retryReview=null;
     const thisReviewToken = analysisReviewToken;
 
-    analysisMoveReviews = [];
+    analysisMoveReviews = [];livePositionResult=null;
+    updateAccuracyRing('acc-white',null);updateAccuracyRing('acc-black',null);
     analysisPlayers = players;
     currentSharedAnalysisPayload = {
         shareId: null,
@@ -2000,14 +1354,14 @@ window.openAnalysis = async function(pgn, players, fallbackFen) {
 
     if (!pgnLoaded && fallbackFen) {
         try {
-            pgnLoaded = analysisChess.load(fallbackFen);
+            pgnLoaded = validPosition(Chess,fallbackFen) && analysisChess.load(fallbackFen);
             analysisBaseFen = fallbackFen;
         } catch (e) {
             pgnLoaded = false;
         }
     }
 
-    if (!pgnLoaded) analysisChess.reset();
+    if (!pgnLoaded) { window.showToast('PGN veya başlangıç konumu geçersiz.', 'error'); return; }
 
     if (pgnLoaded && !analysisBaseFen) {
         try {
@@ -2018,10 +1372,17 @@ window.openAnalysis = async function(pgn, players, fallbackFen) {
         } catch (e) {}
     }
 
+    if (analysisBaseFen && !validPosition(Chess,analysisBaseFen)) {window.showToast('Başlangıç konumu geçersiz.', 'error');return;}
     analysisHistory = (pgnLoaded && typeof pgn === 'string' && pgn.trim())
         ? analysisChess.history({ verbose: true })
         : [];
 
+    if (analysisHistory.length === 0 && analysisBaseFen) {
+        try { await initStockfish();if(thisReviewToken!==analysisReviewToken)return;
+            setAnalysisPosition(0);renderAnalysisBoard();renderMoveList();reportStatus='Tek konum incelemesi';updateReportSummaryText('Maç geçmişi yok; yalnızca konum inceleniyor.');document.getElementById('report-result').textContent='Konum incelemesi';document.getElementById('analysisResultPill').textContent='Konum';
+            updateCoachFeedback();runStockfish();
+        } catch(e){window.showToast(e.message,'error');}return;
+    }
     if (analysisHistory.length === 0) {
         window.showToast('Analiz edilecek hamle bulunamadı.', 'error');
         return;
@@ -2042,19 +1403,22 @@ window.openAnalysis = async function(pgn, players, fallbackFen) {
         return;
     }
 
-    if (sfWorker && isSfReady) setStockfishStatus('active');
+    if(thisReviewToken!==analysisReviewToken)return;
+    if (reviewEngine.ready) setStockfishStatus('active');
     else setStockfishStatus('fallback');
 
+    if(thisReviewToken!==analysisReviewToken)return;
     let resultText = 'Devam Ediyor';
+    const pgnResult=analysisChess.header()?.Result || pgn?.trim().match(/(1-0|0-1|1\/2-1\/2|\*)$/)?.[1];
     if (analysisChess.in_checkmate()) {
         resultText = analysisChess.turn() === 'w' ? 'Siyah Kazandı' : 'Beyaz Kazandı';
     } else if (analysisChess.in_draw()) {
         resultText = 'Berabere';
-    } else if (pgn && pgn.includes('1-0')) {
+    } else if (pgnResult === '1-0') {
         resultText = whiteName + ' kazandı (1-0)';
-    } else if (pgn && pgn.includes('0-1')) {
+    } else if (pgnResult === '0-1') {
         resultText = blackName + ' kazandı (0-1)';
-    } else if (pgn && pgn.includes('1/2')) {
+    } else if (pgnResult === '1/2-1/2') {
         resultText = 'Berabere (1/2-1/2)';
     }
 
@@ -2078,10 +1442,10 @@ window.openAnalysis = async function(pgn, players, fallbackFen) {
     renderMoveList();
     highlightMoveRow();
     refreshBestMoveButtonState();
-    runStockfish();
     window.switchAnalysisTab('review');
 
     const cachedReport = await readCacheStore('reports', currentAnalysisReportCacheKey);
+    if (thisReviewToken !== analysisReviewToken) return;
     if (applyCachedGameReview(cachedReport)) {
         showLoadingOverlay(false);
         // Restore coach feedback from cached report
@@ -2094,6 +1458,8 @@ window.openAnalysis = async function(pgn, players, fallbackFen) {
 
     try {
         await runDetailedGameReview(thisReviewToken);
+    } catch (error) {
+        if (thisReviewToken === analysisReviewToken) { reportStatus='Analiz tamamlanamadı'; updateReportSummaryText(error.message); renderReviewDetails(); }
     } finally {
         if (thisReviewToken === analysisReviewToken) {
             showLoadingOverlay(false);
@@ -2221,8 +1587,7 @@ window.previewBestVsPlayedMove = async function() {
         if (token !== bestPreviewToken) return;
         updateBestMovePreviewBadge(false, false);
         try {
-            analysisChess.load(originalFen);
-            currentAnalysisIndex = originalIndex;
+            setAnalysisPosition(originalIndex);
         } catch (e) {
             setAnalysisPosition(originalIndex);
         }

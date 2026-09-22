@@ -1,5 +1,38 @@
 /* analysis-premium.css */
 
+/* Review workspace: calm surfaces, readable variations and explicit progress. */
+.review-progress { display:flex; flex-wrap:wrap; align-items:center; gap:9px; padding:14px 0; color:#bcd4de; font-size:12px; }
+.review-progress progress { width:100%; height:4px; accent-color:#48c9ab; border:0; }
+.review-live-dot { width:7px; height:7px; border-radius:50%; background:#48c9ab; box-shadow:0 0 12px #48c9ab55; }
+.review-actions { display:flex; flex-wrap:wrap; gap:7px; margin:9px 0; }
+.review-actions button { padding:8px 11px; font-size:12px; min-height:36px; border-radius:8px; }
+.review-actions button:disabled { opacity:.4; cursor:not-allowed; }
+.review-opening { color:#d7bc7c; font-size:12px; line-height:1.6; margin:10px 0; }
+.review-opening:empty { display:none; }
+.review-engine-panel { margin-top:18px; border-top:1px solid #ffffff16; padding-top:16px; }
+.review-engine-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; font-size:13px; }
+.review-engine-heading span { font-size:11px; color:#9aaebc; text-align:right; }
+.review-lines { display:grid; gap:7px; font-size:12px; color:#9aaebc; }
+.review-pv { display:grid; grid-template-columns:48px minmax(0,1fr); gap:8px; align-items:start; background:#ffffff05; padding:9px; border-radius:8px; border:1px solid #ffffff0a; }
+.review-pv > strong { color:#dcece6; font-variant-numeric:tabular-nums; padding-top:5px; }
+.review-pv > div { display:flex; flex-wrap:wrap; gap:2px; }
+.review-pv-move { background:transparent; color:#c4d1d9; padding:4px 5px; border:0; border-radius:4px; font-size:12px; min-width:0; box-shadow:none; }
+.review-pv-move:hover,.review-pv-move:focus-visible { background:#48c9ab25; color:#78e6c9; transform:none; }
+.variation-status { font-size:12px; color:#b6c7d1; line-height:1.65; padding:12px 0 3px; min-height:40px; }
+.review-method { font-size:11px; line-height:1.7; color:#8e9eaa; margin-top:15px; }
+.review-method summary { cursor:pointer; color:#aabac3; }
+.review-method p { margin:8px 0; }
+.review-promotion { display:flex; align-items:center; gap:5px; color:#aabac3; font-size:11px; }
+.review-promotion select { padding:5px; background:#14212c; color:#e6edef; border:1px solid #ffffff20; border-radius:6px; }
+#analysisBoard .review-selected { box-shadow:inset 0 0 0 4px #37c8a7; }
+#analysisBoard .review-legal::after { content:''; position:absolute; width:24%; height:24%; top:38%; left:38%; background:#113d37aa; border-radius:50%; pointer-events:none; z-index:4; }
+#analysisBoard .square { cursor:pointer; }
+#view-2v2-analysis .coach-feedback-box { align-items:flex-start; }
+#view-2v2-analysis .coach-message { line-height:1.65; }
+#view-2v2-analysis .coach-message span { display:block; }
+@media(min-width:1050px) { #view-2v2-analysis .analysis-main-col { position:sticky; top:18px; align-self:start; } }
+@media(max-width:600px) { .review-pv { grid-template-columns:42px minmax(0,1fr); } .review-pv-move { padding:6px; } .review-actions button { min-height:40px; } }
+
 .analysis-premium-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
@@ -637,6 +670,40 @@
     width: auto;
     min-width: 74px;
     padding: 0 10px;
+}
+
+/* Final overrides for the older, more specific layout rules in styles.css. */
+body[data-active-view="view-2v2-analysis"] { background:#0b1018; color:#e4eaf0; margin:0; }
+body[data-active-view="view-2v2-analysis"] .app-container { background:#101722; width:100%; min-width:0; box-sizing:border-box; }
+#view-2v2-analysis { width:100%; min-width:0; }
+#view-2v2-analysis .analysis-premium-layout { grid-template-columns:minmax(0,1fr) minmax(340px,420px); min-height:0; max-width:100%; box-sizing:border-box; }
+#view-2v2-analysis .analysis-board-area { grid-template-columns:18px minmax(0,1fr) !important; padding:12px; min-width:0; }
+#view-2v2-analysis .analysis-board-area > .premium-board { width:100% !important; max-width:100% !important; grid-template-rows:repeat(8,minmax(0,1fr)); }
+#view-2v2-analysis .analysis-board-area > .premium-eval { min-height:0 !important; }
+#view-2v2-analysis .square { position:relative; min-height:0; }
+#view-2v2-analysis .piece { position:absolute; inset:0; display:grid; place-items:center; }
+#view-2v2-analysis .piece img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+#view-2v2-analysis .piece-fallback { font-family:'Segoe UI Symbol','DejaVu Sans',serif; font-size:clamp(26px,5vw,70px); line-height:1; color:#f7f3df; -webkit-text-stroke:1px #20282a; }
+#view-2v2-analysis .piece-fallback.black-piece { color:#172125; -webkit-text-stroke:.6px #d4dfd4; }
+#view-2v2-analysis .review-pv-move { text-transform:none; letter-spacing:0; font-weight:500; }
+#view-2v2-analysis .premium-controls button { font-size:19px; }
+#view-2v2-analysis .move-san.active { background:#48c9ab22; outline:1px solid #48c9ab66; }
+@media(max-width:1000px) {
+    body[data-active-view="view-2v2-analysis"] { padding:0; }
+    body[data-active-view="view-2v2-analysis"] .app-container { padding:12px; }
+    #view-2v2-analysis .analysis-premium-layout { grid-template-columns:minmax(0,1fr); padding:0; gap:14px; }
+    #view-2v2-analysis .analysis-main-col { position:static; gap:10px; }
+    #view-2v2-analysis .analysis-board-area { grid-template-columns:14px minmax(0,1fr) !important; gap:6px; padding:6px; }
+    #view-2v2-analysis .analysis-board-area > .premium-board { width:100% !important; max-width:100% !important; }
+    #view-2v2-analysis .analysis-position-strip { grid-template-columns:repeat(3,minmax(0,1fr)); padding:6px; gap:5px; }
+    #view-2v2-analysis .analysis-position-strip div { padding:6px; }
+    #view-2v2-analysis .analysis-position-strip strong { font-size:11px; white-space:normal; }
+    #view-2v2-analysis .analysis-chart-area { display:block; padding:6px; }
+    #view-2v2-analysis .analysis-chart-area canvas { height:90px; }
+    #view-2v2-analysis .premium-topbar { padding:10px; gap:7px; }
+    #view-2v2-analysis .analysis-inline-meta { display:none; }
+    #view-2v2-analysis .piece-fallback { font-size:clamp(25px,8vw,58px); }
+    #view-2v2-analysis .premium-sidebar-content { padding:10px; }
 }
 
 @media (max-width: 1000px) {

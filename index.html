@@ -16,7 +16,7 @@
     <!-- Chess Libraries -->
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="./vendor/chess-0.10.3.js"></script>
 
     <!-- Utilities -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -31,8 +31,8 @@
     <link
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css?v=20260618c">
-    <link rel="stylesheet" href="./analysis-premium.css?v=20260617b">
+    <link rel="stylesheet" href="./styles.css?v=20260923a">
+    <link rel="stylesheet" href="./analysis-premium.css?v=20260923a">
 </head>
 
 <body>
@@ -344,9 +344,9 @@
                         </div>
                         <div class="top-actions">
                             <span id="analysisResultPill" class="analysis-result-pill">Hazirlaniyor</span>
-                            <button id="btnShareAnalysis" class="secondary icon-btn" onclick="shareCurrentAnalysisReport()" title="Analizi paylas"><i class="fas fa-share-nodes"></i></button>
+                            <button id="btnShareAnalysis" class="secondary icon-btn" onclick="shareCurrentAnalysisReport()" title="Analizi paylaş" aria-label="Analizi paylaş">↗</button>
                             <div id="sfStatusBadge" class="status-badge"><i class="fas fa-microchip"></i></div>
-                            <button class="secondary icon-btn" onclick="switchView('view-dashboard')"><i class="fas fa-times"></i></button>
+                            <button class="secondary icon-btn" onclick="switchView('view-dashboard')" title="Analizi kapat" aria-label="Analizi kapat">×</button>
                         </div>
                     </div>
 
@@ -374,11 +374,11 @@
                     </div>
 
                     <div class="analysis-controls premium-controls">
-                        <button onclick="navAnalysis('start')"><i class="fas fa-fast-backward"></i></button>
-                        <button onclick="navAnalysis('prev')"><i class="fas fa-step-backward"></i></button>
-                        <button onclick="navAnalysis('next')"><i class="fas fa-step-forward"></i></button>
-                        <button onclick="navAnalysis('end')"><i class="fas fa-fast-forward"></i></button>
-                        <button onclick="flipAnalysisBoard()"><i class="fas fa-sync-alt"></i></button>
+                        <button onclick="navAnalysis('start')" title="İlk konum" aria-label="İlk konum">⏮</button>
+                        <button onclick="navAnalysis('prev')" title="Önceki hamle" aria-label="Önceki hamle">‹</button>
+                        <button onclick="navAnalysis('next')" title="Sonraki hamle" aria-label="Sonraki hamle">›</button>
+                        <button onclick="navAnalysis('end')" title="Son konum" aria-label="Son konum">⏭</button>
+                        <button onclick="flipAnalysisBoard()" title="Tahtayı çevir" aria-label="Tahtayı çevir">↻</button>
                     </div>
 
                     <div class="analysis-chart-area">
@@ -419,6 +419,18 @@
                             <div id="analysisQualitySummary" class="premium-quality-summary"></div>
                             <div id="analysisQualityFootnote" class="analysis-quality-footnote">Degerler Beyaz / Siyah sirasiyla gosterilir.</div>
 
+                            <div class="review-progress" role="status" aria-live="polite">
+                                <span class="review-live-dot"></span><span id="reviewProgressText">Analiz hazırlanıyor</span>
+                                <progress id="reviewProgress" max="100" value="0" aria-label="Maç analiz ilerlemesi"></progress>
+                            </div>
+                            <div class="review-actions">
+                                <button class="secondary" onclick="jumpToCriticalMove(-1)" title="Önceki kritik hamle">← Kritik</button>
+                                <button class="secondary" onclick="jumpToCriticalMove(1)" title="Sonraki kritik hamle">Kritik →</button>
+                                <button class="secondary" id="reviewRetry" onclick="retryAnalysisMove()">Yeniden dene</button>
+                                <button class="secondary" onclick="restartAnalysisReview()" title="Maçı yeniden analiz et">Analizi yenile</button>
+                            </div>
+                            <div id="reviewOpening" class="review-opening"></div>
+
                             <div class="coach-feedback-box">
                                 <div class="coach-avatar"><i class="fas fa-graduation-cap"></i></div>
                                 <div class="coach-message">
@@ -433,6 +445,18 @@
                                 <strong id="report-eval-display" class="engine-eval-chip">0.0</strong>
                             </div>
                             <div id="report-blunder" class="analysis-worst-line">Kritik hata raporu analiz sonunda guncellenir.</div>
+                            <div class="review-engine-panel">
+                                <div class="review-engine-heading"><strong>Aday devamlar</strong><span id="reviewDepth">—</span></div>
+                                <div id="reviewLines" class="review-lines"></div>
+                                <div id="variationStatus" class="variation-status" role="status">Tahtada bir taşa, ardından hedef kareye tıklayarak alternatif deneyebilirsin.</div>
+                                <div class="review-actions">
+                                    <button class="secondary" onclick="undoAnalysisVariation()">Geri al</button>
+                                    <button class="secondary" onclick="returnToAnalysisGame()">Maça dön</button>
+                                    <button class="secondary" id="reviewDeepen" onclick="deepenAnalysisMove()">Daha derin incele</button>
+                                    <label class="review-promotion">Terfi <select id="reviewPromotion" aria-label="Terfi taşı"><option value="q">Vezir</option><option value="r">Kale</option><option value="b">Fil</option><option value="n">At</option></select></label>
+                                </div>
+                                <details class="review-method"><summary>Bu değerlendirme nasıl hesaplanıyor?</summary><p>Doğruluk, her hamlenin motor beklenen puanındaki kaybından hesaplanır. Etiketler yüzdelere müdahale etmez. Stockfish WDL modeli motor oyunlarını temsil eder; kişisel kazanma olasılığınız veya Chess.com CAPS2 puanı değildir. İlk inceleme derinlik 14, kritik konumlar 18 hedefler. Süre sınırına ulaşan sonuçların gerçek derinliği gösterilir. Mat değerlendirmeleri yaklaşık grafik ölçeğine dönüştürülür.</p><p>Açılışlar: Lichess chess-openings (CC0). Uygun konumlarda Syzygy oyun sonu servisi. Ağ bağlantısı yoksa yerel Stockfish ile devam edilir.</p></details>
+                            </div>
                         </div>
 
                         <!-- MOVES BLOCK -->
@@ -1827,7 +1851,7 @@
         </form>
     </div>
 
-    <script type="module" src="./app-v2.js?v=20260618c"></script>
+    <script type="module" src="./app-v2.js?v=20260923a"></script>
 
 </body>
 

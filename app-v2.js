@@ -863,8 +863,8 @@ const [
             window.closeBoardFullscreen();
         }
         if (previousView === 'view-2v2-analysis' && id !== 'view-2v2-analysis') {
-            window.analysisReviewToken++;
-            window.liveEvalRequestId++;
+            window.cancelAnalysisReview?.();
+
             if (window.clearAnalysisOverlayTimers) window.clearAnalysisOverlayTimers();
             if (window.setAnalysisOverlayVisible) window.setAnalysisOverlayVisible(false);
             window.analysisLoadingState = null;
