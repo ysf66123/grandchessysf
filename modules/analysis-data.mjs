@@ -1,4 +1,4 @@
-import {openingKey, pvMoves} from './analysis-core.mjs';
+import {openingKey, pvMoves} from './analysis-core.mjs?v=20260923d';
 let openingPromise;
 export async function loadOpenings() {
     if (!openingPromise) openingPromise = fetch('./vendor/openings.json').then(r=> {
@@ -52,12 +52,12 @@ export function explanation(Chess, review) {
     else if (review.category === 'great') text = 'İncelenen alternatifler arasında sonucu koruyan tek güçlü seçenek.';
     else if (review.category === 'book') text = 'Açılış veritabanında kayıtlı bir konuma ulaşıldı.';
     else if (review.loss < 0.02) text = 'Hamle, motorun en iyi devamına yakın bir değerlendirmeyi koruyor.';
-    else text = 'Bu hamle motorun beklenen puanını ' + (review.loss*100).toFixed(1) + ' puan düşürüyor.';
+    else text = 'Stockfish karşılaştırmasında bu hamle daha zayıf. Dönüştürülmüş değerlendirme kaybı ' + (review.loss*100).toFixed(1) + ' yüzde puan.';
     if (review.bestMove !== review.playedUci && best.length) text += ' Daha güçlü devam: ' + fmt(best) + '.';
     const capture = reply.find(m=>m.captured);
     if (capture && review.loss >= 0.02) text += ' Rakibin devamında ' + capture.san + ' ile taş alımı var.';
     else if (reply.length && review.loss >= 0.02) text += ' Rakibin yanıtı: ' + fmt(reply) + '.';
-    if (review.tablebase) text += ' Oyun sonu sonucu Syzygy verisiyle doğrulandı (50 hamle kuralı dahil).';
-    if (!review.verified) text += ' İlk inceleme; daha derin hesaplama etiketi değiştirebilir.';
+    if (review.tablebase) text += ' Ek oyun sonu verisi Syzygy’den alındı; bu hamlenin notu Stockfish hesabına dayanıyor.';
+    if (!review.complete || review.stable===false) text += ' Geçici karar: daha derin hesaplama etiketi değiştirebilir.';
     return text;
 }

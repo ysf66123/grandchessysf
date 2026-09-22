@@ -1,5 +1,5 @@
 // Pure review rules. Scores are from the root side to move; UI scores are White POV.
-export const REVIEW_VERSION = 'sf18-review-20260923-1';
+export const REVIEW_VERSION = 'sf18-review-20260923-4-cp';
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 export const uciOf = m => m.from + m.to + (m.promotion || '');
 export function parseInfo(text) {
@@ -36,29 +36,72 @@ export function expectedScore(line) {
     return 1 / (1 + Math.exp(-clamp(line?.cp || 0, -4000, 4000) / 240));
 }
 export function accuracyFromLoss(loss) {
-    return Math.round(clamp(100 * Math.exp(-4 * Math.max(0, loss)), 0, 100) * 10) / 10;
+    if (!Number.isFinite(loss)) return null;
+    if (loss <= 0) return 100;
+    // Public Lichess accuracy equation, applied to a same-root comparison.
+    // https://lichess.org/page/accuracy (not Stockfish WDL or CAPS2)
+    return clamp(103.1668 * Math.exp(-0.04354 * loss * 100) - 3.1669, 0, 100);
 }
-export function classify({ best, played, legalCount, verified, sacrifice, book, previousOpponentLoss = 0 }) {
-    const loss = Math.max(0, expectedScore(best) - expectedScore(played));
-    if (best.mate > 0 && !(played.mate > 0) && expectedScore(played) < 0.8) return 'miss';
-    if (played.mate != null && played.mate <= 0 && !(best.mate != null && best.mate <= 0)) return 'blunder';
-    if (book && loss < 0.02) return 'book';
-    if (verified && sacrifice && loss < 0.01 && expectedScore(played) >= 0.5 &&
-        (expectedScore(best) < 0.98 || best.alternativeExpected < 0.8)) return 'brilliant';
-    if (verified && legalCount > 1 && best.unique && loss < 0.01) return 'great';
-    if (loss >= 0.1 && previousOpponentLoss >= 0.1 && expectedScore(best) >= 0.7 && expectedScore(played) < 0.6) return 'miss';
-    if (loss < 0.0005) return 'best';
+export function qualityScore(line) {
+    if (line?.mate != null) return line.mate > 0 ? 1 : 0;
+    if (!Number.isFinite(line?.cp)) return null;
+    return 1 / (1 + Math.exp(-0.00368208 * clamp(line.cp, -1000, 1000)));
+}
+export function moveMetrics(best, played) {
+    const before=qualityScore(best), after=qualityScore(played);
+    if (before == null || after == null) return null;
+    const sameMove=!!best.uci && best.uci===played.uci;
+    const loss=sameMove ? 0 : Math.max(0,before-after);
+    return {loss,expectedBest:before,expectedPlayed:after,moveAccuracy:accuracyFromLoss(loss),
+        cpl:Number.isFinite(best.cp)&&Number.isFinite(played.cp)?Math.max(0,best.cp-played.cp):null};
+}
+export function classify({ best, played, legalCount, verified, sacrifice, book, routineCapture=false, previousOpponentLoss = 0 }) {
+    const metrics=moveMetrics(best,played);
+    if (!metrics) return 'unrated';
+    const {loss,expectedBest:before,expectedPlayed:after,cpl}=metrics;
+    const isBest=!!best.uci && best.uci===played.uci;
+    // A forced move is not a special achievement, even when it prolongs mate.
+    if (legalCount===1) return 'best';
+    const nearBest=isBest || (cpl!=null && cpl<=15 && loss<0.01);
+    // A database can name a trap's final position; a forcing mate is not Book.
+    if (book && best.mate==null && played.mate==null && loss < 0.02 && cpl!=null && cpl<=30) return 'book';
+    if (verified && sacrifice && nearBest && after>=0.5 &&
+        (before<0.9 || (Number.isFinite(best.alternativeExpected)&&best.alternativeExpected<0.8))) return 'brilliant';
+    if (verified && isBest && best.unique && after>=0.4 && !routineCapture && played.mate!==1) return 'great';
+    if (isBest) return 'best';
+    // A new mate is not automatically a blunder if the position was already lost.
+    if (verified && loss>=0.1 && before>=0.7 && after>=0.35 && after<0.6 &&
+        (best.mate>0 || previousOpponentLoss>=0.1)) return 'miss';
+    if (loss>=0.2) return 'blunder';
+    // Equal WDL (or equal saturated scores) must not label a different move Best.
     if (loss < 0.02) return 'excellent';
     if (loss < 0.05) return 'good';
     if (loss < 0.1) return 'inaccuracy';
-    if (loss < 0.2) return 'mistake';
-    return 'blunder';
+    return 'mistake';
 }
-export function gameAccuracy(reviews) {
-    const valid = reviews.filter(r => r && Number.isFinite(r.loss));
+export function gameAccuracy(reviews, gameReviews=reviews) {
+    const valid=reviews.filter(r=>r && Number.isFinite(r.loss));
     if (!valid.length) return null;
-    // Each played move contributes equally; labels never change the score.
-    return Math.round(valid.reduce((sum,r) => sum + accuracyFromLoss(r.loss), 0) / valid.length * 10) / 10;
+    const all=gameReviews.filter(r=>r && Number.isFinite(r.loss));
+    const whiteChance=(r,after)=>{
+        const chance=after?r.expectedPlayed:r.expectedBest;
+        if(Number.isFinite(chance))return r.moveColor==='b'?1-chance:chance;
+        return qualityScore({cp:after?r.cpAfter:r.cpBefore});
+    };
+    const points=all.length ? [whiteChance(all[0],false),...all.map(r=>whiteChance(r,true))].map(x=>x==null?50:x*100) : [];
+    const size=clamp(Math.floor(gameReviews.length/10),2,8);
+    let weighted=0,totalWeight=0,reciprocals=0,hasZero=false;
+    for(const r of valid) {
+        const pos=all.findIndex(x=>x===r || (Number.isInteger(r.index)&&x.index===r.index));
+        const window=pos<0?[]:points.slice(Math.max(0,pos+2-size),pos+2);
+        const mean=window.reduce((s,n)=>s+n,0)/(window.length||1);
+        const sd=Math.sqrt(window.reduce((s,n)=>s+(n-mean)**2,0)/(window.length||1));
+        const weight=clamp(sd,0.5,12),accuracy=accuracyFromLoss(r.loss);
+        weighted+=accuracy*weight;totalWeight+=weight;
+        if(accuracy===0)hasZero=true;else reciprocals+=1/accuracy;
+    }
+    const harmonic=hasZero?0:valid.length/reciprocals;
+    return Math.round(clamp((weighted/totalWeight+harmonic)/2,0,100)*10)/10;
 }
 export function pvMoves(Chess, fen, pv) {
     const game = new Chess();

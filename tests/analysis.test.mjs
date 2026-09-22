@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {parseInfo,whiteScore,expectedScore,accuracyFromLoss,classify,gameAccuracy,pvMoves,sacrificeEvidence,terminalResult,validPosition} from '../modules/analysis-core.mjs';
+import {parseInfo,whiteScore,expectedScore,accuracyFromLoss,classify,gameAccuracy,pvMoves,sacrificeEvidence,terminalResult,validPosition,qualityScore,moveMetrics} from '../modules/analysis-core.mjs';
 import {tableExpected,normalizedOpeningKey} from '../modules/analysis-data.mjs';
 import {AnalysisEngine} from '../modules/analysis-engine.mjs';
 const context={exports:{}};
@@ -43,9 +43,68 @@ test('accuracy is monotonic and does not depend on categories',()=>{
     assert.equal(gameAccuracy([]),null);
 });
 test('forced legal move is not a Great move; shallow sacrifice is not Brilliant',()=>{
-    const best={cp:0,wdl:[0,1000,0],unique:true};
+    const best={uci:'e2e4',cp:0,wdl:[0,1000,0],unique:true};
     assert.equal(classify({best,played:best,legalCount:1,verified:true}), 'best');
     assert.equal(classify({best:{...best,unique:false},played:best,legalCount:20,verified:false,sacrifice:true}),'best');
+});
+test('human-scaled CP score uses published calibration, not engine WDL',()=>{
+    assert.equal(qualityScore({cp:0,wdl:[1000,0,0]}),.5);
+    assert(qualityScore({cp:100})>.590 && qualityScore({cp:100})<.592);
+    assert.equal(qualityScore({}),null);
+    assert.equal(moveMetrics({cp:0},{}),null);
+    assert.equal(accuracyFromLoss(NaN),null);
+    assert(Math.abs(accuracyFromLoss(.05)-79.8179)<.01);
+});
+test('identical WDL does not make different moves Best',()=>{
+    const best={uci:'e2e4',cp:750,wdl:[1000,0,0]},played={uci:'d2d4',cp:300,wdl:[1000,0,0]};
+    assert.notEqual(classify({best,played,legalCount:20}), 'best');
+    assert(moveMetrics(best,played).loss>.15);
+    assert.equal(classify({best,played:best,legalCount:20}),'best');
+});
+test('small CP differences are not amplified by WDL',()=>{
+    const best={uci:'e2e4',cp:50,wdl:[500,500,0]},played={uci:'d2d4',cp:0,wdl:[0,1000,0]};
+    assert.equal(classify({best,played,legalCount:20}), 'good');
+    assert(moveMetrics(best,played).moveAccuracy>80);
+});
+test('classification boundaries track increasing Stockfish loss',()=>{
+    const best={uci:'e2e4',cp:0};
+    for(const [cp,category] of [[-10,'excellent'],[-30,'good'],[-80,'inaccuracy'],[-150,'mistake'],[-300,'blunder']]) {
+        assert.equal(classify({best,played:{uci:'d2d4',cp},legalCount:20}),category);
+    }
+});
+test('mate in an already lost position is not automatically a Blunder',()=>{
+    const best={uci:'e2e4',cp:-1000},played={uci:'d2d4',mate:-2};
+    assert.notEqual(classify({best,played,legalCount:20}),'blunder');
+    assert.equal(classify({best:{uci:'e2e4',cp:0},played,legalCount:20}),'blunder');
+});
+test('a longer forced winning mate keeps accuracy without stealing Best label',()=>{
+    const best={uci:'e2e4',mate:2},played={uci:'d2d4',mate:4};
+    assert.equal(moveMetrics(best,played).moveAccuracy,100);
+    assert.equal(classify({best,played,legalCount:20}),'excellent');
+    assert.notEqual(classify({best,played:{uci:'d2d4',cp:700},legalCount:20,verified:true}),'blunder');
+});
+test('a named opening trap does not turn the mating move into Book',()=>{
+    const best={uci:'d8h4',mate:1,unique:true};
+    assert.equal(classify({best,played:best,book:true,legalCount:30,verified:true}),'best');
+});
+test('tablebase annotations do not overwrite Stockfish move metrics',()=>{
+    const best={uci:'e2e4',cp:30,exactExpected:1},played={uci:'d2d4',cp:20,exactExpected:0};
+    assert(moveMetrics(best,played).loss<.01);
+});
+test('a routine capture of a hanging queen is not awarded Great just for a large gap',()=>{
+    const best={uci:'c6e5',cp:650,unique:true};
+    assert.equal(classify({best,played:best,legalCount:25,verified:true,routineCapture:true}),'best');
+});
+test('Miss requires a confirmed opportunity, rather than disguising a losing blunder',()=>{
+    const best={uci:'e2e4',cp:400},played={uci:'d2d4',cp:0};
+    assert.equal(classify({best,played,legalCount:20,verified:true,previousOpponentLoss:.2}),'miss');
+    assert.equal(classify({best,played:{...played,mate:-2,cp:null},legalCount:20,verified:true,previousOpponentLoss:.2}),'blunder');
+});
+test('harmonic component prevents a serious error being hidden by simple averaging',()=>{
+    const moves=[...Array(9)].map((_,index)=>({index,loss:0})).concat({index:9,loss:.5});
+    const arithmetic=moves.reduce((n,r)=>n+accuracyFromLoss(r.loss),0)/moves.length;
+    assert(gameAccuracy(moves)<arithmetic);
+    assert.equal(gameAccuracy([{loss:0},{loss:0}]),100);
 });
 test('sacrifice detection follows the opponent capture, not immediate material',()=>{
     const f='4k3/8/4p3/8/8/2N5/P7/4K3 w - - 0 1';

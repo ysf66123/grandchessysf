@@ -31,8 +31,8 @@
     <link
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css?v=20260923a">
-    <link rel="stylesheet" href="./analysis-premium.css?v=20260923a">
+    <link rel="stylesheet" href="./styles.css?v=20260923d">
+    <link rel="stylesheet" href="./analysis-premium.css?v=20260923d">
 </head>
 
 <body>
@@ -444,6 +444,7 @@
                                 <button id="report-best" class="engine-best-btn" onclick="previewBestVsPlayedMove()">-</button>
                                 <strong id="report-eval-display" class="engine-eval-chip">0.0</strong>
                             </div>
+                            <div id="reviewEvidence" class="variation-status" aria-live="polite"></div>
                             <div id="report-blunder" class="analysis-worst-line">Kritik hata raporu analiz sonunda guncellenir.</div>
                             <div class="review-engine-panel">
                                 <div class="review-engine-heading"><strong>Aday devamlar</strong><span id="reviewDepth">—</span></div>
@@ -453,9 +454,10 @@
                                     <button class="secondary" onclick="undoAnalysisVariation()">Geri al</button>
                                     <button class="secondary" onclick="returnToAnalysisGame()">Maça dön</button>
                                     <button class="secondary" id="reviewDeepen" onclick="deepenAnalysisMove()">Daha derin incele</button>
+                                    <button class="secondary" onclick="downloadAnalysisData()">Motor verisini indir</button>
                                     <label class="review-promotion">Terfi <select id="reviewPromotion" aria-label="Terfi taşı"><option value="q">Vezir</option><option value="r">Kale</option><option value="b">Fil</option><option value="n">At</option></select></label>
                                 </div>
-                                <details class="review-method"><summary>Bu değerlendirme nasıl hesaplanıyor?</summary><p>Doğruluk, her hamlenin motor beklenen puanındaki kaybından hesaplanır. Etiketler yüzdelere müdahale etmez. Stockfish WDL modeli motor oyunlarını temsil eder; kişisel kazanma olasılığınız veya Chess.com CAPS2 puanı değildir. İlk inceleme derinlik 14, kritik konumlar 18 hedefler. Süre sınırına ulaşan sonuçların gerçek derinliği gösterilir. Mat değerlendirmeleri yaklaşık grafik ölçeğine dönüştürülür.</p><p>Açılışlar: Lichess chess-openings (CC0). Uygun konumlarda Syzygy oyun sonu servisi. Ağ bağlantısı yoksa yerel Stockfish ile devam edilir.</p></details>
+                                <details class="review-method"><summary>Bu değerlendirme nasıl hesaplanıyor?</summary><p>Hamle notu tamamen aynı konumda karşılaştırılan Stockfish hamlelerine ve CP/mat puanlarına dayanır. “En iyi”, motorun birinci tercihidir. Diğer hamleler değerlendirme kaybına göre sınıflandırılır. Doğrulukta Lichess’in yayımladığı CP dönüşümü kullanılır; WDL olasılıkları doğrudan hamle notuna çevrilmez.</p><p>Maç doğruluğu, konumların değişkenliğiyle ağırlıklandırılmış ortalama ile harmonik ortalamanın birleşimidir. Etiketler yüzdelere müdahale etmez. Bu değer kişisel kazanma olasılığı, oyun gücü veya Chess.com CAPS2 puanı değildir. Çok kısa maçlarda az sayıdaki hamleye dayanır.</p><p>İlk inceleme derinlik 16, kritik konumlar 20 hedefler. Değişen veya sınırdaki kararlar 22’de tekrar kontrol edilir. Süre sınırındaki sonuçlar geçici olarak gösterilir. Açılış adları Lichess CC0 verisinden, ek oyun sonu bilgisi Syzygy’den gelir; bu kaynaklar doğruluk puanını değiştirmez. <a href="https://lichess.org/page/accuracy" target="_blank" rel="noopener noreferrer">Hesaplama yönteminin kaynağı</a></p></details>
                             </div>
                         </div>
 
@@ -1851,7 +1853,7 @@
         </form>
     </div>
 
-    <script type="module" src="./app-v2.js?v=20260923a"></script>
+    <script type="module" src="./app-v2.js?v=20260923d"></script>
 
 </body>
 

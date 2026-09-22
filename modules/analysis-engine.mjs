@@ -1,4 +1,4 @@
-import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs';
+import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs?v=20260923d';
 
 // One owner of the UCI stream. A task is not released until bestmove or restart.
 export class AnalysisEngine {
@@ -78,6 +78,8 @@ export class AnalysisEngine {
         task.resolve({ ...first, cp:first?.cp ?? null, mate:first?.mate ?? null,
             bestMove: task.mode === 'bot' ? reported : first?.uci || reported,
             topLines, depth:task.reached, requestedDepth:task.depth,
+            nodes:Math.max(0,...topLines.map(line=>line.nodes || 0)),
+            time:Math.max(0,...topLines.map(line=>line.time || 0)),
             complete:!task.cancelled && task.reached >= task.depth,
             cancelled:!!task.cancelled, fallback:!first || !!task.cancelled,
             source:'Stockfish 18 Lite', version:REVIEW_VERSION,

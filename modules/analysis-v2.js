@@ -1,10 +1,10 @@
-import {AnalysisEngine} from './analysis-engine.mjs';
-import {REVIEW_VERSION, parseInfo, whiteScore, expectedScore, rootScore, accuracyFromLoss, classify, gameAccuracy, pvMoves, sacrificeEvidence, terminalResult, validPosition, uciOf} from './analysis-core.mjs';
-import {loadOpenings, normalizedOpeningKey, tablebase, tableExpected, explanation} from './analysis-data.mjs';
+import {AnalysisEngine} from './analysis-engine.mjs?v=20260923d';
+import {REVIEW_VERSION, whiteScore, classify, gameAccuracy, pvMoves, sacrificeEvidence, terminalResult, validPosition, uciOf, qualityScore, moveMetrics} from './analysis-core.mjs?v=20260923d';
+import {loadOpenings, normalizedOpeningKey, tablebase, tableExpected, explanation} from './analysis-data.mjs?v=20260923d';
 // modules/analysis-v2.js - Chess Game Analysis Engine (Chess.com-style review)
 
 const SF_DEPTH_LIVE = 18;
-const SF_DEPTH_REVIEW = 14;
+const SF_DEPTH_REVIEW = 16;
 const SF_MULTI_PV = 3;
 const ANALYSIS_CACHE_VERSION = REVIEW_VERSION;
 const ANALYSIS_CACHE_DB = 'grandmaster_analysis_cache_v1';
@@ -20,7 +20,8 @@ const MOVE_CATEGORY_META = {
     inaccuracy: { tag: '?!', tr: 'Hassas Değil', en: 'Inaccuracy' },
     mistake: { tag: '?', tr: 'Hata', en: 'Mistake' },
     miss: { tag: '✕', tr: 'Kaçan Fırsat', en: 'Miss' },
-    blunder: { tag: '??', tr: 'Büyük Hata', en: 'Blunder' }
+    blunder: { tag: '??', tr: 'Büyük Hata', en: 'Blunder' },
+    unrated: { tag: '…', tr: 'Yetersiz veri', en: 'Unrated' }
 };
 
 
@@ -299,7 +300,7 @@ function engineLineToWhiteScore(line, fen) { return whiteScore(line,fen); }
 function warmAnalysisCacheForFen() { return Promise.resolve(); }
 function warmAnalysisCacheForGame() { /* Review cache is filled on demand, without competing with games. */ }
 function moveToUci(move) { return move ? uciOf(move) : ''; }
-function calculateAccuracy(reviews) { return gameAccuracy(reviews); }
+function calculateAccuracy(reviews) { return gameAccuracy(reviews,analysisMoveReviews); }
 function gameAt(index) {
     const game = new Chess();
     if (analysisBaseFen && !game.load(analysisBaseFen)) throw Error('Başlangıç konumu geçersiz.');
@@ -319,7 +320,7 @@ async function rootEvaluation(index, depth, token, searchmoves) {
     if (cached?.complete && cached.depth >= depth) return cached;
     const result = await queueStockfishEval(fen,{mode:'review', depth, position, searchmoves,
         multiPv:searchmoves ? searchmoves.length : SF_MULTI_PV, requestId:token,
-        timeoutMs:depth >= 18 ? 5500 : 1800});
+        timeoutMs:depth >= 24 ? 18000 : depth >= 22 ? 12000 : depth >= 20 ? 8000 : 3000});
     if (token !== analysisReviewToken || result.cancelled) return null;
     if (result.fallback || result.depth < 8) throw Error('Yeterli motor verisi alınamadı. Yeniden deneyin.');
     if (result.complete) await writeCacheStore('evals',key,result);
@@ -375,7 +376,13 @@ function updateAccuracyRing(id, value) {
     if (value >= 90) color = '#10b981';
     else if (value >= 75) color = '#f59e0b';
     else if (value >= 55) color = '#0ea5e9';
-    el.innerText = value == null ? '—' : value + '%';
+    const side=id==='acc-white'?'w':'b';
+    const scored=analysisMoveReviews.filter(r=>r?.moveColor===side);
+    const provisional=scored.some(r=>!r.complete || r.stable===false) || reviewBusy;
+    el.innerText = value == null ? '—' : (provisional?'≈':'')+value + '%';
+    el.title=scored.length+' hamle üzerinden hesaplandı.'+(provisional?' İnceleme sürüyor veya geçici kararlar var.':'');
+    const name=el.closest('.acc-player')?.querySelector('.acc-name');
+    if(name)name.textContent=(side==='w'?'Beyaz':'Siyah')+' Doğruluk · '+scored.length+' hamle';
     el.style.color = color;
     
     const ringWrap = document.getElementById(id + '-ring');
@@ -837,7 +844,7 @@ function buildMoveCell(moveObj, reviewIndex, jumpIndex) {
             tag.className = 'move-tag ' + review.category;
             tag.textContent = getMoveCategoryTag(review.category);
             const accLabel = getAnalysisLang() === 'en' ? 'Accuracy' : 'Doğruluk';
-            tag.title = getMoveCategoryLabel(review.category) + ' | CPL: ' + review.cpl + ' | ' + accLabel + ': ' + (review.moveAccuracy || 0) + '%';
+            tag.title = getMoveCategoryLabel(review.category) + ' | ' + (review.cpl==null?'Mat değerlendirmesi':'CP kaybı: '+review.cpl) + ' | ' + accLabel + ': ' + review.moveAccuracy.toFixed(1) + '%' + ' | Derinlik: '+review.depth+(review.complete && review.stable!==false?'':' · Geçici');
         cell.appendChild(tag);
     }
 
@@ -1045,7 +1052,7 @@ function getWorstMoveSummaryText() {
     const worst = reviews.reduce((a,b)=>a.loss>b.loss?a:b);
     if (worst.loss < 0.05) return 'İncelenen hamlelerde belirgin değerlendirme kaybı yok.';
     return (worst.moveColor === 'w' ? 'Beyaz' : 'Siyah') + ' · ' + worst.moveNumber + '. ' + worst.moveSan +
-        ' · ' + getMoveCategoryLabel(worst.category) + ' · beklenen puan kaybı ' + (worst.loss*100).toFixed(1);
+        ' · ' + getMoveCategoryLabel(worst.category) + ' · değerlendirme kaybı ' + (worst.loss*100).toFixed(1)+' yüzde puan';
 }
 
 function updateReportSummaryText(text) {
@@ -1087,39 +1094,34 @@ async function reviewMove(index, depth, token) {
     if (terminal) played={...played,cp:terminal.mate === 0 ? null : 0,mate:terminal.mate === 0 ? 1 : null,wdl:terminal.mate === 0 ? [1000,0,0] : [0,1000,0]};
     if (best.uci === played.uci) best={...played};
     if (token !== analysisReviewToken) return null;
-    let tbUsed=false;
-    if (tb) {
-        const bm=tb.moves[0], pm=tb.moves.find(m=>m.uci === playedUci);
-        const be=tableExpected(bm?.category), pe=tableExpected(pm?.category);
-        if (be != null && pe != null) {
-            // Tablebase child outcomes are from the opponent's point of view.
-            const known=lines.find(l=>l.uci===bm.uci);
-            if (known) {
-                best={...known,exactExpected:1-be};
-                played={...played,exactExpected:1-pe};
-            }
-            tbUsed=!!known;
-        }
-    }
-    const loss=Math.max(0,expectedScore(best)-expectedScore(played));
+    // Tablebase is supplemental evidence, never mixed into Stockfish move metrics.
+    const tbMove=tb?.moves?.find(m=>m.uci===playedUci);
+    const tbUsed=!!tbMove && tableExpected(tbMove.category)!=null;
+    const metrics=moveMetrics(best,played);
+    if(!metrics)throw Error('Stockfish puanı eksik; hamle sınıflandırılmadı.');
+    const {loss,cpl,moveAccuracy}=metrics;
     const second=lines.find(l=>l.uci !== best.uci);
-    best.alternativeExpected=second?expectedScore(second):null;
-    best.unique=legalCount>1 && !!second && expectedScore(best)-expectedScore(second)>=0.2;
-    const verified=result.complete && depth>=18;
+    best.alternativeExpected=second?qualityScore(second):null;
+    best.unique=legalCount>1 && !!second && qualityScore(best)-qualityScore(second)>=0.15;
+    const verified=result.complete && depth>=20;
     const sacrifice=verified && sacrificeEvidence(Chess,beforeFen,played);
     const opening=openings?.[normalizedOpeningKey(game)] || null;
-    const category=classify({best,played,legalCount,verified,sacrifice,book:!!opening,
+    const pieceValue={p:100,n:320,b:330,r:500,q:900,k:20000};
+    const routineCapture=!!move.captured && pieceValue[move.captured]>=pieceValue[move.piece];
+    const category=classify({best,played,legalCount,verified,sacrifice,routineCapture,book:!!opening,
         previousOpponentLoss:analysisMoveReviews[index-1]?.loss || 0});
     const bestGame=new Chess(beforeFen);tryApplyUciMove(bestGame,best.uci);
     return {index,moveNumber:Number(beforeFen.split(' ')[5]),moveSan:move.san,moveColor:move.color,
-        loss,cpl:Math.max(0,Math.round(rootScore(best)-rootScore(played))),category,
-        moveAccuracy:accuracyFromLoss(loss),bestMove:best.uci,bestMoveSan:formatEngineMove(best.uci,beforeFen),
+        loss,cpl,category,
+        moveAccuracy,bestMove:best.uci,bestMoveSan:formatEngineMove(best.uci,beforeFen),
         beforeFen,playedFen:game.fen(),bestFen:bestGame.fen(),playedUci,
         cpBefore:whiteScore(best,beforeFen),cpAfter:whiteScore(played,beforeFen),
         mateBefore:best.mate,mateAfter:played.mate,bestPv:best.pv,playedPv:played.pv,
         lines,depth:result.depth,nodes:result.nodes || 0,source:result.source,verified,
         complete:result.complete,tablebase:tbUsed,opening,
-        expectedBest:expectedScore(best),expectedPlayed:expectedScore(played),
+        expectedBest:metrics.expectedBest,expectedPlayed:metrics.expectedPlayed,
+        bestLine:best,playedLine:played,legalCount,sacrifice,routineCapture,requestedDepth:depth,
+        engineWdlBest:best.wdl,engineWdlPlayed:played.wdl,tablebaseCategory:tbMove?.category || null,
         critical:loss>=0.035 || best.mate!=null || played.mate!=null || best.unique ||
             sacrificeEvidence(Chess,beforeFen,played) || [0.02,0.05,0.1,0.2].some(t=>Math.abs(loss-t)<0.008)};
 }
@@ -1155,14 +1157,31 @@ async function runDetailedGameReview(token) {
             if (token!==analysisReviewToken) return;
             reportStatus='Kritik konumlar derinleştiriliyor · '+(n+1)+' / '+critical.length;
             renderReviewDetails();
-            const review=await reviewMove(critical[n],18,token);
+            let review=await reviewMove(critical[n],20,token);
+            if (review && token===analysisReviewToken) {
+                const previous=analysisMoveReviews[critical[n]];
+                const shifted=Math.abs(previous.loss-review.loss)>0.025;
+                const borderline=[0.02,0.05,0.1,0.2].some(t=>Math.abs(review.loss-t)<0.005);
+                if(shifted || borderline) {
+                    reportStatus='Karar doğrulanıyor · '+review.moveNumber+'. '+review.moveSan;
+                    renderReviewDetails();
+                    const confirmed=await reviewMove(critical[n],22,token);
+                    if(confirmed){confirmed.stable=Math.abs(confirmed.loss-review.loss)<=0.025;review=confirmed;}
+                } else review.stable=true;
+            }
             if (!review || token!==analysisReviewToken) return;
             analysisMoveReviews[critical[n]]=review;
             refreshReviewReport();
         }
         if (token!==analysisReviewToken) return;
-        const complete=analysisMoveReviews.every(r=>r?.complete);
-        reportStatus=complete?'Analiz tamamlandı':'İnceleme tamamlandı · bazı konumlar süre sınırında';
+        // Later refinements can alter whether the previous opponent move was a miss.
+        analysisMoveReviews.forEach((r,i)=>{
+            r.category=classify({best:r.bestLine,played:r.playedLine,legalCount:r.legalCount,
+                verified:r.verified && r.stable!==false,sacrifice:r.sacrifice,routineCapture:r.routineCapture,book:!!r.opening,
+                previousOpponentLoss:analysisMoveReviews[i-1]?.loss || 0});
+        });
+        const complete=analysisMoveReviews.every(r=>r?.complete && r.stable!==false);
+        reportStatus=complete?'Analiz tamamlandı':'İnceleme tamamlandı · bazı kararlar geçici';
         updateReportSummaryText(getWorstMoveSummaryText());
         refreshReviewReport();
         if (complete && currentAnalysisReportCacheKey) await writeCacheStore('reports',currentAnalysisReportCacheKey,{
@@ -1170,7 +1189,7 @@ async function runDetailedGameReview(token) {
             whiteAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r.moveColor==='w')),
             blackAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r.moveColor==='b')),
             summaryText:getWorstMoveSummaryText()});
-    } finally { if (token===analysisReviewToken) {reviewBusy=false;renderReviewDetails();} }
+    } finally { if (token===analysisReviewToken) {reviewBusy=false;updateAccuracyRing('acc-white',calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='w')));updateAccuracyRing('acc-black',calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='b')));renderReviewDetails();} }
 }
 
 function renderReviewDetails() {
@@ -1179,10 +1198,17 @@ function renderReviewDetails() {
     if (!status) return;
     status.textContent=reportStatus;
     document.getElementById('reviewProgress').value=analysisHistory.length?100*analysisMoveReviews.filter(Boolean).length/analysisHistory.length:0;
-    document.getElementById('reviewDepth').textContent=r ? 'Stockfish 18 · d'+r.depth+(r.verified?' · derin':r.complete?' · ilk inceleme':' · süre sınırı') : 'Hamle seç';
+    document.getElementById('reviewDepth').textContent=r ? 'Stockfish 18 · d'+r.depth+(r.verified && r.stable!==false?' · derin':r.complete && r.stable!==false?' · ilk inceleme':' · geçici') : 'Hamle seç';
     document.getElementById('reviewRetry').disabled=!analysisMoveReviews[currentAnalysisIndex-1] || reviewBusy;
     document.getElementById('reviewDeepen').disabled=!analysisMoveReviews[currentAnalysisIndex-1] || reviewBusy;
     document.getElementById('reviewOpening').textContent=r?.opening ? r.opening.eco+' · '+r.opening.name : '';
+    const evidence=document.getElementById('reviewEvidence');
+    if(evidence) {
+        const score=line=>line?.mate!=null?((whiteScore(line,r.beforeFen)>=0?'+':'−')+'M'+Math.abs(line.mate)):
+            Number.isFinite(line?.cp)?((whiteScore(line,r.beforeFen)>0?'+':'')+(whiteScore(line,r.beforeFen)/100).toFixed(2)):'—';
+        evidence.textContent=r?.bestLine&&!retryReview ? 'Beyaz açısından · En iyi '+score(r.bestLine)+' · Oynanan '+score(r.playedLine)+
+            ' · Hamle doğruluğu %'+r.moveAccuracy.toFixed(1)+' · '+Number(r.nodes||0).toLocaleString('tr-TR')+' düğüm' : '';
+    }
     const el=document.getElementById('reviewLines');el.replaceChildren();
     if (retryReview) { el.textContent='En güçlü hamleyi tahtada bul. Yanıtı görmek için Maça dön.'; return; }
     if (!r) {el.textContent='Motor sonuçları hesaplandıkça burada görünecek.';return;}
@@ -1244,6 +1270,17 @@ window.jumpToCriticalMove=function(direction) {
     const target=direction>0 ? indices.find(i=>i>currentAnalysisIndex)??indices[0] : [...indices].reverse().find(i=>i<currentAnalysisIndex)??indices.at(-1);
     window.jumpToMove(target);
 };
+window.getAnalysisReportSnapshot=function() {
+    return JSON.parse(JSON.stringify({version:REVIEW_VERSION,status:reportStatus,
+        whiteAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='w')),
+        blackAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='b')),
+        reviews:analysisMoveReviews}));
+};
+window.downloadAnalysisData=function() {
+    const blob=new Blob([JSON.stringify(window.getAnalysisReportSnapshot(),null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob),link=document.createElement('a');
+    link.href=url;link.download='stockfish-mac-analizi.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
 window.restartAnalysisReview=function() {
     if(currentSharedAnalysisPayload) window.openAnalysis(currentSharedAnalysisPayload.pgn,analysisPlayers,currentSharedAnalysisPayload.fen);
 };
@@ -1257,7 +1294,10 @@ window.deepenAnalysisMove=async function() {
     const index=currentAnalysisIndex-1;if (index<0 || reviewBusy) return;
     const token=analysisReviewToken;reviewBusy=true;reportStatus='Seçili hamle derinleştiriliyor';renderReviewDetails();
     try {
-        await initStockfish();const r=await reviewMove(index,22,token);
+        const previous=analysisMoveReviews[index];
+        const target=Math.min(28,Math.max(22,(previous?.depth||18)+2));
+        await initStockfish();const r=await reviewMove(index,target,token);
+        if(r){r.stable=previous?Math.abs(r.loss-previous.loss)<=0.025:true;r.category=classify({best:r.bestLine,played:r.playedLine,legalCount:r.legalCount,verified:r.verified&&r.stable,sacrifice:r.sacrifice,routineCapture:r.routineCapture,book:!!r.opening,previousOpponentLoss:analysisMoveReviews[index-1]?.loss||0});}
         if (r && token===analysisReviewToken) {analysisMoveReviews[index]=r;reportStatus='Seçili hamle güncellendi';refreshReviewReport();}
     } catch(e) {if(token===analysisReviewToken)showVariationStatus(e.message);}
     finally {if(token===analysisReviewToken){reviewBusy=false;renderReviewDetails();}}
@@ -1287,7 +1327,7 @@ document.getElementById('analysisBoard')?.addEventListener('click',async functio
             position:positionCommand(r.index),searchmoves:[...new Set([r.bestMove,u])],timeoutMs:5500});
         if(request!==variationRequest || variation!==branch)return;
         const played=compared.topLines?.find(l=>l.uci===u),best=compared.topLines?.[0];
-        showVariationStatus(!played || !best?'Yeterli motor verisi alınamadı.':expectedScore(best)-expectedScore(played)<0.02?
+        showVariationStatus(!played || !best?'Yeterli motor verisi alınamadı.':qualityScore(best)-qualityScore(played)<0.02?
             'Güçlü bir devam buldun! Derinlik '+compared.depth+'.':'Daha güçlü seçenek: '+formatEngineMove(best.uci,r.beforeFen)+'. Derinlik '+compared.depth+'.');
         renderReviewDetails();
     } else evaluateVariation();

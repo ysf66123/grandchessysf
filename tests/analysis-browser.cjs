@@ -38,6 +38,7 @@ async function main(){
         assert(!status.includes('tamamlanamadı'),status);
         assert((await page.locator('#acc-black').innerText()).includes('%'));
         assert.equal(await page.locator('#analysisEvalScore').innerText(),'M0');
+        assert.equal(await page.evaluate(()=>window.getAnalysisReportSnapshot().reviews[3].category),'best');
         console.log('Actual WASM review:',status,'in',Date.now()-start,'ms');
         await page.locator('#analysisMoveList .move-san[role=button]').nth(2).click();
         assert((await page.locator('#coachFeedbackText').innerText()).length>30);
@@ -76,6 +77,40 @@ async function main(){
         assert(['(none)','0000'].includes(engine.bestMove));
         assert.deepEqual(errors,[]);
         console.log('Browser checks passed: report, mate, variations, retry, cache, cancellation, mobile layout.');
+        if(process.env.ANALYSIS_CALIBRATE==='1') {
+            const fixtures=[
+                {name:'Ruy Lopez mainline',pgn:'1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O *',minimum:85},
+                {name:'Queen left en prise',pgn:'1. e4 e5 2. Qh5 Nc6 3. Qxe5+ Nxe5 *',blunder:4}
+            ];
+            const enginePgn=await page.evaluate(async()=>{
+                const game=new Chess();
+                for(let i=0;i<6;i++) {
+                    const r=await window.queueStockfishEval(game.fen(),{depth:18,mode:'review',multiPv:1,timeoutMs:4000});
+                    if(!game.move({from:r.bestMove.slice(0,2),to:r.bestMove.slice(2,4),promotion:r.bestMove[4]}))throw Error('Invalid engine reference');
+                }
+                return game.pgn();
+            });
+            fixtures.push({name:'Stockfish preferred moves',pgn:enginePgn,minimum:90});
+            const reports=[];
+            for(const fixture of fixtures) {
+                const began=Date.now();
+                await page.evaluate(pgn=>window.openAnalysis(pgn,[]),fixture.pgn);
+                const report=await page.evaluate(()=>window.getAnalysisReportSnapshot());
+                assert(!report.status.includes('tamamlanamadı'),report.status);
+                assert(report.reviews.length>0);
+                for(const r of report.reviews) {
+                    assert(r.bestLine && r.playedLine);
+                    if(r.category==='best' && r.legalCount>1)assert.equal(r.bestMove,r.playedUci);
+                    assert(r.moveAccuracy>=0 && r.moveAccuracy<=100);
+                }
+                if(fixture.minimum){assert(report.whiteAccuracy>=fixture.minimum,fixture.name+' White '+report.whiteAccuracy);assert(report.blackAccuracy>=fixture.minimum,fixture.name+' Black '+report.blackAccuracy);}
+                if(fixture.blunder!=null){assert.equal(report.reviews[fixture.blunder].category,'blunder');assert.equal(report.reviews[fixture.blunder+1].category,'best');}
+                reports.push({name:fixture.name,pgn:fixture.pgn,elapsedMs:Date.now()-began,...report});
+                console.log('Calibration:',fixture.name,'White',report.whiteAccuracy,'Black',report.blackAccuracy,'labels',report.reviews.map(r=>r.category).join(','));
+            }
+            fs.writeFileSync(path.join(root,'tests/analysis-calibration.json'),JSON.stringify(reports,null,2));
+            console.log('Stockfish calibration reports saved.');
+        }
     }finally{await browser.close();await new Promise(r=>server.close(r));}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});
