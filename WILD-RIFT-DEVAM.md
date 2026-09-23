@@ -1,5 +1,7 @@
 ## Eşya motoru güncellemesi — 24 Eylül 2026
 
+Canlı doğrulama tamamlandı: `eb80f5dc014bdd5dfced8c0dd363b7b4bc0dddca`, standart Pages işi https://github.com/ysf66123/grandchessysf/actions/runs/35924579719 başarılı. Canlı index, üç yeni modül, Wild Rift UI ve veri JSON içerikleri yerel dosyalarla SHA-256 üzerinden (satır sonları normalize edilerek) eşleşti. Veri localRevisionAt: `2026-09-23T21:40:39.64Z`. 181 dizilimin yerel hesap süresi toplam 26 ms, en yavaş 2,56 ms; gerçek telefon performans ölçümü değildir. Yayın doğrulamasından sonraki bu paragraf yerel devam notudur.
+
 Yeni `wild-rift-build-planner.mjs`, `wild-rift-item-rules.mjs`, `wild-rift-build-ui.mjs`: koridor/takım savaşı aşaması, hayatta kalma/hasar önceliği, takım karşı eşya kapsamı, gözlenen rakip nitelikleri ve etkileri. En fazla iki otomatik değişiklik; ilk iki ana eşya ve satın almalar korunur. Aynı yuva alternatifleri sınırlı kombinasyon aramasıyla değerlendirilir. Türkçe gerekçe, ödünleşim, karşılanamayan ihtiyaç, altı yuvalı karşılaştırma ve eşya niteliği ayrıntıları var.
 
 98/98 Fire eşya nitelik/etki/fiyat kontrolü başarılı, yama 7.3. Etki ve niteliklerin ayrı yama/zaman damgaları var; resmî istatistikler öncelikli. Fiyat güncelleme komutu karşılaştırma panelindeki Fire gözlemlerini de günceller. Mevcut doğrulanmış parça etkisi yoksa erken antiheal parçası gösterilmez. Sınırsız hasar optimizasyonu veya uzman kalibrasyonu iddiası yoktur.
