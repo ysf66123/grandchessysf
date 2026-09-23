@@ -1,0 +1,10 @@
+node_modules
+.git
+.github-pages-deploy
+.env
+*.log
+*service-account*.json
+tests
+solo-live-sync-v1.1.6 (1)
+data/*.previous
+data/*.tmp

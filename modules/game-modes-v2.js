@@ -4587,7 +4587,7 @@ function updatePlayerTags(idx, color, players, movesLeft) {
         latestId: 'liveLatestMove2v2',
         countId: 'liveMoveCount2v2',
         statusId: 'liveStatus2v2',
-        statusText: d.status === 'finished'
+        statusText: current2v2Data.status === 'finished'
             ? 'Mac tamamlandi'
             : (current2v2Role === 'spectator' ? 'Izleyici modu' : 'Takim maçi canli'),
         lastRenderedCount: lastRenderedLiveMoveCount2v2
@@ -6507,19 +6507,31 @@ function renderStandings(d){
     });
 }
 
-window.downloadStandings = () => {
+let standingsRendererPromise = null;
+window.downloadStandings = async () => {
     const element = document.getElementById("standingsContainer");
     if (!element) return;
     const originalBg = element.style.background;
-    element.style.background = "#1b1d24";
-    html2canvas(element, { scale: 2, backgroundColor: "#1b1d24" }).then(canvas => {
+    try {
+        if (!window.html2canvas) {
+            standingsRendererPromise ||= new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                script.onload = resolve;
+                script.onerror = () => { script.remove(); standingsRendererPromise = null; reject(new Error('Resim aracı yüklenemedi.')); };
+                document.head.append(script);
+            });
+            await standingsRendererPromise;
+        }
+        element.style.background = "#1b1d24";
+        const canvas = await window.html2canvas(element, { scale: 2, backgroundColor: "#1b1d24" });
         const link = document.createElement("a");
         link.download = `Grandmaster_Puan_${currentTournamentId}.png`;
         link.href = canvas.toDataURL();
         link.click();
-        element.style.background = originalBg;
         window.showToast("Resim indirildi!", "success");
-    });
+    } catch (e) { window.showToast('Puan tablosu resmi hazırlanamadı. Yeniden dene.', 'error'); }
+    finally { element.style.background = originalBg; }
 };
 
 window.openRules = () => {

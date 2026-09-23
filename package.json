@@ -5,11 +5,20 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test tests/analysis.test.mjs",
+    "test": "node --test tests/*.test.mjs",
     "test:browser": "node tests/analysis-browser.cjs",
-    "build:openings": "node scripts/build-openings.cjs"
+    "build:openings": "node scripts/build-openings.cjs",
+    "test:wild-rift:browser": "node tests/wild-rift-browser.cjs",
+    "test:site": "node tests/site-integration.cjs",
+    "update:wild-rift": "node scripts/update-wild-rift.cjs --force"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "cheerio": "^1.2.0",
+    "compression": "^1.8.2",
+    "express": "^4.18.2",
+    "firebase-admin": "^14.4.0"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

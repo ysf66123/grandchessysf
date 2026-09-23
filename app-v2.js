@@ -78,8 +78,9 @@ const [
     };
 
     // Load modules dynamically
-    const cacheBuster = Date.now();
+    const cacheBuster = '20260923-wr1';
     await Promise.all([
+        import(`./modules/admin-access.mjs?v=${cacheBuster}`),
         import(`./modules/auth-social-v2.js?v=${cacheBuster}`),
         import(`./modules/story-mode-v2.js?v=${cacheBuster}`),
         import(`./modules/analysis-v2.js?v=${cacheBuster}`),
@@ -246,7 +247,13 @@ const [
     const quizBuilderList = document.getElementById('quizBuilderList');
     const quizFinalTableBody = document.getElementById('quizFinalTableBody');
     [standingsBody, lobbySlots, crDeckGrid, quizPlayerList, quizBuilderList, quizFinalTableBody].forEach(function(el) {
-        if (el) autoAnimate(el);
+        if (el && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            const animation = autoAnimate(el);
+            const sync = () => el.closest('.view')?.classList.contains('active') && !document.hidden ? animation.enable() : animation.disable();
+            window.addEventListener('gm-view-change', sync);
+            document.addEventListener('visibilitychange', sync);
+            sync();
+        }
     });
 
     // === Global Mute & Fullscreen Layout Settings ===
@@ -705,13 +712,18 @@ const [
     // === Idris Clicker Logic ===
     let idrisCooldown = false;
     let idrisTimer = null;
+    let idrisUnsubscribe = null;
+    let tournamentsUnsubscribe = null;
+    window.stopDashboardListeners = () => {
+        idrisUnsubscribe?.(); idrisUnsubscribe = null;
+        tournamentsUnsubscribe?.(); tournamentsUnsubscribe = null;
+    };
     window.initIdrisListener = () => {
+        if (idrisUnsubscribe || !window.currentUser || window.currentViewId !== 'view-dashboard' || document.hidden) return;
         const docRef = doc(db, "global_stats", "idris_clicker");
-        onSnapshot(docRef, (docSnap) => {
+        idrisUnsubscribe = onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
                 document.getElementById('idrisGlobalCounter').innerText = docSnap.data().count || 0;
-            } else {
-                setDoc(docRef, { count: 0 }, { merge: true });
             }
         });
     };
@@ -855,6 +867,8 @@ const [
 
     // === Global Switch View Layout controller ===
     window.switchView = (id) => {
+        if (id === 'view-wild-rift' && !window.isSiteAdmin?.()) return window.showToast('Bu alan yalnızca yöneticilere açıktır.', 'error');
+        if (!document.getElementById(id)) return;
         window.playGameSound('nav');
         const previousView = window.currentViewId;
         window.currentViewId = id;
@@ -874,6 +888,9 @@ const [
         }
         document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
         document.getElementById(id).classList.add('active');
+        if (id !== 'view-dashboard') window.stopDashboardListeners();
+        else { window.loadMyTournaments?.(); window.initIdrisListener?.(); }
+        window.dispatchEvent(new CustomEvent('gm-view-change', {detail:{previousView,id}}));
         const floatNav = document.querySelector('.floating-container');
         if(id === 'view-lobby' || id === 'view-tournament' || id === 'view-2v2-lobby' || id === 'view-2v2-game' || id === 'view-1v1-lobby' || id === 'view-1v1-game'){
             floatNav.style.display = 'flex';
@@ -901,6 +918,8 @@ const [
     document.getElementById('btnLogout').onclick=()=>{ window.playGameSound('nav'); Swal.fire({ title: 'Çıkış Yap', text: "Oturumu kapatmak istiyor musun?", icon: 'question', showCancelButton: true, confirmButtonColor: '#d4af37', cancelButtonColor: '#555', confirmButtonText: 'Evet, Çık', cancelButtonText: 'İptal', background: 'rgba(30,30,35,0.95)', color: '#fff' }).then((result) => { if (result.isConfirmed) signOut(auth); }); };
 
     document.addEventListener('visibilitychange', function() {
+        if (document.hidden) window.stopDashboardListeners();
+        else if (window.currentViewId === 'view-dashboard') { window.loadMyTournaments?.(); window.initIdrisListener?.(); }
         if (!window.currentUser) return;
         if (document.hidden) { if (window.setCurrentReconnectState) window.setCurrentReconnectState(false); }
         else { if (window.setCurrentReconnectState) window.setCurrentReconnectState(true); }
@@ -919,6 +938,7 @@ const [
     onAuthStateChanged(auth, async u => {
         if(u){
             window.currentUser=u;
+            window.syncWildRiftAccess?.();
             document.getElementById('userInfoSection').style.display='flex';
             document.getElementById('btnLogout').style.display='inline-block';
             document.getElementById('btnNotifications').style.display='inline-flex';
@@ -940,8 +960,10 @@ const [
                 }
             }, 120);
         } else {
+            window.stopDashboardListeners();
             if (window.stopSocialListeners) window.stopSocialListeners();
             window.currentUser=null;
+            window.syncWildRiftAccess?.();
             syncSettingsFormFromCurrentUser();
             document.getElementById('userInfoSection').style.display='none';
             document.getElementById('btnLogout').style.display='none';
@@ -952,13 +974,13 @@ const [
     });
 
     window.loadMyTournaments = () => {
-        if(!window.currentUser) return;
+        if(!window.currentUser || tournamentsUnsubscribe || window.currentViewId !== 'view-dashboard' || document.hidden) return;
         const q = query(collection(db,"tournaments"), where("participantIds","array-contains",window.currentUser.uid));
-        onSnapshot(q, snap=>{
+        tournamentsUnsubscribe = onSnapshot(q, snap=>{
             const l = document.getElementById('myTournamentsList');
             if (!l) return;
-            l.innerHTML='';
-            if(snap.empty) l.innerHTML='<p style="text-align:center; color:var(--text-muted)">Kayıtlı turnuva yok.</p>';
+            const rows=[];
+            if(snap.empty) rows.push('<p style="text-align:center; color:var(--text-muted)">Kayıtlı turnuva yok.</p>');
             snap.forEach(d=>{
                 const t=d.data();
                 const isFin = t.status==='finished';
@@ -969,8 +991,9 @@ const [
                 } else {
                     actionBtn = `<button class="icon-btn secondary" style="border:none" onclick="enterTournament('${d.id}')"><i class="fas fa-chevron-right"></i></button>`;
                 }
-                l.innerHTML += `<div class="history-item"><div><div style="font-weight:bold; ${isFin?'color:var(--text-muted); text-decoration:line-through;':''}">${t.name}</div><div style="font-size:0.8rem; color:var(--text-muted);">${isFin?'Tamamlandı':(t.status==='active'?'Oynanıyor':'Lobi')} #${d.id}</div></div><div>${actionBtn}</div></div>`;
+                rows.push(`<div class="history-item"><div><div style="font-weight:bold; ${isFin?'color:var(--text-muted); text-decoration:line-through;':''}">${window.escapeHtml(t.name)}</div><div style="font-size:0.8rem; color:var(--text-muted);">${isFin?'Tamamlandı':(t.status==='active'?'Oynanıyor':'Lobi')} #${d.id}</div></div><div>${actionBtn}</div></div>`);
             });
+            l.innerHTML=rows.join('');
         });
     };
 

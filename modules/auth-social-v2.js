@@ -1,6 +1,6 @@
 import { getApp, getApps, initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, addDoc, setDoc, doc, onSnapshot, updateDoc, query, orderBy, serverTimestamp, deleteDoc, where, arrayUnion, arrayRemove, getDocs, increment, getDoc, deleteField } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, addDoc, setDoc, doc, onSnapshot, updateDoc, query, orderBy, limitToLast, serverTimestamp, deleteDoc, where, arrayUnion, arrayRemove, getDocs, increment, getDoc, deleteField } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // --- FIREBASE CONFIG & INITIALIZATION ---
 const firebaseConfig = {
@@ -469,6 +469,11 @@ function stopFriendProfileSubscriptions() {
 }
 
 function stopSocialListeners() {
+    if (unsubscribeChat) unsubscribeChat();
+    unsubscribeChat = null;
+    activeChatThreadId = null;
+    lastPresenceSignature = '';
+    lastPresenceWrite = 0;
     if (profileUnsubscribe) profileUnsubscribe();
     if (friendRequestsUnsubscribe) friendRequestsUnsubscribe();
     if (friendInvitesUnsubscribe) friendInvitesUnsubscribe();
@@ -551,13 +556,21 @@ async function ensureUserProfile() {
     });
 }
 
+let lastPresenceWrite = 0;
+let lastPresenceSignature = '';
+let presenceWriting = false;
 async function pushProfilePresence() {
     if (!currentUser) return;
+    if (document.hidden && !window.getCurrentReconnectContext?.()) return;
+    const user = currentUser;
+    const activity = getCurrentPresenceActivity();
+    const signature = JSON.stringify([user.uid, user.displayName, user.photoURL, window.currentViewId, activity]);
+    if (presenceWriting || (signature === lastPresenceSignature && Date.now() - lastPresenceWrite < 20000)) return;
+    presenceWriting = true;
     try {
-        var activity = getCurrentPresenceActivity();
-        await setDoc(doc(db, 'profiles', currentUser.uid), {
-            displayName: currentUser.displayName || 'Oyuncu',
-            avatar: currentUser.photoURL || 'fa-chess-pawn',
+        await setDoc(doc(db, 'profiles', user.uid), {
+            displayName: user.displayName || 'Oyuncu',
+            avatar: user.photoURL || 'fa-chess-pawn',
             lastActiveAt: Date.now(),
             lastView: window.currentViewId,
             activeMode: activity.activeMode,
@@ -566,7 +579,9 @@ async function pushProfilePresence() {
             activeGameStatus: activity.activeGameStatus,
             activeRole: activity.activeRole
         }, { merge: true });
-    } catch (e) {}
+        lastPresenceWrite = Date.now();
+        lastPresenceSignature = signature;
+    } catch (e) {} finally { presenceWriting = false; }
 }
 window.pushProfilePresence = pushProfilePresence;
 
@@ -577,6 +592,7 @@ function startProfileHeartbeat() {
 }
 
 function syncFriendProfileSubscriptions() {
+    if (document.hidden) return;
     var friendIds = (currentProfileData && Array.isArray(currentProfileData.friends)) ? currentProfileData.friends : [];
     var activeMap = {};
     friendIds.forEach(function(uid) { activeMap[uid] = true; });
@@ -780,6 +796,7 @@ window.openNotificationAction = async function(notificationId) {
 };
 
 function renderFriendsView() {
+    if (document.hidden || window.currentViewId !== 'view-friends') return;
     renderFriendRequests();
     renderFriendInvites();
     renderFriendsList();
@@ -1383,7 +1400,7 @@ window.selectFriend = function(uid) {
     if (dmThreadUnsubscribe) dmThreadUnsubscribe();
     var threadId = getFriendThreadId(currentUser.uid, uid);
     dmThreadUnsubscribe = onSnapshot(
-        query(collection(db, 'friend_threads', threadId, 'messages'), orderBy('createdAtMs', 'asc')),
+        query(collection(db, 'friend_threads', threadId, 'messages'), orderBy('createdAtMs', 'asc'), limitToLast(100)),
         function(snapshot) {
             currentDmMessages = snapshot.docs.map(function(docSnap) { return docSnap.data(); });
             renderFriendsView();
@@ -1392,6 +1409,24 @@ window.selectFriend = function(uid) {
     renderFriendsView();
 };
 window.selectFriend = selectFriend;
+
+function syncVisibleSocialSubscriptions() {
+    if (document.hidden || window.currentViewId !== 'view-friends') {
+        if (dmThreadUnsubscribe) dmThreadUnsubscribe();
+        dmThreadUnsubscribe = null;
+    } else if (selectedFriendUid && !dmThreadUnsubscribe && currentUser) {
+        selectFriend(selectedFriendUid);
+    }
+    if (document.hidden) {
+        Object.values(friendProfileUnsubscribers).forEach(unsubscribe => unsubscribe());
+        friendProfileUnsubscribers = {};
+    } else {
+        syncFriendProfileSubscriptions();
+        renderFriendsView();
+    }
+}
+window.addEventListener('gm-view-change', syncVisibleSocialSubscriptions);
+document.addEventListener('visibilitychange', syncVisibleSocialSubscriptions);
 
 var dmInputArea = document.getElementById('dmInputArea');
 if (dmInputArea) {
@@ -1606,21 +1641,24 @@ if (!window.__gmCoreAuthManaged) {
 // renderAvatars and avatarList are provided by app.js
 
 window.initChat = function(tid) {
+    if (activeChatThreadId === tid && unsubscribeChat) return;
+    if (unsubscribeChat) unsubscribeChat();
     activeChatThreadId = tid;
     const cb = document.getElementById('chatToggleBtn');
     if (cb) cb.style.display = 'flex';
-    const q=query(collection(db,`tournaments/${tid}/messages`),orderBy('createdAt','asc'));
+    const q=query(collection(db,`tournaments/${tid}/messages`),orderBy('createdAt','asc'),limitToLast(100));
     unsubscribeChat=onSnapshot(q,s=>{
         const d=document.getElementById('chatMessages');
         if (!d) return;
-        d.innerHTML='';
+        const rows=[];
         let n=false;
         s.forEach(x=>{
             const m=x.data();
-            const me=m.uid===currentUser.uid;
-            d.innerHTML+=`<div style="text-align:${me?'right':'left'}; margin-bottom:5px;"><strong style="color:${me?'var(--accent)':'var(--primary)'}; font-size:0.8rem;">${m.user}</strong><div style="background:${me?'var(--primary)':'rgba(255,255,255,0.1)'}; color:${me?'#000':'var(--text-main)'}; display:inline-block; padding:5px 10px; border-radius:10px; margin-top:2px; max-width:80%; word-break:break-word;">${m.text}</div></div>`;
+            const me=m.uid===currentUser?.uid;
+            rows.push(`<div style="text-align:${me?'right':'left'}; margin-bottom:5px;"><strong style="color:${me?'var(--accent)':'var(--primary)'}; font-size:0.8rem;">${escapeHtml(m.user)}</strong><div style="background:${me?'var(--primary)':'rgba(255,255,255,0.1)'}; color:${me?'#000':'var(--text-main)'}; display:inline-block; padding:5px 10px; border-radius:10px; margin-top:2px; max-width:80%; word-break:break-word;">${escapeHtml(m.text)}</div></div>`);
             n=true;
         });
+        d.innerHTML=rows.join('');
         if (window.scrollChat) window.scrollChat();
         const cw = document.getElementById('chatWidget');
         if(n && cw && cw.style.display==='none') {
