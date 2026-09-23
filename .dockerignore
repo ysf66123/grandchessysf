@@ -8,3 +8,5 @@ tests
 solo-live-sync-v1.1.6 (1)
 data/*.previous
 data/*.tmp
+.wr-source-cache
+data/.wild-rift-status.json

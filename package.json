@@ -10,7 +10,8 @@
     "build:openings": "node scripts/build-openings.cjs",
     "test:wild-rift:browser": "node tests/wild-rift-browser.cjs",
     "test:site": "node tests/site-integration.cjs",
-    "update:wild-rift": "node scripts/update-wild-rift.cjs --force"
+    "update:wild-rift": "node scripts/update-wild-rift.cjs --force",
+    "update:wild-rift:prices": "node scripts/update-wild-rift-prices.cjs"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

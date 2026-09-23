@@ -33,6 +33,21 @@ Firebase özel anahtarları tarayıcıya veya GitHub Pages'e konulmaz. Token imz
 
 ## Veri ve karar yöntemi
 
+### 23 Eylül 2026 geliştirmeleri
+
+- İlk üç aday; dengeli, koridor, takım ve güvenli seçim öncelikleri. İstenirse tüm adaylar açılır. Tecrübe en fazla +6 katkı yapar. Aynı anda üç aday karşılaştırılır.
+- Kendi şampiyonu takım arkadaşı gibi uyum hesabına katılmaz. Karşılıklı çelişen rehberlerde eşleşme bonusu verilmez. Eski, hatalı veya yedi gündür doğrulanmayan rehberin karşı seçim bilgisi güncel kanıt sayılmaz.
+- Çok rollü rakipte **Koridoru henüz belli değil** işareti olası yerleşimleri hesaplar. Sayısal kazanma olasılığı atanmaz; desteklenen en zor senaryo kullanılır. Çakışan yerleşimde eşleşme bonusu kapatılır. ⇄ düğmesi koridorları taşır veya dolu yuvaları yer değiştirir.
+- Satın alınmış eşyalar ve ilk iki ana eşya korunurken kaynak alternatifleri elle seçilebilir. Aynı roldeki birden fazla kaynak dizilimi seçilebilir; değiştirince eski satın alma işaretleri temizlenir.
+- Güncel tam eşya fiyatları kaynak kataloğundan alınır. Son kontrolde 116 eşya kaydının 96'sı için fiyat doğrulandı. Kalan eşyalara fiyat uydurulmaz. Elindeki parçaları ve altını girebilirsin; parça tarifleri doğrulanmadığı için parça değerleri düşülmez ve kesin tamamlama bedeli verilmez.
+- Rakibin aldığı eşyaları elle ekleyebilirsin. Güncel kaynakta bulunan kritik, zırh ve büyü direnci bilgileri tehdit haritasında gösterilir. Kritik karşıtı kurallar yalnızca şampiyonun normal saldırı etiketine bakarak tetiklenmez. Eşyanın geçici etkileri, rünler veya oyuncunun gerçek toplam direnci simüle edilmez.
+- Oyun planında rakibin şampiyon ilkeleri, erken dalga/takas bölümü ve partnerle birlikte ikiye iki değerlendirme bulunur. Bu, tüm şampiyon çiftlerini kapsayan uzman onaylı eşleşme veritabanı değildir.
+- Son 30 değişikliği geri/ileri alma; hesap başına cihazda sekiz isimli kayıt; son 50 öneri değerlendirmesini yerel saklama ve JSON indirme. Geri bildirim sunucuya otomatik gönderilmez veya sıralamayı kendiliğinden değiştirmez.
+- Veri kalitesi paneli rehber güncelliğini ve kaynak tutarsızlıklarını ayırır. Normalleştirilen yedi eşyalı kaynaklar açıkça işaretlenir. Tek topluluk sağlayıcısı bağımsız iki kaynakmış gibi sunulmaz.
+- Yerel ekran hazırlama süreleri ve tarayıcının kaynak aktarım ölçümleri gösterilir. Bunlar gerçek kullanıcı izleme sistemi veya bütün sitenin hız garantisi değildir; dışarı veri göndermez.
+
+Sıralama yöntemi sürüm 2: temel ağırlıklar korunur; takım katkısı 24 ile sınırlıdır. Tercihe göre koridor/takım/risk katkısı ağırlıkları değişir. `balanced`: 1/1/1; `lane`: 1,5/0,5/1; `team`: 0,75/1,5/1; `safe`: 1,25/0,75/2. Bunlar kalibre edilmiş kazanma modeli değildir. Ekrandaki karar dayanağında ham katkılar ve kaynak kapsamı görünür.
+
 - Resmî Türkçe yama listesi: https://wildrift.leagueoflegends.com/tr-tr/news/tags/patch-notes/
 - İstatistik: https://www.wildriftfire.com/stats — dört lig grubu, koridor bazında genel kazanma/seçilme/yasaklanma oranları; örneklem sayısı kaynakta belirtilmemiştir.
 - Şampiyon havuzu ve meta: https://www.wildriftfire.com/tier-list
@@ -48,6 +63,16 @@ Eşyalar şampiyon/rol rehberindeki dizilimden gelir. İlk iki ana eşya ve sat�
 Koridor açıklamaları şampiyon özellikleri ve elle tanımlanmış oyun ilkelerinden üretilir; canlı oyundaki altın, bekleme süresi veya rakibin hareketleri okunmaz. Bölge farkı, lig, eksik seçim ve veri yaşı ekranda açık tutulur. Şampiyon, eşya ve rün adları Türkçeleştirilmiştir; yeni ve henüz çevrilmemiş kaynak girdileri İngilizce açıklama yerine çeviri beklediğini bildirir.
 
 ## Güncelleme ve hata davranışı
+
+Güncelleme aşaması ve son on kontrol, veri dosyasının yanında `.wild-rift-status.json` dosyasına yazılır; API yalnızca yöneticiye döndürür. Sunucu yarım işlemden sonra yeniden başlarsa önceki kontrolün yarım kaldığı bildirilir. Hem düğmeyle hem zamanlanmış kontroller aynı durumu günceller. Dosya ve kaynak önbelleği yayın betiği/Docker paketinden çıkarılmıştır.
+
+Kaynak `ETag` veya `Last-Modified` sağlıyorsa koşullu HTTP isteği gönderilir. 304 yanıtında önceki içerik kullanılır; kaynak hatasında eski içerik yeni kontrol yapılmış gibi kabul edilmez. Önbellek varsayılan `.wr-source-cache` dizinindedir; kalıcı disk için `WR_CACHE_DIR` ayarlanabilir. `npm run update:wild-rift:prices` sadece fiyatları günceller; bunu başka bir güncelleme süreci çalışırken başlatma. Dosya deposu tek sunucu örneği/süreç içindir.
+
+### Haricî zamanlayıcı bağlantısı
+
+Sıfıra ölçeklenen servis için `POST /api/wild-rift/scheduled-refresh` uç noktası eklendi. Sunucuda en az 32 karakterli rastgele `WR_SCHEDULER_SECRET` tanımla. Zamanlayıcı HTTPS adresine `Authorization: Bearer SUNUCU_SIRRI` başlığı ile istek gönderir. İşlem bitene kadar isteği açık tutar; zamanlayıcı ve yayın sağlayıcısının süre sınırı birkaç dakikalık kaynak kontrolünü karşılamalıdır. Başarılı cevap yama ve kontrol tarihini, başarısız cevap 503 durumunu taşır. Tekrarlanan yakın kontroller 15 dakikalık aralık kuralını kullanır; eşzamanlı kontroller aynı işte birleşir.
+
+Sır yalnızca sunucu ve zamanlayıcıda tutulur; `site-config.js` veya GitHub Pages'e yazılmaz. Uç noktanın kodunun bulunması bir bulut servisi veya zamanlayıcının kurulduğu anlamına gelmez. Yayın hedefi, kalıcı disk, HTTPS adresi ve zamanlayıcı ayrıca yapılandırılmalıdır. Bu çalışma canlı servise dağıtım yapmadı.
 
 Yalnızca sabit kaynaklardan sunucu tarafında veri alınır; iki eşzamanlı istek ve kısa aralıklarla kaynak yükü sınırlandırılır. İstatistik geçmişinin tamamı tarayıcıya taşınmaz. Şampiyon/rol/istatistik şemaları ve altı eşyalık dizilimler doğrulanır. Yeni dosya geçici dosyada hazırlanır, sonra atomik olarak değiştirilir. Önceki paket `.previous` dosyasında tutulur. Kaynak yapısı bozulursa eski paket korunur. Tekil rehber hataları ilgili rehberi eski tarih ve hata işaretiyle tutar; yaygın hata varsa yeni paket yayımlanmaz. Kaynak veya kullanım şartları değişirse bağlayıcı yeniden değerlendirilmelidir.
 

@@ -1,4 +1,4 @@
-const {readSnapshot,updateSnapshot}=require('./wild-rift-store.cjs');
+const {readSnapshot,updateSnapshot,getUpdateStatus}=require('./wild-rift-store.cjs');
 const BOOTSTRAP_ADMIN='yusar646@gmail.com';
 function adminClaims(token){
   const ids=(process.env.WR_ADMIN_UIDS||'').split(',').map(s=>s.trim()).filter(Boolean);
@@ -11,7 +11,7 @@ async function verifyToken(token){
   if(!getApps().length)initializeApp({projectId:process.env.FIREBASE_PROJECT_ID||'chess-14580'});
   return require('firebase-admin/auth').getAuth().verifyIdToken(token);
 }
-function mountApi(app,{verify=verifyToken,store={readSnapshot,updateSnapshot}}={}){
+function mountApi(app,{verify=verifyToken,store={readSnapshot,updateSnapshot,getUpdateStatus}}={}){
   const origins=(process.env.WR_ALLOWED_ORIGINS||'https://ysf66123.github.io').split(',').map(s=>s.trim());
   app.use('/api/wild-rift',(req,res,next)=>{
     const origin=req.headers.origin;
@@ -21,6 +21,16 @@ function mountApi(app,{verify=verifyToken,store={readSnapshot,updateSnapshot}}={
     res.set('Cache-Control','private, no-store');
     if(req.method==='OPTIONS')return res.sendStatus(204);
     next();
+  });
+  // External schedulers can wake a sleeping host without a user's Firebase session.
+  // The shared secret is server-only; the browser never receives it.
+  app.post('/api/wild-rift/scheduled-refresh',async(req,res)=>{
+    const secret=process.env.WR_SCHEDULER_SECRET,received=req.headers.authorization?.replace(/^Bearer /,'');
+    if(!secret||secret.length<32)return res.status(503).json({error:'Dış zamanlayıcı yapılandırılmamış.'});
+    const a=Buffer.from(secret),b=Buffer.from(received||'');
+    if(a.length!==b.length||!require('node:crypto').timingSafeEqual(a,b))return res.status(401).json({error:'Zamanlayıcı yetkisi gerekli.'});
+    try{const data=await store.updateSnapshot();res.json({ok:true,patch:data.latestPatch.version,checkedAt:data.checkedAt});}
+    catch{res.status(503).json({error:'Kaynak güncellenemedi; son doğrulanmış veri korundu.'});}
   });
   app.use('/api/wild-rift',async(req,res,next)=>{
     const bearer=req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
@@ -37,7 +47,10 @@ function mountApi(app,{verify=verifyToken,store={readSnapshot,updateSnapshot}}={
     }
     res.status(job?202:200).json({running:!!job,error:jobError});
   });
-  app.get('/api/wild-rift/status',(req,res)=>res.json({running:!!job,finishedAt,error:jobError}));
+  app.get('/api/wild-rift/status',async(req,res)=>{
+    try{const durable=store.getUpdateStatus?await store.getUpdateStatus():{};res.json({...durable,running:!!job||!!durable.running,finishedAt:Math.max(finishedAt,durable.finishedAt||0),error:(durable.finishedAt||0)>=finishedAt?durable.error||null:jobError||null});}
+    catch{res.status(503).json({error:'Güncelleme durumu okunamadı.'});}
+  });
   app.use('/api/wild-rift',(_,res)=>res.status(404).json({error:'İşlem bulunamadı.'}));
 }
 function scheduleUpdates(){
