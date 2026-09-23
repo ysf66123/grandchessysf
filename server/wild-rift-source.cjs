@@ -12,7 +12,17 @@ async function fetchText(url) {
   const headers={'User-Agent':'Grandmaster-WildRift/1.0 (cached factual game data)'};
   if(cached?.etag)headers['If-None-Match']=cached.etag;
   if(cached?.modified)headers['If-Modified-Since']=cached.modified;
-  const response = await fetch(url, { signal:AbortSignal.timeout(20000), headers });
+  let response;
+  for(let attempt=0;attempt<2;attempt++){
+    try{
+      response=await fetch(url,{signal:AbortSignal.timeout(20000),headers});
+      if(attempt===0&&[408,429,502,503,504].includes(response.status)){await response.body?.cancel();await new Promise(r=>setTimeout(r,1500));continue;}
+      break;
+    }catch(e){
+      if(attempt)throw new Error(`${new URL(url).hostname} kaynağına bağlanılamadı; mevcut veri korunuyor.`);
+      await new Promise(r=>setTimeout(r,1500));
+    }
+  }
   if(response.status===304&&cached)return cached.text;
   if (!response.ok) throw new Error(`Kaynak yanıtı: ${response.status}`);
   const text = await response.text();

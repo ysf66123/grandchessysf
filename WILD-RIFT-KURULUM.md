@@ -18,7 +18,7 @@ Mevcut sitedeki yönetici e-posta hesabı, Firebase tarafından imzası doğrula
 
 ## GitHub Pages üzerinde yayın
 
-Kaynak taraması bilgisayarda yapılır. GitHub yalnızca siteyi yayımlar; `.github/workflows/wild-rift-pages.yml` artık zamanlanmış veri taraması içermez.
+Kaynak taraması bilgisayarda yapılır. GitHub yalnızca siteyi standart Pages yayınıyla yayımlar. Özel Actions iş akışı kaldırıldı; Pages kaynağı `main` dalındaki `/ (root)` klasörüdür.
 
 - **VERI-GUNCELLEME-BASLAT.bat:** Otomatik güncelleyiciyi açar. Pencere açık kaldıkça altı saatte bir kaynak kontrolü yapılır. Bilgisayar uykuya giderse/kapalıysa işlem durur; yeniden başlatıldığında süresi gelen kontrol yapılır. Pencereyi kapatmak işlemi durdurur.
 - **VERI-SIMDI-GUNCELLE.bat:** Hemen bir tam kontrol yapar ve doğrulanan veriyi gönderir.
@@ -30,9 +30,9 @@ Aynı veri tekrar commit edilmez. SHA kontrolü eşzamanlı değişikliklerin ü
 
 Canlı sitedeki **Güncel verileri kontrol et** düğmesi yayımlanan son paketi alır; uzaktan bilgisayarını açmaz. Bilgisayar kapalıyken site son yayımlanan verilerle çalışmaya devam eder.
 
-**Bilinen yayın engeli:** GitHub hesabında faturalandırma kilidi varken veriler depoya gönderilebilse de Pages yayını başarısız olabilir. Veri taramasını bilgisayara taşımak bu hesap kilidini kaldırmaz. GitHub işi artık yalnızca yayın yapar.
+Özel Actions iş akışı hesap kilidine takıldığı için standart Pages yayını kullanılır. GitHub’a gönderim ile Pages dağıtımı farklı aşamalardır; Pages başarısı ayrıca kontrol edilir. Hesabın ödeme kısıtı değiştirilmez.
 
-Yayın dosyaları `node scripts/build-pages.cjs` ile açık dosya listesinden hazırlanır; sunucu, log, eski veri, önbellek ve kimlik dosyaları içermez. Admin arayüzü hesap yetkisiyle gizlenir; statik veri paketi herkese açıktır.
+Standart Pages, herkese açık depodaki ana dizini yayımlar. Gönderim betiği yerel kimlik dosyalarını, önbelleği, logları, kilitleri ve eski veri paketlerini depoya kopyalamaz. `.nojekyll` dosyası Jekyll işlemesini kapatır. `node scripts/build-pages.cjs` ayrıca yalnızca site varlıklarını içeren taşınabilir paket hazırlayabilir. Admin arayüzü hesap yetkisiyle gizlenir; statik veri paketi ve depo kaynak kodu herkese açıktır.
 
 ### İsteğe bağlı Node servisi
 
@@ -130,4 +130,4 @@ RiftGG satırları kaynak tarihiyle gösterilir; yama, lig, rol ve örneklem bir
 Bu kaynaklar uzman kalibrasyonu, canlı hasar simülasyonu veya her şampiyon çiftine özel profesyonel rehber yerine geçmez. Yerel geri bildirimler otomatik olarak dışarı gönderilmez.
 
 
-23 Eylül yayın kontrolü: Kod GitHub'a gönderildi, Pages kaynağı Actions olarak ayarlandı. GitHub hesabındaki faturalandırma kilidi ilk işin başlamasını engelledi. Kilit giderildikten sonra Actions ekranında **Site yayını (veriler bilgisayardan) → Run workflow** çalıştırılmalı. Canlı güncelleme bu işin başarıyla bitmesine bağlıdır.
+Son mimari: kaynak taraması ve veri gönderimi bilgisayarda; yayın `main / (root)` üzerinden standart GitHub Pages ile. Özel veri/yayın Actions iş akışı kaldırıldı.

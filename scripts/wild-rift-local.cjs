@@ -10,7 +10,7 @@ async function tick(force=false){
   const data=JSON.parse(await fs.readFile(file,'utf8'));
   if(force||Date.now()-Date.parse(data.checkedAt)>=6*3600000){
    console.log(new Date().toLocaleString('tr-TR'),'Kaynak kontrolü başlıyor.');
-   await updateSnapshot({force:true,onProgress:(n,total)=>{if(n%20===0||n===total)console.log(`${n}/${total} rehber kontrol edildi.`);}});
+   await updateSnapshot({force:true,onProgress:(n,total,stage)=>{if(n%20===0||n===total)console.log(`${stage==='ek-kaynaklar'?'Ek kaynaklar':'Rehberler'}: ${n}/${total} kontrol edildi.`);}});
   }else{
    const status=await fs.readFile(statusFile(file),'utf8').then(JSON.parse).catch(()=>null);
    if(!status||status.state==='pending')await withUpdateLock(file,()=>syncSnapshot(file));

@@ -1,10 +1,12 @@
 # Güncel karar: bilgisayarda tarama, GitHub üzerinde yayın
 
-Kullanıcının son isteği uygulandı: GitHub zamanlanmış taraması kaldırıldı. Yerel tam/fiyat/ek kaynak güncellemeleri, başarılı doğrulamadan sonra yalnızca veri JSON dosyasını GitHub Contents API üzerinden gönderir. Mevcut Git Credential Manager kullanılır. SHA/yama/zaman denetimi, işlem kilidi, aynı veriyi atlama ve beş dakikalık başarısız gönderim yeniden denemesi eklendi. Yerel `.wr-local-sync.json` yayına girmez.
+Kullanıcının son isteği uygulandı: GitHub özel Actions iş akışı kaldırıldı. Yayın standart Pages `main / (root)` üzerinden yapılır. Yerel tam/fiyat/ek kaynak güncellemeleri, başarılı doğrulamadan sonra yalnızca veri JSON dosyasını GitHub Contents API üzerinden gönderir. Mevcut Git Credential Manager kullanılır. SHA/yama/zaman denetimi, işlem kilidi, aynı veriyi atlama ve beş dakikalık başarısız gönderim yeniden denemesi eklendi. Yerel `.wr-local-sync.json` yayına girmez.
 
-`VERI-GUNCELLEME-BASLAT.bat` açık bırakılırsa altı saatlik otomatik tarama; `VERI-SIMDI-GUNCELLE.bat` anlık tarama. İşletim sistemi başlangıç görevi kurulmadı. Ayrıntılar WILD-RIFT-KURULUM.md içinde. 72 otomatik test ve tarayıcı regresyonu geçti.
+`VERI-GUNCELLEME-BASLAT.bat` açık bırakılırsa altı saatlik otomatik tarama; `VERI-SIMDI-GUNCELLE.bat` anlık tarama. İşletim sistemi başlangıç görevi kurulmadı. Ayrıntılar WILD-RIFT-KURULUM.md içinde. 74 otomatik test ve tarayıcı regresyonu geçti.
 
-GitHub faturalandırma kilidi kaynak taramasını durdurmaz, fakat Pages dağıtımını hâlâ durdurabilir. GitHub'a gönderimi canlı yayının başarısı diye raporlama.
+Özel Actions kilide takılırken standart Pages işinin başarıyla çalışabildiği API geçmişinden doğrulandı. Son yayın sonucu ayrıca kontrol edilmelidir. GitHub’a gönderimi canlı yayının başarısı diye raporlama.
+
+Gerçek yerel tarama tamamlandı: 142 şampiyon, 181 rol rehberi, yama 7.3, ana rehber hatası yok. Verinin tek başına otomatik GitHub gönderimi `245d10556d53d0e61e0f1d700aae0f763b45adfd` commit’iyle doğrulandı. Hwei artık ana kaynak kataloğunda bulundu; aşağıdaki eski oturum notlarındaki eksik Hwei bilgisi güncelliğini yitirmiştir. Otomatik güncelleyici Windows başlangıcına eklenmedi; başlatma dosyası açık tutulur.
 
 ---
 

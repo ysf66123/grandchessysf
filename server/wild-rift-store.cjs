@@ -5,12 +5,15 @@ const {enrichItems}=require('./wild-rift-items.cjs');
 const {collectEvidence}=require('./wild-rift-providers.cjs');
 const {syncSnapshot,withUpdateLock,statusFile}=require('./wild-rift-local-sync.cjs');
 const DATA_FILE=process.env.WR_DATA_FILE || path.join(__dirname,'../data/wild-rift.json');
-let inFlight=null, current=null;
+let inFlight=null, current=null,loadedStamp=null;
 const STATUS_FILE=path.join(path.dirname(DATA_FILE),'.wild-rift-status.json');
 let status=null;
 async function getUpdateStatus(){
-  if(!status){
-    try{status=JSON.parse(await fs.readFile(STATUS_FILE,'utf8'));if(status.running){status.running=false;status.error='Önceki kontrol sunucu kapanırken yarım kaldı. Son sağlam paket korunuyor.';}}
+  if(!status||!inFlight){
+    try{status=JSON.parse(await fs.readFile(STATUS_FILE,'utf8'));if(status.running){
+      try{const lock=JSON.parse(await fs.readFile(path.join(path.dirname(DATA_FILE),'.wild-rift-update.lock'),'utf8'));process.kill(lock.pid,0);}
+      catch{status.running=false;status.error='Önceki kontrol sunucu kapanırken yarım kaldı. Son sağlam paket korunuyor.';}
+    }}
     catch{status={running:false,finishedAt:0,error:null,events:[]};}
   }
   const sync=await fs.readFile(statusFile(DATA_FILE),'utf8').then(JSON.parse).catch(()=>null);
@@ -21,7 +24,8 @@ async function saveStatus(){
   await fs.writeFile(STATUS_FILE+'.tmp',JSON.stringify(status));await fs.rename(STATUS_FILE+'.tmp',STATUS_FILE);
 }
 async function readSnapshot() {
-  if (!current){const candidate=JSON.parse(await fs.readFile(DATA_FILE,'utf8'));validateSnapshot(candidate);current=candidate;}
+  const info=await fs.stat(DATA_FILE),stamp=info.mtimeMs+':'+info.size;
+  if (!current||loadedStamp!==stamp){const candidate=JSON.parse(await fs.readFile(DATA_FILE,'utf8'));validateSnapshot(candidate);current=candidate;loadedStamp=stamp;}
   return current;
 }
 function validateSnapshot(data) {
@@ -97,7 +101,7 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
     catch{itemCatalog={...(old?.itemCatalog||{}),refreshFailed:true};for(const [id,item] of Object.entries(items))if(old?.items[id]?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats'])item[key]=old.items[id][key];}
     const data={schema:1,checkedAt,latestPatch,stats,champions,items,itemCatalog,changes:changed,failures,source:source.BASE,methodologyVersion:2};
     for(const [id,item] of Object.entries(items)){if(old?.items[id]?.official)item.official=old.items[id].official;if(old?.items[id]?.removedIn)item.removedIn=old.items[id].removedIn;}
-    await collectEvidence(data,{previous:old?.evidence,onProgress:(n,total)=>Object.assign(status,{phase:'Ek kaynak kontrolü',completed:n,total})});
+    await collectEvidence(data,{previous:old?.evidence,onProgress:(n,total)=>{Object.assign(status,{phase:'Ek kaynak kontrolü',completed:n,total});onProgress(n,total,'ek-kaynaklar');}});
     data.methodologyVersion=3;data.localRevisionAt=new Date().toISOString();
     validateSnapshot(data);
     await fs.mkdir(path.dirname(DATA_FILE),{recursive:true});
