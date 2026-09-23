@@ -118,3 +118,6 @@ Riot eşya fiyatları ve tarifleri önceliklidir. WildRiftFire temel rol dizilim
 RiftGG satırları kaynak tarihiyle gösterilir; yama, lig, rol ve örneklem birlikte doğrulanmadığı için şu an öneri puanına katılmaz. Aynı Çin verisinin farklı sitelerde yayımlanması bağımsız maç örneklemi sayılmaz. LoLegacy açık API sunmadığı için dış uygulama bağlantısıdır. Kilitli/ücretli içerik çekilmez.
 
 Bu kaynaklar uzman kalibrasyonu, canlı hasar simülasyonu veya her şampiyon çiftine özel profesyonel rehber yerine geçmez. Yerel geri bildirimler otomatik olarak dışarı gönderilmez.
+
+
+23 Eylül yayın kontrolü: Kod GitHub'a gönderildi, Pages kaynağı Actions olarak ayarlandı. GitHub hesabındaki faturalandırma kilidi ilk işin başlamasını engelledi. Kilit giderildikten sonra Actions ekranında **Site yayını ve Wild Rift verileri → Run workflow** çalıştırılmalı. Canlı güncelleme bu işin başarıyla bitmesine bağlıdır.

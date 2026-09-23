@@ -67,7 +67,7 @@ async function collectEvidence(data,{previous=null,onProgress=()=>{},guideLimit=
  const checkedAt=new Date().toISOString(),result={schema:1,checkedAt,providers:SOURCES.map(s=>({...s,status:'pending'})),items:[],relationships:[],matchups:[],champions:[],statistics:[]};
  const provider=id=>result.providers.find(p=>p.id===id);
  for(const i of Object.values(data.items))if(i.costSource?.includes('wildriftfire.com')&&Number.isFinite(i.cost))result.items.push({id:i.id,name:i.name,cost:i.cost,source:'wildriftfire',patch:i.costPatch,checkedAt:i.costCheckedAt,url:i.costSource});
- const run=async(id,task)=>{try{await task();Object.assign(provider(id),{status:'available',checkedAt});}catch(e){Object.assign(provider(id),{status:'unavailable',checkedAt,message:e.message});}};
+ const run=async(id,task)=>{try{await task();Object.assign(provider(id),{status:'available',checkedAt});}catch(e){Object.assign(provider(id),{status:'unavailable',checkedAt,message:'Kaynağın yanıtı doğrulanamadı. Varsa önceki kayıtlar kendi tarihleriyle korunuyor.'});}};
  Object.assign(provider('wildriftfire'),{status:'available',checkedAt:data.checkedAt,patch:data.latestPatch.version,champions:data.champions.length});
  Object.assign(provider('lolegacy'),{status:'manual',message:'Mobil uygulama; doğrulanmış açık veri arayüzü bulunmadı. Otomatik veri kaynağı olarak kullanılmıyor.'});
  const officialUrl=`https://wildrift.leagueoflegends.com/en-us/news/game-updates/wild-rift-patch-notes-${data.latestPatch.version.replace('.','-')}/`;

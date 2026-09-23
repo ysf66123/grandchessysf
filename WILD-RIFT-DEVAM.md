@@ -31,3 +31,9 @@ Kaynak taraması: `npm run update:wild-rift`. Fiyat-only komutu tam kaynak taram
 - Geri bildirim cihazda kalır; dışarı otomatik gönderim veya uzman incelemesi yok.
 
 Yayın sonucu son kullanıcı mesajında ve GitHub Actions geçmişinde doğrulanır.
+
+## Canlı yayın engeli
+
+Kod `28ccf78` commit'iyle GitHub main dalına gönderildi. Pages yayın kaynağı başarıyla `workflow` yapıldı. İlk yayın işi: https://github.com/ysf66123/grandchessysf/actions/runs/35859364706
+
+GitHub iş açıklaması: “The job was not started because your account is locked due to a billing issue.” Bu hesap kilidi çözülmeden Actions dağıtımı ve zamanlanmış tarama çalışmaz. Kullanıcının GitHub faturalandırma engelini çözmesi gerekir; ödeme veya hesap ayarı değiştirilmedi. Engel kalkınca Actions → Site yayını ve Wild Rift verileri → Run workflow ile tarama ve yayın birlikte başlatılır. Eski canlı yayının güncellendiği iddia edilmemelidir.

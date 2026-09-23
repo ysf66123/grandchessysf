@@ -93,7 +93,7 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
     try{itemCatalog=await enrichItems(items,{previous:old?.items,onProgress:(n,total)=>Object.assign(status,{phase:'Eşya fiyatları',completed:n,total})});}
     catch{itemCatalog={...(old?.itemCatalog||{}),refreshFailed:true};for(const [id,item] of Object.entries(items))if(old?.items[id]?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats'])item[key]=old.items[id][key];}
     const data={schema:1,checkedAt,latestPatch,stats,champions,items,itemCatalog,changes:changed,failures,source:source.BASE,methodologyVersion:2};
-    for(const [id,item] of Object.entries(items))if(old?.items[id]?.official)item.official=old.items[id].official;
+    for(const [id,item] of Object.entries(items)){if(old?.items[id]?.official)item.official=old.items[id].official;if(old?.items[id]?.removedIn)item.removedIn=old.items[id].removedIn;}
     await collectEvidence(data,{previous:old?.evidence,onProgress:(n,total)=>Object.assign(status,{phase:'Ek kaynak kontrolü',completed:n,total})});
     data.methodologyVersion=3;
     validateSnapshot(data);
