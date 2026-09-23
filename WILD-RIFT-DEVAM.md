@@ -1,3 +1,17 @@
+## Eşya motoru güncellemesi — 24 Eylül 2026
+
+Yeni `wild-rift-build-planner.mjs`, `wild-rift-item-rules.mjs`, `wild-rift-build-ui.mjs`: koridor/takım savaşı aşaması, hayatta kalma/hasar önceliği, takım karşı eşya kapsamı, gözlenen rakip nitelikleri ve etkileri. En fazla iki otomatik değişiklik; ilk iki ana eşya ve satın almalar korunur. Aynı yuva alternatifleri sınırlı kombinasyon aramasıyla değerlendirilir. Türkçe gerekçe, ödünleşim, karşılanamayan ihtiyaç, altı yuvalı karşılaştırma ve eşya niteliği ayrıntıları var.
+
+98/98 Fire eşya nitelik/etki/fiyat kontrolü başarılı, yama 7.3. Etki ve niteliklerin ayrı yama/zaman damgaları var; resmî istatistikler öncelikli. Fiyat güncelleme komutu karşılaştırma panelindeki Fire gözlemlerini de günceller. Mevcut doğrulanmış parça etkisi yoksa erken antiheal parçası gösterilmez. Sınırsız hasar optimizasyonu veya uzman kalibrasyonu iddiası yoktur.
+
+88 birim/HTTP testi, genişletilmiş Wild Rift tarayıcı testi ve statik paket üzerinde gerçek site entegrasyonu geçti. 360 piksel mobil kontrol, sıfır seçim veri isteği, admin/çıkış kontrolleri geçti. Varlık sürümü `20260924-items1`. Aşağıdaki yayın kaydı önceki sürüme aittir; yeni yayının canlı sonucu ayrıca doğrulanır.
+
+## Önceki canlı doğrulama — 24 Eylül 2026
+
+Standart Pages yayını başarılı: https://github.com/ysf66123/grandchessysf/actions/runs/35919861282 (20ca09d). Canlı JSON indirildi ve yerel paketle eşleşen `localRevisionAt=2026-09-23T20:59:57.963Z`, 142 şampiyon doğrulandı. Yalnız veri dosyasını gönderen 245d105 commit’inin Pages işi de başarılı. Özel Actions faturalandırma hatası artık bu yayın yolunu engellemiyor; eski kırmızı işler tarihsel kayıttır.
+
+İlk tek seferlik yerel tarama/gönderim tamamlandı. Kalıcı gizli süreç veya Windows başlangıç görevi kurulmadı. Kullanıcı `VERI-GUNCELLEME-BASLAT.bat` dosyasını açıp pencereyi açık tutmalıdır; mevcut yerel sunucunun güncellemeleri de otomatik gönderir.
+
 # Güncel karar: bilgisayarda tarama, GitHub üzerinde yayın
 
 Kullanıcının son isteği uygulandı: GitHub özel Actions iş akışı kaldırıldı. Yayın standart Pages `main / (root)` üzerinden yapılır. Yerel tam/fiyat/ek kaynak güncellemeleri, başarılı doğrulamadan sonra yalnızca veri JSON dosyasını GitHub Contents API üzerinden gönderir. Mevcut Git Credential Manager kullanılır. SHA/yama/zaman denetimi, işlem kilidi, aynı veriyi atlama ve beş dakikalık başarısız gönderim yeniden denemesi eklendi. Yerel `.wr-local-sync.json` yayına girmez.

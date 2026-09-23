@@ -5,7 +5,7 @@ export const BOOT_UPGRADES={
 };
 // Conservative, explicit mechanical traits. Missing knowledge is never inferred as a counter.
 const groups={
-  magic:'ahri akali amumu annie aurelion-sol aurora bard brand diana ekko evelynn fiddlesticks fizz galio gragas gwen heimerdinger janna karma kassadin katarina kennen kogmaw lillia lissandra lulu lux malphite maokai mel milio mordekaiser morgana nami nidalee norra nunu-amp-willump orianna rakan rumble ryze seraphine singed sona soraka swain syndra taliyah teemo veigar velkoz vex viktor vladimir yuumi ziggs zilean zoe zyra',
+  magic:'hwei ahri akali amumu annie aurelion-sol aurora bard brand diana ekko evelynn fiddlesticks fizz galio gragas gwen heimerdinger janna karma kassadin katarina kennen kogmaw lillia lissandra lulu lux malphite maokai mel milio mordekaiser morgana nami nidalee norra nunu-amp-willump orianna rakan rumble ryze seraphine singed sona soraka swain syndra taliyah teemo veigar velkoz vex viktor vladimir yuumi ziggs zilean zoe zyra',
   mixed:'corki ezreal jax kaisa kayle nasus shyvana smolder varus volibear warwick yone zeri',
   tank:'alistar amumu braum chogath dr-mundo galio ksante leona malphite maokai nautilus nunu-amp-willump ornn poppy rammus rell shen sion skarner thresh',
   heal:'aatrox dr-mundo fiora gwen irelia kayn maokai master-yi nami nilah olaf renekton rengar senna sona soraka swain vladimir volibear warwick yuumi',

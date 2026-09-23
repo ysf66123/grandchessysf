@@ -1,5 +1,6 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20260923-wr4';
-import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260923-wr4';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260924-items1';
+import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260924-items1';
+import {itemFacts} from './wild-rift-item-rules.mjs?v=20260924-items1';
 export function itemCost(data,id,now=Date.now()){
   return priceEvidence(data,id,now).cost;
 }
@@ -40,7 +41,19 @@ export function purchasePlan(data,draft,result,now=Date.now()){
   // Without recipes, components cannot be discounted from a full item's price.
   // Do not invent an exact completion cost, even if the component's own price is known.
   const hasComponents=(draft.owned||[]).length>0;
-  return {rows,next:rows[0]||null,hasComponents,total:costs.every(c=>c!==null)?costs.reduce((a,b)=>a+b,0):null,
+  const early=[];
+  if(result.current&&draft.phase==='lane'&&(draft.locked.length+(draft.owned||[]).length)<6){
+    const target=remaining.find(id=>itemFacts(data,id,now).effects.antiHeal);
+    const threats=(result.context?.rows||[]).filter(r=>r.lane&&r.keys.heal>=1);
+    const recipe=data.items[target]?.official;
+    if(target&&threats.length&&recipe?.patch===data.latestPatch.version&&ageInDays(recipe.checkedAt,now)<=7){
+      for(const id of recipe.recipe?.components||[]){
+        const cost=itemCost(data,id,now);
+        if(itemFacts(data,id,now).effects.antiHeal&&!draft.owned.includes(id)&&cost!==null)early.push({id,target,cost,affordable:cost<=draft.gold,targets:threats.map(t=>t.name),delay:cost});
+      }
+    }
+  }
+  return {rows,next:rows[0]||null,early:early.sort((a,b)=>a.cost-b.cost).slice(0,1),hasComponents,total:costs.every(c=>c!==null)?costs.reduce((a,b)=>a+b,0):null,
     complete:remaining.length===0,exactCompletion:rows[0]?.exact??!hasComponents,components:remaining.length?affordableComponents(data,remaining[0],draft.gold,draft.owned,now):[],
     message:hasComponents?'Resmî tarif bulunan eşyada uygun parçaların değeri bir kez düşülür. Tarif doğrulanmadıysa gösterilen liste fiyatı tamamlama bedeli değildir.':'Resmî yama fiyatları önceliklidir. Güncel kaynaklar çelişiyor ve resmî doğrulama yoksa fiyat hesabı durdurulur.'};
 }

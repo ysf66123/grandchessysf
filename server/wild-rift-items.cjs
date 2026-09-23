@@ -9,10 +9,10 @@ async function enrichItems(items,{previous={},onProgress=()=>{}}={}){
       try{
         const url=source.BASE+`/ajax/tooltip?relation_type=Item&relation_id=${entry.sourceId}&lang=en`;
         const details=source.parseItemDetails(await source.fetchText(url),entry);
-        Object.assign(items[entry.id],details,{costPatch:catalog.patch,costCheckedAt:checkedAt});
+        Object.assign(items[entry.id],details,{costPatch:catalog.patch,costCheckedAt:checkedAt,statsPatch:catalog.patch,statsCheckedAt:checkedAt,effectsPatch:catalog.patch,effectsCheckedAt:checkedAt,effectsSource:url});
       }catch{
         failures.push(entry.id);const old=previous[entry.id];
-        if(old?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats'])items[entry.id][key]=old[key];
+        if(old?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats','statsPatch','statsCheckedAt','effects','effectsPatch','effectsCheckedAt','effectsSource'])items[entry.id][key]=old[key];
       }
       onProgress(++done,entries.length,entry.id);
       await new Promise(resolve=>setTimeout(resolve,160));

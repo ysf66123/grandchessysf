@@ -12,3 +12,15 @@ body[data-active-view="view-wild-rift"] .app-container{max-width:1320px;backgrou
 .wr-provider-grid h3{margin:0 0 8px}.wr-provider-grid p,.wr-price-proof li{font-size:13px;line-height:1.6}
 .wr-sources a,.wr-price-proof a{color:#93c5fd}.wr-price-proof{margin:14px 0}.wr-price-proof ul{padding-left:20px}
 .wr-component-options{padding:12px;border-left:3px solid #38bdf8;background:rgba(56,189,248,.06);line-height:1.7}
+.wr-strategy{margin:18px 0;padding:18px;border:1px solid #32465c;border-radius:16px;background:linear-gradient(135deg,rgba(56,189,248,.07),rgba(15,23,42,.55))}
+.wr-strategy-controls{display:grid;grid-template-columns:1fr 1fr;gap:14px}.wr-strategy label{display:flex;flex-direction:column;gap:7px}
+.wr-coverage-controls{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:18px}.wr-coverage-controls label{flex-direction:row;align-items:center;font-size:13px}.wr-coverage-controls input{width:auto}
+.wr-build-summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:14px 0;color:#b9e9fd}.wr-build-summary span{font-size:13px}
+.wr-need-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.wr-need-grid article{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:10px;background:rgba(8,15,25,.5)}.wr-need-grid small{font-size:9px;letter-spacing:1px;color:#79b2cf}.wr-need-grid span{font-size:12px;color:#b1bac8}
+.wr-change-detail{padding:12px 0;border-bottom:1px solid #334155}.wr-change-detail:last-child{border:0}.wr-change-detail header{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}.wr-change-detail p{line-height:1.6}
+.wr-table-scroll{overflow-x:auto}.wr-build-compare{width:100%;border-collapse:collapse;font-size:13px}.wr-build-compare th,.wr-build-compare td{padding:12px 8px;text-align:left;border-bottom:1px solid #334155}.wr-row-changed{background:rgba(56,189,248,.07)}
+.wr-candidate-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px}.wr-candidate-list article{border:1px solid #334155;border-radius:10px;padding:12px}.wr-candidate-list p,.wr-candidate-list small{font-size:12px;line-height:1.6}.wr-positive{color:#6ee7b7}
+.wr-early-buy{border-left:3px solid #eab308;background:rgba(234,179,8,.05);padding:14px;margin:14px 0}.wr-early-buy p{font-size:13px;line-height:1.7}
+@media(max-width:600px){.wr-strategy-controls,.wr-need-grid{grid-template-columns:1fr}.wr-strategy{padding:12px}.wr-need-grid article{padding:10px}.wr-build-compare{font-size:11px}}
+
+.wr-item-facts{margin:10px 0;font-size:12px}.wr-item-facts summary{cursor:pointer;color:#b8cae9}.wr-item-facts dl>div{display:flex;justify-content:space-between;gap:12px;padding:3px 0}.wr-item-facts dd{margin:0;color:#fff}.wr-item-facts .wr-evidence{display:inline-block;margin:2px 0}

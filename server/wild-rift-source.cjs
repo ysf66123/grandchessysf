@@ -131,11 +131,14 @@ function parseItemDetails(html,entry){
   const raw=$('.tt__info__cost span').first().text().trim();
   if(id!==entry.id||!/^\d{2,5}$/.test(raw))throw Error('Eşya kimliği veya fiyatı doğrulanamadı.');
   const cost=Number(raw);if(cost<100||cost>10000)throw Error('Eşya fiyatı aralık dışında.');
-  const stats={},keys={'Armor':'armor','Magic Resistance':'magicResist','Magic Resist':'magicResist','Critical Strike Chance':'crit','Health':'health'};
+  const stats={},keys={'Armor':'armor','Magic Resistance':'magicResist','Magic Resist':'magicResist','Critical Strike Chance':'crit','Health':'health','Attack Damage':'ad','Ability Power':'ap','Attack Speed':'attackSpeed','Ability Haste':'haste','Armor Penetration':'armorPen','Magic Penetration':'magicPen','Physical Vamp':'physicalVamp','Omnivamp':'omniVamp','Lifesteal':'lifesteal'};
   $('.tt__info__stats > span').each((_,e)=>{
     const value=$(e).find('span').first().text().trim(),label=$(e).clone().children().remove().end().text().trim(),key=keys[label];
     if(key&&/^\+?\d+(?:\.\d+)?%?$/.test(value)){const n=Number(value.replace(/[+%]/g,''));if(n>=0&&n<=2000)stats[key]=n;}
   });
-  return {cost,stats,costSource:BASE+`/ajax/tooltip?relation_type=Item&relation_id=${entry.sourceId}&lang=en`};
+  const text=$('.tt__info').text().replace(/\s+/g,' '),effects={};
+  const patterns={antiHeal:/\bGrievous Wounds\b/i,antiShield:/shield reduction|reduces? (?:any |all |their )?shields?/i,stasis:/\bstasis\b/i,revive:/\bresurrect|\brevive/i,spellShield:/spell shield|blocks? the next (?:hostile |enemy )?ability/i,cleanse:/removes? (?:all )?(?:crowd control|immobilizing)/i,critReduction:/Critical Strikes deal \d+% less damage/i,attackReduction:/Basic attacks from champions deal \d+% reduced damage/i,sustain:/\b(?:Physical Vamp|Omnivamp|Lifesteal|Life Steal)\b/i,shield:/\b(?:gain|grants?|generates?|receive)(?:\s+\w+){0,8}\s+(?:a\s+)?shield\b/i};
+  for(const [key,pattern] of Object.entries(patterns))if(pattern.test(text))effects[key]=true;
+  return {cost,stats,effects,costSource:BASE+`/ajax/tooltip?relation_type=Item&relation_id=${entry.sourceId}&lang=en`};
 }
 module.exports={BASE,PATCH_URL,fetchText,parseStats,parseCatalog,parsePatch,parseGuide,parseItemCatalog,parseItemDetails,comparePatch,hash};

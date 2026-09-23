@@ -1,12 +1,13 @@
-import {sourcesView,priceProof} from './wild-rift-source-ui.mjs?v=20260923-wr4';
-import {staticMode,publishedSnapshot} from './wild-rift-static.mjs?v=20260923-wr4';
-import {itemAvailability,priceEvidence} from './wild-rift-evidence.mjs?v=20260923-wr4';
-import {emptyDraft,sanitizeDraft,recommendations,recommendBuild,coaching,matchupPlan,threats,freshness,laneScenarios,movePick,SORT_MODES,ROLES} from './wild-rift-engine.mjs?v=20260923-wr4';
-import {dataQuality} from './wild-rift-quality.mjs?v=20260923-wr4';
-import {createHistory,readWorkspace,writeWorkspace} from './wild-rift-workspace.mjs?v=20260923-wr4';
-import {purchasePlan,itemCost} from './wild-rift-purchase.mjs?v=20260923-wr4';
-import {RANKS,traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20260923-wr4';
-import {itemName,termName} from './wild-rift-tr.mjs?v=20260923-wr4';
+import {strategyView,adaptationView,itemFactView} from './wild-rift-build-ui.mjs?v=20260924-items1';
+import {sourcesView,priceProof} from './wild-rift-source-ui.mjs?v=20260924-items1';
+import {staticMode,publishedSnapshot} from './wild-rift-static.mjs?v=20260924-items1';
+import {itemAvailability,priceEvidence} from './wild-rift-evidence.mjs?v=20260924-items1';
+import {emptyDraft,sanitizeDraft,recommendations,recommendBuild,coaching,matchupPlan,threats,freshness,laneScenarios,movePick,SORT_MODES,ROLES} from './wild-rift-engine.mjs?v=20260924-items1';
+import {dataQuality} from './wild-rift-quality.mjs?v=20260924-items1';
+import {createHistory,readWorkspace,writeWorkspace} from './wild-rift-workspace.mjs?v=20260924-items1';
+import {purchasePlan,itemCost} from './wild-rift-purchase.mjs?v=20260924-items1';
+import {RANKS,traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20260924-items1';
+import {itemName,termName} from './wild-rift-tr.mjs?v=20260924-items1';
 let data=null,draft=emptyDraft(),root=null,picker=null,queryTimer=null,controller=null,updating=false,pollTimer=null,pollResolve=null,owner=null;
 const history=createHistory();
 let workspace={saved:[],feedback:[]},showAll=false,renderTimes=[],feedbackId='',serviceStatus=null,proofItem='';
@@ -48,7 +49,7 @@ export async function mount(){
   if(!window.isSiteAdmin?.())return;
   owner=window.currentUser.uid;
   controller?.abort();controller=new AbortController();root=document.getElementById('wr-root');
-  if(!document.getElementById('wr-css')){const link=document.createElement('link');link.id='wr-css';link.rel='stylesheet';link.href=new URL('../wild-rift.css?v=20260923-wr4',import.meta.url).href;document.head.append(link);}
+  if(!document.getElementById('wr-css')){const link=document.createElement('link');link.id='wr-css';link.rel='stylesheet';link.href=new URL('../wild-rift.css?v=20260924-items1',import.meta.url).href;document.head.append(link);}
   root.innerHTML='<div class="wr-empty" role="status">Wild Rift verileri hazırlanıyor…</div>';
   if(!data){
     try{accept(await (staticMode()?publishedSnapshot(controller.signal):api()));}
@@ -105,7 +106,7 @@ function comparisonView(all){
   return `<section class="wr-comparison"><h3>Aday karşılaştırması</h3><div class="wr-table-scroll"><table><caption>Seçilen öncelik: ${SORT_MODES[draft.sort]}. Büyük katkı daha olumlu değerlendirmeyi gösterir.</caption><thead><tr><th>Şampiyon</th><th>Meta</th><th>Eşleşme katkısı</th><th>Takım katkısı</th><th>Tecrüben</th></tr></thead><tbody>${compared.map(r=>`<tr><th>${esc(r.champion.name)}</th><td>${esc(r.tier)}</td><td>${r.laneRange[0]===r.laneRange[1]?r.parts.lane:r.laneRange.join(' … ')}</td><td>${r.parts.team}</td><td>${['Belirtilmedi','Rahat','Çok tecrübeli'][draft.comfort[r.champion.id]||0]}</td></tr>`).join('')}</tbody></table></div><button class="secondary" data-action="clear-compare">Karşılaştırmayı temizle</button></section>`;
 }
 function itemCard(id,index,change){
-  const item=data.items[id];return `<div class="wr-item">${image(item?.icon,itemName(id))}<div><small>${index+1}. TERCİH</small><b>${esc(itemName(id))}</b><p>${esc(change?.label||'Şampiyonun kaynak rehberindeki temel tercih.')}</p>${BOOT_UPGRADES[id]?`<p>10. dakikadan sonra: <b>${BOOT_UPGRADES[id]}</b> · aynı yuva</p>`:''}<label class="wr-check"><input type="checkbox" data-lock="${id}" ${draft.locked.includes(id)?'checked':''}> Satın aldım, koru</label></div></div>`;
+  const item=data.items[id];return `<div class="wr-item">${image(item?.icon,itemName(id))}<div><small>${index+1}. YUVA</small><b>${esc(itemName(id))}</b><p>${esc(change?.label||'Şampiyonun kaynak rehberindeki temel tercih.')}</p>${BOOT_UPGRADES[id]?`<p>10. dakikadan sonra: <b>${BOOT_UPGRADES[id]}</b> · aynı yuva</p>`:''}${itemFactView(data,id)}<label class="wr-check"><input type="checkbox" data-lock="${id}" ${draft.locked.includes(id)?'checked':''}> Satın aldım, koru</label></div></div>`;
 }
 function buildView(){
   const result=recommendBuild(data,draft);
@@ -115,6 +116,7 @@ function buildView(){
   const {base,final,changes,alternatives}=result,variants=result.champion.builds.filter(b=>b.role===draft.role);
   return `<div class="wr-section-head"><div><h2>${esc(result.champion.name)} · Maça özel dizilim</h2><p>İlk iki ana eşya korunur; uygun alternatifler rakibin tehditlerine göre değerlendirilir.</p></div><a href="${safeUrl(base.source)}" target="_blank" rel="noopener noreferrer">Kaynak rehber ↗</a></div>${!result.current?'<div class="wr-notice">Bu rehber güncel yamayla doğrulanmadı. Son bilinen dizilim gösteriliyor; otomatik eşya değişiklikleri durduruldu.</div>':''}
     <label class="wr-fed">Rakipte kim önde?<select id="wr-fed"><option value="">Belli değil / seçim aşamasındayım</option>${Object.values(draft.red).map(id=>`<option value="${id}" ${draft.fed===id?'selected':''}>${esc(champ(id)?.name)}</option>`).join('')}</select></label>
+    ${strategyView(result,draft)}
     ${enemyGearView()}
     ${variants.length>1?`<label class="wr-fed">Bu rol için kaynak dizilimi<select id="wr-variant">${variants.map((b,i)=>`<option value="${esc(b.guideId)}" ${base.guideId===b.guideId?'selected':''}>Dizilim ${i+1} · ${b.core.slice(0,2).map(id=>esc(itemName(id))).join(' + ')}</option>`).join('')}</select></label><p class="wr-muted">Kaynak bu rol için birden fazla dizilim veriyor. Değiştirirken mevcut satın alma işaretleri temizlenir; seçimin şampiyon biçimine uygunluğunu kaynak rehberden kontrol et.</p>`:''}
     ${result.quality.normalized?`<div class="wr-notice">${esc(result.quality.issues.find(i=>i.startsWith('Kaynak yedi')))}</div>`:''}
@@ -122,7 +124,7 @@ function buildView(){
     <div class="wr-purchase"><b>Başlangıç</b><span>${base.starting.map(id=>esc(itemName(id))).join(' + ')}</span><b>İlk dönüş</b><span>${esc(itemName(base.core[0]||base.final[0]))} için parça biriktir; koridor baskısına göre botu öne al.</span></div>
     ${purchaseView(result)}
     <div class="wr-build">${final.map((id,i)=>itemCard(id,i,changes.find(c=>c.to===id))).join('')}</div>
-    ${changes.length?`<div class="wr-adapted"><h3>Bu maç için değişenler</h3>${changes.map(c=>`<p><b>${esc(itemName(c.from))} → ${esc(itemName(c.to))}</b> · ${c.label}. Temel dizilimin bu slotundaki avantajından vazgeçiliyor.</p>`).join('')}</div>`:'<p class="wr-muted">Girilen tehditler için ana dizilimi bozmadan uygulanabilecek öncelikli değişiklik yok.</p>'}
+    ${adaptationView(result)}
     <div class="wr-detail-grid"><section><h3>Rünler</h3><div class="wr-chips">${base.runes.map(r=>`<span>${esc(termName(r))}</span>`).join('')}</div><h3>Sihirdar büyüleri</h3><div class="wr-chips">${base.spells.map(r=>`<span>${esc(termName(r))}</span>`).join('')}</div></section><section><h3>Yetenek sırası · seviye 1–15</h3><div class="wr-skills">${base.skillOrder.map((r,i)=>`<span title="${i+1}. seviye"><small>${i+1}</small>${r===4?'U':r||'?'}</span>`).join('')}</div><p class="wr-muted">1, 2, 3: temel yetenekler · U: ulti</p></section></div>
     <details class="wr-details"><summary>Duruma bağlı alternatifler (${alternatives.length})</summary><p>Kaynak alternatifini elle seçebilirsin. İlk iki ana eşya, satın aldıkların ve çakışan eşya etkileri korunur.</p>${[...new Set(alternatives.map(a=>a.from))].map(from=>`<label class="wr-alternative">${esc(itemName(from))} yerine<select data-alternative="${from}" ${!result.current?'disabled':''}><option value="">Otomatik karar</option>${alternatives.filter(a=>a.from===from).map(a=>`<option value="${a.to}" ${draft.overrides[from]===a.to?'selected':''}>${esc(itemName(a.to))} · ${esc(a.label)}</option>`).join('')}</select></label>`).join('')||'<p>Kaynakta bu rol için ek alternatif belirtilmemiş.</p>'}</details><p class="wr-muted">Rehber yaması: ${esc(base.patch)} · Alınma zamanı: ${date(result.champion.fetchedAt)}</p>`;
 }
@@ -131,11 +133,12 @@ function purchaseView(result){
   return `<details class="wr-details" open><summary>Alışveriş planı</summary><div class="wr-purchase-controls"><label>Şu anki altınım<input id="wr-gold" type="number" min="0" max="30000" step="1" value="${draft.gold}" inputmode="numeric"></label><label>Elimdeki parça / diğer eşya<select id="wr-owned-item"><option value="">Eşya seç</option>${Object.keys(data.items).filter(id=>itemAvailability(data,id)).sort((a,b)=>itemName(a).localeCompare(itemName(b),'tr')).map(id=>`<option value="${id}">${esc(itemName(id))}</option>`).join('')}</select></label><button class="secondary" data-action="add-owned">Ekle</button></div><div class="wr-chips">${draft.owned.map((id,i)=>`<button class="secondary" data-action="remove-owned" data-index="${i}" aria-label="${esc(itemName(id))} parçasını kaldır">${esc(itemName(id))} ×</button>`).join('')}</div><p class="wr-muted">Tamamladığın dizilim eşyalarını aşağıda “Satın aldım, koru” ile işaretle.</p><p>${esc(plan.message)}</p>
     ${next?`<p><b>Sıradaki rehber hedefi: ${esc(itemName(next.id))}</b> · ${next.cost===null?'Güncel fiyat doğrulanamadı.':`${(next.exact?next.completion:next.cost).toLocaleString('tr-TR')} altın${next.exact?' · Tamamlama bedeli':' · Liste fiyatı'}${plan.exactCompletion?next.affordable?' · Altının yeterli.':` · ${Math.max(0,next.completion-draft.gold).toLocaleString('tr-TR')} altın eksik.`:' · Parçalara göre tamamlama bedelini oyun mağazasında kontrol et.'}`}</p>`:'<p>Dizilimdeki tüm eşyaları satın alınmış olarak işaretledin.</p>'}
     ${next?`<details class="wr-details"><summary>Fiyatın kaynağı</summary>${priceProof(data,next.id)}</details>`:''}${plan.components.length?`<div class="wr-component-options"><h3>Bu altınla alınabilecek tarif parçaları</h3><p class="wr-muted">Bunlar birbirinin alternatifidir; hepsini birden almanı önermez.</p>${plan.components.map(c=>`<p><b>${esc(itemName(c.id))}</b> · ${c.cost} altın</p>`).join('')}</div>`:''}
+    ${plan.early.length?`<aside class="wr-early-buy"><h3>Koridorda erken karşı parça</h3>${plan.early.map(e=>`<p><b>${esc(itemName(e.id))} · ${e.cost} altın</b> · ${e.targets.map(esc).join(', ')} karşısında iyileşmeyi azaltmak için düşünülebilir.</p><p>Son dizilimdeki ${esc(itemName(e.target))} tarifine gider. ${e.affordable?'Şu anki altının yeterli.':'Önce '+Math.max(0,e.cost-draft.gold)+' altın daha gerekiyor.'} Ana eşyaya ayıracağın ${e.delay} altını bu parçaya yönlendirmiş olursun; gereksiz yere güçlenme zamanını geciktirme.</p>`).join('')}</aside>`:''}
     <ol class="wr-shopping-list">${plan.rows.map(row=>`<li>${esc(itemName(row.id))}<span>${row.cost===null?'Fiyat doğrulanmadı':row.cost.toLocaleString('tr-TR')+' altın'}</span></li>`).join('')}</ol>${plan.total!==null?`<p class="wr-muted">Kalan tam eşyaların toplam liste bedeli: ${plan.total.toLocaleString('tr-TR')} altın. ${plan.hasComponents?'Elindeki parçalar bu toplamdan düşülmedi.':''}</p>`:''}</details>`;
 }
 function enemyGearView(){
   const enemies=Object.values(draft.red);if(!enemies.length)return '';
-  return `<details class="wr-details"><summary>Rakibin aldığı eşyalar</summary><p>Gördüğün eşyaları elle ekle. Kaynakta güncel ve doğrulanmış kritik vuruş, zırh ve büyü direnci bilgileri tehdit haritasına katılır. Kritik karşıtı eşya önerisi normal saldırı etiketiyle tek başına tetiklenmez.</p><div class="wr-purchase-controls"><label>Rakip<select id="wr-enemy-target">${enemies.map(id=>`<option value="${id}">${esc(champ(id)?.name)}</option>`).join('')}</select></label><label>Aldığı eşya<select id="wr-enemy-item">${Object.keys(data.items).filter(id=>itemAvailability(data,id)).sort((a,b)=>itemName(a).localeCompare(itemName(b),'tr')).map(id=>`<option value="${id}">${esc(itemName(id))}${itemCost(data,id)===null?' · Güncel değer yok':''}</option>`).join('')}</select></label><button class="secondary" data-action="add-enemy-item">Eşyayı ekle</button></div>${enemies.filter(id=>draft.enemyItems[id]?.length).map(id=>`<div class="wr-enemy-gear"><b>${esc(champ(id)?.name)}</b><div class="wr-chips">${draft.enemyItems[id].map(item=>`<button class="secondary" data-action="remove-enemy-item" data-id="${id}" data-item="${item}">${esc(itemName(item))} ×</button>`).join('')}</div></div>`).join('')}<p class="wr-muted">Girilmeyen eşyalar ve oyundaki geçici etkiler bilinmiyor; toplam hasar veya gerçek direnç değeri hesaplanmıyor.</p></details>`;
+  return `<details class="wr-details"><summary>Rakibin aldığı eşyalar</summary><p>Gördüğün eşyaları elle ekle. Güncel eşya bilgileri; kritik, zırh, büyü direnci, saldırı/büyü gücü, can çalma ve kalkan sinyallerine katılır. Kritik karşıtı eşya önerisi normal saldırı etiketiyle tek başına tetiklenmez.</p><div class="wr-purchase-controls"><label>Rakip<select id="wr-enemy-target">${enemies.map(id=>`<option value="${id}">${esc(champ(id)?.name)}</option>`).join('')}</select></label><label>Aldığı eşya<select id="wr-enemy-item">${Object.keys(data.items).filter(id=>itemAvailability(data,id)).sort((a,b)=>itemName(a).localeCompare(itemName(b),'tr')).map(id=>`<option value="${id}">${esc(itemName(id))}${itemCost(data,id)===null?' · Güncel değer yok':''}</option>`).join('')}</select></label><button class="secondary" data-action="add-enemy-item">Eşyayı ekle</button></div>${enemies.filter(id=>draft.enemyItems[id]?.length).map(id=>`<div class="wr-enemy-gear"><b>${esc(champ(id)?.name)}</b><div class="wr-chips">${draft.enemyItems[id].map(item=>`<button class="secondary" data-action="remove-enemy-item" data-id="${id}" data-item="${item}">${esc(itemName(item))} ×</button>`).join('')}</div></div>`).join('')}<p class="wr-muted">Girilmeyen eşyalar ve oyundaki geçici etkiler bilinmiyor; toplam hasar veya gerçek direnç değeri hesaplanmıyor.</p></details>`;
 }
 function coachView(){const tips=coaching(data,draft),sections=matchupPlan(data,draft);return `<h2>Koridordan takım savaşına oyun planı</h2>${sections.map(section=>`<section class="wr-matchup-section"><h3>${esc(section.title)}</h3><p class="wr-muted">${esc(section.basis)}</p><ul>${section.lines.map(line=>`<li>${esc(line)}</li>`).join('')}</ul></section>`).join('')}${tips.length?`<div class="wr-coach">${tips.map((tip,i)=>`<article><span>${i+1}</span><p>${esc(tip)}</p></article>`).join('')}</div><p class="wr-muted">Bunlar eşleşme özelliklerine dayanan oyun ilkeleridir. Rakibin anlık yetenek bekleme süreleri veya altını otomatik okunmaz.</p>`:'<div class="wr-empty">Önce kendi şampiyonunu seç.</div>'}`;}
 function teamView(){
@@ -163,6 +166,9 @@ function handleChange(event){
   else if(e.id==='wr-rank')draft.rank=e.value;
   else if(e.id==='wr-sort')draft.sort=e.value;
   else if(e.id==='wr-fed')draft.fed=e.value;
+  else if(e.id==='wr-phase')draft.phase=e.value;
+  else if(e.id==='wr-build-priority')draft.buildPriority=e.value;
+  else if(e.dataset.teamCoverage)draft.teamCoverage[e.dataset.teamCoverage]=e.checked;
   else if(e.id==='wr-proof-item'){proofItem=e.value;render();root.querySelector('#wr-proof-item')?.closest('details')?.setAttribute('open','');return;}
   else if(e.id==='wr-gold')draft.gold=Math.max(0,Math.min(30000,Math.floor(Number(e.value)||0)));
   else if(e.dataset.uncertain){const id=e.dataset.uncertain;draft.uncertain=e.checked?[...new Set([...draft.uncertain,id])]:draft.uncertain.filter(i=>i!==id);}

@@ -1,5 +1,15 @@
 # Wild Rift asistanı
 
+## 24 Eylül eşya güncellemesi
+
+Eşya dizilimi ekranında maç aşamasını (seçim, koridor, takım savaşları) ve önceliğini (dengeli, hayatta kalma, hasar düzeni) seçebilirsin. İkili koridorda rakip destek de hesaba katılır. Öne geçen rakip, gördüğün rakip eşyaları ve takım arkadaşının aldığı iyileşme/kalkan azaltma eşyası ihtiyaçların ağırlığını değiştirir.
+
+Motor kaynak rehberin ilk iki ana eşyasını korur, satın aldıklarını değiştirmez ve en fazla iki otomatik değişiklik yapar. Aynı yuvadaki alternatifleri birlikte karşılaştırır. Her değişiklik hedeflediği rakibi ve vazgeçilen avantajı gösterir; karşılanamayan tehditleri ayrıca listeler. Kaynakta bulunmayan saldırı eşyaları otomatik eklenmez. Savunma botları belirgin hasar dağılımında ortak alternatiftir.
+
+Rakipte kritik eşya görmeden kritik vuruş yatırımı varsayılmaz. Zırh, büyü direnci, saldırı/yetenek gücü ve doğrulanan can çalma/kalkan etkileri maça yansır. Eşya kartlarında güncel nitelikler açılabilir. Eski yama veya eski tarihli etki bilgisi güncel sayılmaz. Fiyat yenilemesi bu etkileri de yeniler; resmî Riot nitelikleri önceliklidir.
+
+Erken karşı parça önerisi ancak güncel parça etkisi ve resmî tarif doğrulanmışsa gösterilir. Mevcut kataloğun tüm ara parçalar için etki bilgisi yoktur; boşluklar tahminle doldurulmaz. Karar ağırlıkları açıklanabilir kurallardır, gerçek maçlarla kalibre edilmiş kazanma veya hasar simülasyonu değildir.
+
 Türkçe yönetici modudur. Dashboard kartı oturumun yönetici yetkisi doğrulandığında görünür. Mavi takım bizim takımımızdır. Beş rol için rakipleri, kendi şampiyonunu, yasakları ve kişisel havuzunu seçebilirsin. Lig seçimi Çin sunucusu istatistiklerini filtreler; Avrupa istatistiği değildir.
 
 ## Çalıştırma
