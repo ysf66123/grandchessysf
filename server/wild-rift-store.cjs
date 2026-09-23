@@ -2,6 +2,7 @@ const fs=require('node:fs/promises');
 const path=require('node:path');
 const source=require('./wild-rift-source.cjs');
 const {enrichItems}=require('./wild-rift-items.cjs');
+const {collectEvidence}=require('./wild-rift-providers.cjs');
 const DATA_FILE=process.env.WR_DATA_FILE || path.join(__dirname,'../data/wild-rift.json');
 let inFlight=null, current=null;
 const STATUS_FILE=path.join(path.dirname(DATA_FILE),'.wild-rift-status.json');
@@ -92,6 +93,9 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
     try{itemCatalog=await enrichItems(items,{previous:old?.items,onProgress:(n,total)=>Object.assign(status,{phase:'Eşya fiyatları',completed:n,total})});}
     catch{itemCatalog={...(old?.itemCatalog||{}),refreshFailed:true};for(const [id,item] of Object.entries(items))if(old?.items[id]?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats'])item[key]=old.items[id][key];}
     const data={schema:1,checkedAt,latestPatch,stats,champions,items,itemCatalog,changes:changed,failures,source:source.BASE,methodologyVersion:2};
+    for(const [id,item] of Object.entries(items))if(old?.items[id]?.official)item.official=old.items[id].official;
+    await collectEvidence(data,{previous:old?.evidence,onProgress:(n,total)=>Object.assign(status,{phase:'Ek kaynak kontrolü',completed:n,total})});
+    data.methodologyVersion=3;
     validateSnapshot(data);
     await fs.mkdir(path.dirname(DATA_FILE),{recursive:true});
     const temp=DATA_FILE+'.tmp';await fs.writeFile(temp,JSON.stringify(data));

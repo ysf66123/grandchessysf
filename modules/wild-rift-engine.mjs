@@ -1,5 +1,6 @@
-import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260923-wr2';
-import {ageInDays,guideQuality} from './wild-rift-quality.mjs?v=20260923-wr2';
+import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260923-wr3';
+import {ageInDays,guideQuality} from './wild-rift-quality.mjs?v=20260923-wr3';
+import {relationshipEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260923-wr3';
 export {ROLES};
 export const SORT_MODES={balanced:'Dengeli öneri',lane:'Koridor eşleşmesi',team:'Takım uyumu',safe:'Güvenli seçim'};
 export const emptyDraft=()=>({blue:{},red:{},role:'mid',rank:'diamond',bans:[],pool:[],fed:'',locked:[],tab:'counters',uncertain:[],comfort:{},sort:'balanced',overrides:{},compare:[],gold:0,owned:[],enemyItems:{},variant:''});
@@ -13,15 +14,15 @@ export function sanitizeDraft(value,data){
   d.bans=[...new Set((Array.isArray(value.bans)?value.bans:[]).filter(id=>ids.has(id)&&!used.has(id)))];
   d.pool=[...new Set((Array.isArray(value.pool)?value.pool:[]).filter(id=>ids.has(id)))];
   d.fed=Object.values(d.red).includes(value.fed)?value.fed:'';
-  d.locked=[...new Set((Array.isArray(value.locked)?value.locked:[]).filter(id=>data.items[id]))].slice(0,6);
+  d.locked=[...new Set((Array.isArray(value.locked)?value.locked:[]).filter(id=>itemAvailability(data,id)))].slice(0,6);
   d.uncertain=[...new Set((Array.isArray(value.uncertain)?value.uncertain:[]).filter(id=>Object.values(d.red).includes(id)))];
   if(SORT_MODES[value.sort])d.sort=value.sort;
   for(const c of data.champions)if([1,2].includes(value.comfort?.[c.id]))d.comfort[c.id]=value.comfort[c.id];
   d.compare=[...new Set((Array.isArray(value.compare)?value.compare:[]).filter(id=>ids.has(id)))].slice(0,3);
-  for(const [from,to] of Object.entries(value.overrides||{}))if(data.items[from]&&data.items[to])d.overrides[from]=to;
+  for(const [from,to] of Object.entries(value.overrides||{}))if(itemAvailability(data,from)&&itemAvailability(data,to))d.overrides[from]=to;
   d.gold=Number.isFinite(Number(value.gold))?Math.max(0,Math.min(30000,Math.floor(Number(value.gold)))):0;
-  d.owned=(Array.isArray(value.owned)?value.owned:[]).filter(id=>data.items[id]).slice(0,6);
-  for(const id of Object.values(d.red))d.enemyItems[id]=[...new Set((Array.isArray(value.enemyItems?.[id])?value.enemyItems[id]:[]).filter(i=>data.items[i]))].slice(0,6);
+  d.owned=(Array.isArray(value.owned)?value.owned:[]).filter(id=>itemAvailability(data,id)).slice(0,6);
+  for(const id of Object.values(d.red))d.enemyItems[id]=[...new Set((Array.isArray(value.enemyItems?.[id])?value.enemyItems[id]:[]).filter(i=>itemAvailability(data,i)))].slice(0,6);
   const own=data.champions.find(c=>c.id===d.blue[d.role]);
   if(own?.builds.some(b=>b.role===d.role&&b.guideId===value.variant))d.variant=value.variant;
   d.tab=['counters','build','coach','team','patch'].includes(value.tab)?value.tab:'counters';return d;
@@ -79,11 +80,12 @@ export function recommendations(data,draft){
     const quality=guideQuality(data,c,draft.role),current=quality.usable,reasons=[],risks=[...quality.issues];
     const matchups=scenarios.opponents.map(enemy=>{
       const oppBuild=buildFor(enemy,draft.role),oppCurrent=enemy&&guideQuality(data,enemy,draft.role).usable;
-      const positive=!!(oppCurrent&&oppBuild.counters.includes(c.id)),negative=!!(enemy&&current&&b.counters.includes(enemy.id));
+      const supporting=enemy?relationshipEvidence(data,enemy.id,c.id,draft.role):[],opposing=enemy?relationshipEvidence(data,c.id,enemy.id,draft.role):[];
+      const positive=supporting.length>0,negative=opposing.length>0;
       if(positive&&negative){risks.push(`${enemy.name} için iki kaynak rehber birbiriyle çelişiyor; karşı seçim bonusu verilmedi.`);return {enemy,value:0,known:false,conflict:true};}
-      if(positive)reasons.push(`${enemy.name} rehberinde karşı seçim olarak yer alıyor.${scenarios.uncertain?' Koridoru kesinleşmeli.':''}`);
+      if(positive)reasons.push(`${enemy.name} için ${supporting.length} kaynakta karşı seçim olarak yer alıyor.${scenarios.uncertain?' Koridoru kesinleşmeli.':''}`);
       if(negative)risks.push(`${enemy.name}, bu şampiyonun rehberinde zor eşleşme olarak belirtiliyor.`);
-      return {enemy,value:positive?23:negative?-20:0,known:positive||negative};
+      return {enemy,value:positive?Math.min(27,23+(supporting.length-1)*2):negative?-20:0,known:positive||negative,sources:[...supporting,...opposing]};
     });
     const laneMin=Math.min(...matchups.map(m=>m.value)),laneMax=Math.max(...matchups.map(m=>m.value));
     // Until the lane is confirmed use the worst supported scenario; never average into a fake win chance.
@@ -94,7 +96,7 @@ export function recommendations(data,draft){
     if(t.engage&&team.length>=2&&!team.some(a=>traits(a).engage))add(7,'Takımın eksik olan savaşı başlatma ihtiyacını karşılar.');
     if(t.magic&&team.length>=2&&team.every(a=>traits(a).damage==='physical'))add(7,'Takımın hasar dağılımına büyü hasarı ekler.');
     if(t.tank&&team.length>=2&&!team.some(a=>traits(a).tank))add(6,'Takıma ön saflarda dayanıklılık kazandırır.');
-    if(current)for(const ally of team)if(b.synergies.includes(ally.id))add(5,`${ally.name} ile rehberde belirtilmiş uyumu var.`);
+    for(const ally of team)if(relationshipEvidence(data,c.id,ally.id,draft.role,'synergy').length)add(5,`${ally.name} ile kaynakta belirtilmiş uyumu var.`);
     parts.team=Math.min(24,parts.team);
     if(t.scaling&&scenarios.opponents.some(e=>traits(e).burst)){parts.safety-=4;risks.push('Güçlenmeden önce erken baskıya karşı dikkatli oyna.');}
     if(!current)parts.safety-=8;
@@ -111,12 +113,14 @@ export function recommendations(data,draft){
 export function recommendBuild(data,draft){
   const c=data.champions.find(c=>c.id===draft.blue[draft.role]),base=buildFor(c,draft.role,draft.variant);
   if(!base)return {champion:c,missing:true};
+  const invalidItems=base.final.filter(id=>!itemAvailability(data,id));
+  if(invalidItems.length)return {champion:c,missing:true,invalidItems};
   const threat=threats(data,draft),quality=guideQuality(data,c,draft.role,Date.now(),draft.variant),current=quality.usable;
   const final=[...base.final],changes=[],alternatives=[];
   const protectedCore=new Set(base.core.slice(0,2).map(itemFamily));
   for(const s of base.situational){
     const rule=CONDITIONS[s.condition];if(!rule||s.items.length!==2)continue;
-    const [from,to]=s.items;if(!data.items[to])continue;
+    const [from,to]=s.items;if(!itemAvailability(data,to))continue;
     alternatives.push({from,to,label:rule.label,priority:threat[rule.key]||0});
   }
   const boot=base.boots.find(id=>final.includes(id));

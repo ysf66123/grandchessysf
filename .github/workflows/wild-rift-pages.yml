@@ -1,0 +1,53 @@
+name: Site yayını ve Wild Rift verileri
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: site-pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --omit=dev
+      - name: Kaynakları yenile
+        if: github.event_name != 'push'
+        run: npm run update:wild-rift
+        timeout-minutes: 30
+      - name: Veri paketini doğrula
+        run: node -e "require('./server/wild-rift-store.cjs').validateSnapshot(require('./data/wild-rift.json'))"
+      - name: Doğrulanan veriyi sakla
+        if: github.event_name != 'push'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/wild-rift.json
+          if ! git diff --staged --quiet; then
+            git commit -m 'Wild Rift kaynak verilerini güncelle'
+            git push
+          fi
+      - name: Statik yayın paketini hazırla
+        run: node scripts/build-pages.cjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .pages-dist
+      - uses: actions/deploy-pages@v4
+        id: deployment

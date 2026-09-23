@@ -18,7 +18,15 @@ Mevcut sitedeki yönetici e-posta hesabı, Firebase tarafından imzası doğrula
 
 ## GitHub Pages üzerinde yayın
 
-GitHub Pages, Node sunucusunu çalıştırmaz. Gönderilen veri paketiyle seçim asistanı açılır, fakat **kaynakları düğmeyle yenilemek ve zamanlanmış güncellemeler** için veri servisini ayrıca yayınlamak gerekir. Bu çalışma buluta servis dağıtmadı ve mevcut canlı siteye dosya göndermedi.
+GitHub Pages için ayrı sunucu gerekmez. `.github/workflows/wild-rift-pages.yml` altı saatte bir (UTC 00:23, 06:23, 12:23, 18:23) kaynakları tarar, doğrulanmış veriyi depoya kaydeder ve Pages paketini yayımlar. Zamanlanmış işler GitHub yoğunluğuna bağlı gecikebilir. Hatalı ana veri paketi önceki yayını değiştirmez; başarısız ek kaynaklar kendi durumlarıyla görünür.
+
+**Güncel verileri kontrol et** düğmesi statik sitede yayımlanan son paketi alır. Yeni bir taramayı elle başlatmak için paneldeki GitHub Actions bağlantısında **Run workflow** kullanılır. GitHub hesabının depo erişimi gerekir; tarayıcıya GitHub anahtarı konulmaz. Pages yayın kaynağı **GitHub Actions** olmalıdır.
+
+Yayın paketi `node scripts/build-pages.cjs` ile açık dosya listesi üzerinden üretilir; sunucu, log, eski veri, önbellek ve kimlik dosyaları içermez. Admin arayüzü hesap yetkisiyle gizlenir; statik veri paketi herkese açıktır ve gizli veri içermez.
+
+### İsteğe bağlı Node servisi
+
+Aşağıdaki kurulum yalnızca ayrıca Node sunucusu kullanmak istersen gereklidir.
 
 Dockerfile veya Node destekleyen bir servis kullanarak `server.js` çalıştır:
 
@@ -101,3 +109,12 @@ Sohbet ekranında şu an en son 100 mesaj gösterilir; daha eski mesajların ver
 `npm run test:site`: gerçek uygulama modülleriyle yönetici kartı, dinleyici ve yazma sayısı kontrolleri. Firebase bu testte taklit edilir; üretim veritabanına yazılmaz.
 
 `npm run test:browser`: gerçek Stockfish WASM ile satranç analiz testi. Tarayıcı testleri Playwright ve Edge gerektirir; `CODEX_NODE_MODULES` kurulu Playwright modüllerinin dizinini gösterebilir.
+
+
+## Çoklu kaynak doğrulaması
+
+Riot eşya fiyatları ve tarifleri önceliklidir. WildRiftFire temel rol dizilimlerini, WR-META ücretsiz karşı seçim ve uyum kartlarını sağlar. WildRiftCore ve RiftForge eşya fiyat karşılaştırmasına katılır; Core rol seviyeleri ayrıca görünür. Fiyat çelişkisinde resmî doğrulama yoksa kesin alışveriş hesabı durur. Eldeki parçalar resmî tarif ağacında bir kez kullanılır. Eksik tarif kesin bedel üretmez.
+
+RiftGG satırları kaynak tarihiyle gösterilir; yama, lig, rol ve örneklem birlikte doğrulanmadığı için şu an öneri puanına katılmaz. Aynı Çin verisinin farklı sitelerde yayımlanması bağımsız maç örneklemi sayılmaz. LoLegacy açık API sunmadığı için dış uygulama bağlantısıdır. Kilitli/ücretli içerik çekilmez.
+
+Bu kaynaklar uzman kalibrasyonu, canlı hasar simülasyonu veya her şampiyon çiftine özel profesyonel rehber yerine geçmez. Yerel geri bildirimler otomatik olarak dışarı gönderilmez.

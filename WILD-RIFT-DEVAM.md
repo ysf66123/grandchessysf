@@ -1,40 +1,33 @@
-# Wild Rift geliştirme devam notu — 23 Eylül 2026
+# Wild Rift durum notu — 23 Eylül 2026
 
-Kullanıcı, beş saatlik kullanım payı %1'e yaklaşana kadar özellik eklenmesini ve kalanların kullanım yenilenince tamamlanmasını istedi. Bu dosya kaldığımız yeri korur; otomatik devam görevi kurulmadı.
+## Bu oturumdaki çalışma
 
-## Tamamlanan paket
+Kullanıcı ayrı sunucu olmadığını belirtti ve GitHub Pages ile ilerlemeyi seçti. Admin arayüzü korundu. Önceki oturumun taslak, karşı seçim, koçluk, performans ve Stockfish iyileştirmeleri korunuyor.
 
-- Mevcut admin erişimi ve Türkçe mod korundu; `20260923-wr2` varlık sürümü.
-- Kaynak/tarih/yama kalitesi; çelişkili karşı seçimleri puandan çıkarma; kendi şampiyonunun takım uyumuna yanlış katılmasını düzeltme.
-- Koridoru belirsiz rakipler için yasal yerleşimler, ihtiyatlı eşleşme hesabı; koridor taşıma ve yer değiştirme.
-- İlk üç aday, dört sıralama önceliği, tecrübe, üçlü karşılaştırma, açık katkılar.
-- Geri/ileri alma, sekiz yerel kayıt, hesap ayrımı, 50 yerel geri bildirim ve dışa aktarma.
-- Kaynak eşya alternatifini elle seçme; çekirdek/satın alma/çakışma koruması; aynı roldeki alternatif rehberleri seçme.
-- Altın ve eldeki eşya girişi; yama/tarih kontrollü tam eşya fiyatları. Kaynakta tarif olmadığı için bileşen indirimi uygulanmıyor.
-- Rakip eşya girişi ve doğrulanmış kritik/zırh/büyü direnci sinyalleri. Normal saldırı etiketi kritik eşyası varsayımı üretmiyor.
-- Şampiyon ilkeleri, erken koridor ve ikiye iki partner planı; bunlar kural tabanlı, kapsamlı çift rehberi değil.
-- Kalıcı güncelleme durum/geçmişi; sunucu sırrıyla dış zamanlayıcı uç noktası; koşullu kaynak istekleri; önbellek/durum dosyalarının yayın dışında tutulması.
-- Ölçümlenen ekran hazırlama süreleri, kaynak istekleri/aktarım; aynı taslak için tekrar yerel depolama yazmama.
-- Canlı kaynak kontrolü: 141 şampiyon, 179 kaynak dizilimi, 116 eşya; 96 güncel eşya fiyatı. Resmî yama 7.3; istatistik kaynağının tarihi 2026-09-22, Çin sunucusu. İstatistik tarihinin kontrol tarihinden farklı olması normal.
+- Resmî Riot 7.3: 59 eşya değişikliği, 50 doğrulanmış tarif; parça indirimi, tekrar kullanımı önleme, fiyat çelişkisi ve kaldırılan eşyalar.
+- WildRiftFire: temel 141 şampiyon / 179 rol dizilimi ve lig bazlı Çin istatistikleri.
+- WR-META: ücretsiz kartlardan 1.031 karşı seçim/uyum ilişkisi. Kilitli içerik alınmaz. Son taramada 8 sayfa ayrıştırılamadı; panelde görünür.
+- WildRiftCore: 113 eşya karşılaştırması, 141 eşleşen şampiyon, tarihli meta görünümü. Ligi belirsiz istatistikler öneri puanına eklenmez.
+- RiftForge: 120 herkese açık eşya fiyatı. Kişisel AI servisi kullanılmaz.
+- RiftGG: 19.380 kaynak satırının tarihi Nisan 2026. Yalnızca sınırlı tarihsel örnekler taşınır; güncel puana katılmaz. 3 sayfa başarısız.
+- LoLegacy: resmî uygulama bağlantısı; açık API doğrulanamadığından otomatik entegrasyon iddiası yok.
+- Türkçe kaynak paneli, fiyat kanıtları, rol/meta karşılaştırması. Toplam 151 eşya/parça. Paket gzip yaklaşık 77 KB; mod açılana kadar yüklenmez.
+- GitHub Actions ile altı saatte bir kontrol, workflow_dispatch ile elle tarama, doğrulama sonrası veri commit ve Pages dağıtımı. Statik düğme yayımlanan son paketi alır; olmayan API'ye Firebase token göndermez.
+- Yayın dosyaları açık listeyle hazırlanır; araştırma önbelleği, kimlik bilgileri, sunucu ve eski paketler Pages çıktısına girmez.
 
-## Sonraki oturumun öncelikleri
+## Doğrulama
 
-1. **Yayın altyapısı:** Canlıya gönderilmedi. `site-config.js` API adresi boş. Node/Docker sunucu hedefi ve hesap erişimi henüz belirlenmedi; kalıcı disk, HTTPS, zamanlayıcı ve yöneticiyle canlı uçtan uca doğrulama gerekiyor. Mevcut tek süreç dosya deposu birden fazla sunucu örneği için uygun değil.
-2. **Bağımsız veri ve eşya tarifleri:** Tek topluluk kaynağına bağımlılık sürüyor. Resmî verilerle lisans/erişim koşullarına uygun ikinci doğrulama, tam tarif/yükseltme/aile kataloğu gerekli. PC League of Legends verilerini Wild Rift verisi gibi kullanma. Kaynakta yedi yuvalı rehberler hâlâ var; arayüz uyarıyor, bağımsız düzeltme henüz yok.
-3. **Sıralama kalibrasyonu:** Ağırlıklar açıklanabilir ama uzman onaylı bir değerlendirme kümesiyle kalibre edilmiş değil. Gerçek uzman değerlendirmeleri/izinli maç verisi topla; referans yöntemle karşılaştır. Mevcut mekanik testlerin geçmesini oyun performansının kanıtı olarak sunma. Kaynak örneklem sayısı vermediği için eşleşme kazanma yüzdesi/güven aralığı üretme.
-4. **Gerçek eşya optimizasyonu:** Doğrulanmış tarifler, tamamlanma bedeli, güçlenme zamanı, oyun süresi/seviye, eşya etkileri ve rakibin anlık dizilimiyle seçenek karşılaştırması. Şimdiki rakip eşya girdisi yalnızca birkaç doğrulanmış tehdidi etkiliyor; hasar simülatörü değil.
-5. **Uzman eşleşme kütüphanesi:** Şampiyon çiftleri ve nişancı-destek ikilileri için kaynaklı, yamaya bağlı takas/dalga/güçlenme pencereleri. Mevcut genel ilkeleri tüm çiftlere özel rehber diye sunma. Kayn biçimleri gibi varyantlar için güvenilir Türkçe ad ve mekanik ayrımı ekle.
-6. **Ölçülen site performansı:** Gerçek düşük donanımlı telefonlarda ana iş parçacığı, ilk açılış ve Firestore okuma/yazma takibi. Bildirim/turnuva geçmişine indeksleriyle birlikte sayfalama; diğer ağır modülleri ihtiyaç anında yükleme. Mevcut panel ölçümü yalnızca yerel ekran hazırlama süresidir.
-7. **Geri bildirim inceleme:** Yerel kayıtları yönetici değerlendirme sürecine bağlama; veri koruma/retention ve kullanıcı onayı tasarımı. Otomatik gönderim eklenmedi.
+68 birim/HTTP testi geçti. Tarayıcıda mobil, admin erişimi, karşı seçim, alışveriş, kaynak karşılaştırma, statik yenilemede sıfır API isteği, çıkış ve hesap ayrımı test edildi. Gerçek site modülleriyle entegrasyon testi geçti. Bunlar oyun performansını kanıtlayan uzman değerlendirmeleri değildir.
 
-## Doğrulama ve çalışma
+Komutlar: `npm test`, `npm run test:wild-rift:browser`, `npm run test:site`.
+Kaynak taraması: `npm run update:wild-rift`. Fiyat-only komutu tam kaynak taramasının yerine geçmez. Aynı dosyayı yazan iki güncelleme eşzamanlı çalıştırılmaz.
 
-Son paket: 62 otomatik test; Wild Rift tarayıcı akışı ve gerçek site modülleriyle entegrasyon kontrolü. Kaynak kapsamı daralması, eski yamaya geri dönme, 304 önbellek yanıtı ve kaynak hatasında eski paketin korunması ayrıca sınanır. Veri dosyası 286.569 bayt, gzip ile 35.709 bayt ölçüldü. Canlı kaynak yenilemesi başarılı; fiyat kontrolünde eksik istek kalmadı.
+## Dış veri gerektiren sınırlar
 
-`npm test`, `npm run test:wild-rift:browser`, `npm run test:site`.
+- Uzman etiketli değerlendirme kümesi ve gerçek maç doğrulaması olmadan ağırlıklar kalibre edilmiş kazanma modeli sayılamaz.
+- Tüm şampiyon çiftleri için kaynaklı ayrıntılı takas/dalga rehberi ve oyun içi hasar simülasyonu tamamlanmış değil; mevcut koçluk açıklanabilir genel mekanik kurallardır.
+- Core yeni Hwei verisi gösteriyor, fakat ana rehber kataloğunda henüz yok; doğrulanmış rol dizilimi olmadan uydurma öneri eklenmedi.
+- Firestore bildirim/turnuva geçmişi sayfalaması ve gerçek düşük donanımlı telefon ölçümleri hâlâ ayrıca ele alınmalı. Mevcut dinleyici ve tekrar istek azaltmaları korunuyor.
+- Geri bildirim cihazda kalır; dışarı otomatik gönderim veya uzman incelemesi yok.
 
-`npm start` yerel sunucu; kaynakları istemeden tekrar taratmamak için denemelerde `WR_AUTO_UPDATE=false`.
-
-`npm run update:wild-rift` tam kontrol; `npm run update:wild-rift:prices` sadece fiyatlar. Aynı dosyayı yazan iki ayrı komutu eşzamanlı çalıştırma.
-
-Tarayıcı testi Edge/Playwright kullanır ve Firebase'i taklit eder; üretim veritabanına yazmaz. Stockfish kodu bu pakette değiştirilmedi; birim regresyonları `npm test` içinde çalışır. Paket yeni fiyatlarla hâlâ küçüktür ve mod açılana kadar indirilmez.
+Yayın sonucu son kullanıcı mesajında ve GitHub Actions geçmişinde doğrulanır.
