@@ -1,3 +1,13 @@
+# Güncel karar: bilgisayarda tarama, GitHub üzerinde yayın
+
+Kullanıcının son isteği uygulandı: GitHub zamanlanmış taraması kaldırıldı. Yerel tam/fiyat/ek kaynak güncellemeleri, başarılı doğrulamadan sonra yalnızca veri JSON dosyasını GitHub Contents API üzerinden gönderir. Mevcut Git Credential Manager kullanılır. SHA/yama/zaman denetimi, işlem kilidi, aynı veriyi atlama ve beş dakikalık başarısız gönderim yeniden denemesi eklendi. Yerel `.wr-local-sync.json` yayına girmez.
+
+`VERI-GUNCELLEME-BASLAT.bat` açık bırakılırsa altı saatlik otomatik tarama; `VERI-SIMDI-GUNCELLE.bat` anlık tarama. İşletim sistemi başlangıç görevi kurulmadı. Ayrıntılar WILD-RIFT-KURULUM.md içinde. 72 otomatik test ve tarayıcı regresyonu geçti.
+
+GitHub faturalandırma kilidi kaynak taramasını durdurmaz, fakat Pages dağıtımını hâlâ durdurabilir. GitHub'a gönderimi canlı yayının başarısı diye raporlama.
+
+---
+
 # Wild Rift durum notu — 23 Eylül 2026
 
 ## Bu oturumdaki çalışma

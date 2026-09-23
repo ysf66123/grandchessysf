@@ -1,5 +1,5 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20260923-wr3';
-import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260923-wr3';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260923-wr4';
+import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260923-wr4';
 export function itemCost(data,id,now=Date.now()){
   return priceEvidence(data,id,now).cost;
 }

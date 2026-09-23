@@ -1,6 +1,6 @@
-import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260923-wr3';
-import {ageInDays,guideQuality} from './wild-rift-quality.mjs?v=20260923-wr3';
-import {relationshipEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260923-wr3';
+import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260923-wr4';
+import {ageInDays,guideQuality} from './wild-rift-quality.mjs?v=20260923-wr4';
+import {relationshipEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260923-wr4';
 export {ROLES};
 export const SORT_MODES={balanced:'Dengeli öneri',lane:'Koridor eşleşmesi',team:'Takım uyumu',safe:'Güvenli seçim'};
 export const emptyDraft=()=>({blue:{},red:{},role:'mid',rank:'diamond',bans:[],pool:[],fed:'',locked:[],tab:'counters',uncertain:[],comfort:{},sort:'balanced',overrides:{},compare:[],gold:0,owned:[],enemyItems:{},variant:''});

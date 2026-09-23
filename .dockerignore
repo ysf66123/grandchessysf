@@ -10,3 +10,7 @@ data/*.previous
 data/*.tmp
 .wr-source-cache
 data/.wild-rift-status.json
+
+.wr-local-sync.json
+data/.wild-rift-sync-status.json
+data/.wild-rift-update.lock

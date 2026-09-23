@@ -1,4 +1,4 @@
-import {ageInDays,guideQuality} from './wild-rift-quality.mjs?v=20260923-wr3';
+import {ageInDays,guideQuality} from './wild-rift-quality.mjs?v=20260923-wr4';
 const cache=new WeakMap();
 function index(data){
  if(cache.has(data))return cache.get(data);

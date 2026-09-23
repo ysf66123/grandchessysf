@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 title Grandmaster Pro Sunucusu
 echo ==============================================
 echo Grandmaster Pro Yerel Sunucu Baslaticisi

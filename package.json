@@ -11,7 +11,9 @@
     "test:wild-rift:browser": "node tests/wild-rift-browser.cjs",
     "test:site": "node tests/site-integration.cjs",
     "update:wild-rift": "node scripts/update-wild-rift.cjs --force",
-    "update:wild-rift:prices": "node scripts/update-wild-rift-prices.cjs"
+    "update:wild-rift:prices": "node scripts/update-wild-rift-prices.cjs",
+    "wild-rift:watch": "node scripts/wild-rift-local.cjs --watch",
+    "wild-rift:sync": "node scripts/wild-rift-local.cjs"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

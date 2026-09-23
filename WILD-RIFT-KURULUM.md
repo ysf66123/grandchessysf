@@ -18,11 +18,21 @@ Mevcut sitedeki yönetici e-posta hesabı, Firebase tarafından imzası doğrula
 
 ## GitHub Pages üzerinde yayın
 
-GitHub Pages için ayrı sunucu gerekmez. `.github/workflows/wild-rift-pages.yml` altı saatte bir (UTC 00:23, 06:23, 12:23, 18:23) kaynakları tarar, doğrulanmış veriyi depoya kaydeder ve Pages paketini yayımlar. Zamanlanmış işler GitHub yoğunluğuna bağlı gecikebilir. Hatalı ana veri paketi önceki yayını değiştirmez; başarısız ek kaynaklar kendi durumlarıyla görünür.
+Kaynak taraması bilgisayarda yapılır. GitHub yalnızca siteyi yayımlar; `.github/workflows/wild-rift-pages.yml` artık zamanlanmış veri taraması içermez.
 
-**Güncel verileri kontrol et** düğmesi statik sitede yayımlanan son paketi alır. Yeni bir taramayı elle başlatmak için paneldeki GitHub Actions bağlantısında **Run workflow** kullanılır. GitHub hesabının depo erişimi gerekir; tarayıcıya GitHub anahtarı konulmaz. Pages yayın kaynağı **GitHub Actions** olmalıdır.
+- **VERI-GUNCELLEME-BASLAT.bat:** Otomatik güncelleyiciyi açar. Pencere açık kaldıkça altı saatte bir kaynak kontrolü yapılır. Bilgisayar uykuya giderse/kapalıysa işlem durur; yeniden başlatıldığında süresi gelen kontrol yapılır. Pencereyi kapatmak işlemi durdurur.
+- **VERI-SIMDI-GUNCELLE.bat:** Hemen bir tam kontrol yapar ve doğrulanan veriyi gönderir.
+- Mevcut yerel sunucudaki güncelleme düğmesi, tam güncelleme komutu ve fiyat/ek kaynak komutları da başarılı yazımdan sonra aynı gönderim adımını kullanır.
 
-Yayın paketi `node scripts/build-pages.cjs` ile açık dosya listesi üzerinden üretilir; sunucu, log, eski veri, önbellek ve kimlik dosyaları içermez. Admin arayüzü hesap yetkisiyle gizlenir; statik veri paketi herkese açıktır ve gizli veri içermez.
+Gönderim yalnızca `data/wild-rift.json` dosyasını değiştirir. Bilgisayardaki mevcut Git Credential Manager oturumu kullanılır; kart veya yeni bir API anahtarı istenmez. GitHub oturumunun bu depoya yazma izni olmalıdır. `.wr-local-sync.json` içindeki `enabled` bu bilgisayarda açıktır; bu ayar, gönderim durumları ve kilit dosyası yayın paketine girmez. Başka bilgisayarda otomatik gönderim için aynı yerel ayar ve GitHub oturumu gerekir. `WR_GITHUB_SYNC=false` gönderimi kapatır.
+
+Aynı veri tekrar commit edilmez. SHA kontrolü eşzamanlı değişikliklerin üzerine yazılmasını önler; uzak verinin yaması veya kayıt zamanı daha yeniyse gönderim durur. Süreçler arası kilit iki taramanın aynı dosyayı yazmasını önler. GitHub bağlantısı başarısızsa yerel veri korunur; otomatik güncelleyici açıkken beş dakikada bir tekrar denenir. Kaynak taraması başarılı olmakla GitHub Pages yayınının tamamlanması farklı durumlardır.
+
+Canlı sitedeki **Güncel verileri kontrol et** düğmesi yayımlanan son paketi alır; uzaktan bilgisayarını açmaz. Bilgisayar kapalıyken site son yayımlanan verilerle çalışmaya devam eder.
+
+**Bilinen yayın engeli:** GitHub hesabında faturalandırma kilidi varken veriler depoya gönderilebilse de Pages yayını başarısız olabilir. Veri taramasını bilgisayara taşımak bu hesap kilidini kaldırmaz. GitHub işi artık yalnızca yayın yapar.
+
+Yayın dosyaları `node scripts/build-pages.cjs` ile açık dosya listesinden hazırlanır; sunucu, log, eski veri, önbellek ve kimlik dosyaları içermez. Admin arayüzü hesap yetkisiyle gizlenir; statik veri paketi herkese açıktır.
 
 ### İsteğe bağlı Node servisi
 
@@ -120,4 +130,4 @@ RiftGG satırları kaynak tarihiyle gösterilir; yama, lig, rol ve örneklem bir
 Bu kaynaklar uzman kalibrasyonu, canlı hasar simülasyonu veya her şampiyon çiftine özel profesyonel rehber yerine geçmez. Yerel geri bildirimler otomatik olarak dışarı gönderilmez.
 
 
-23 Eylül yayın kontrolü: Kod GitHub'a gönderildi, Pages kaynağı Actions olarak ayarlandı. GitHub hesabındaki faturalandırma kilidi ilk işin başlamasını engelledi. Kilit giderildikten sonra Actions ekranında **Site yayını ve Wild Rift verileri → Run workflow** çalıştırılmalı. Canlı güncelleme bu işin başarıyla bitmesine bağlıdır.
+23 Eylül yayın kontrolü: Kod GitHub'a gönderildi, Pages kaynağı Actions olarak ayarlandı. GitHub hesabındaki faturalandırma kilidi ilk işin başlamasını engelledi. Kilit giderildikten sonra Actions ekranında **Site yayını (veriler bilgisayardan) → Run workflow** çalıştırılmalı. Canlı güncelleme bu işin başarıyla bitmesine bağlıdır.

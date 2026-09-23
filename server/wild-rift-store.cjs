@@ -3,6 +3,7 @@ const path=require('node:path');
 const source=require('./wild-rift-source.cjs');
 const {enrichItems}=require('./wild-rift-items.cjs');
 const {collectEvidence}=require('./wild-rift-providers.cjs');
+const {syncSnapshot,withUpdateLock,statusFile}=require('./wild-rift-local-sync.cjs');
 const DATA_FILE=process.env.WR_DATA_FILE || path.join(__dirname,'../data/wild-rift.json');
 let inFlight=null, current=null;
 const STATUS_FILE=path.join(path.dirname(DATA_FILE),'.wild-rift-status.json');
@@ -12,7 +13,8 @@ async function getUpdateStatus(){
     try{status=JSON.parse(await fs.readFile(STATUS_FILE,'utf8'));if(status.running){status.running=false;status.error='Önceki kontrol sunucu kapanırken yarım kaldı. Son sağlam paket korunuyor.';}}
     catch{status={running:false,finishedAt:0,error:null,events:[]};}
   }
-  return {...status,events:[...(status.events||[])]};
+  const sync=await fs.readFile(statusFile(DATA_FILE),'utf8').then(JSON.parse).catch(()=>null);
+  return {...status,sync,events:[...(status.events||[])]};
 }
 async function saveStatus(){
   await fs.mkdir(path.dirname(STATUS_FILE),{recursive:true});
@@ -26,7 +28,7 @@ function validateSnapshot(data) {
   if (data.schema!==1 || data.champions?.length<80 || !data.latestPatch?.version || !data.stats?.brackets?.diamond) throw new Error('Veri paketi eksik.');
   if (new Set(data.champions.map(c=>c.id)).size!==data.champions.length) throw new Error('Tekrarlanan şampiyon.');
   const validDate=value=>Number.isFinite(Date.parse(value))&&Date.parse(value)<=Date.now()+300000;
-  if(!validDate(data.checkedAt)||!validDate(data.stats.asOf))throw new Error('Veri tarihleri doğrulanamadı.');
+  if(!validDate(data.checkedAt)||!validDate(data.stats.asOf)||(data.localRevisionAt&&!validDate(data.localRevisionAt)))throw new Error('Veri tarihleri doğrulanamadı.');
   const roles=new Set(['baron','jungle','mid','duo','support']);
   for(const rows of Object.values(data.stats.brackets)){
     if(!Array.isArray(rows)||rows.length<50)throw new Error('İstatistik kapsamı eksik.');
@@ -50,8 +52,9 @@ function validateSnapshot(data) {
 }
 async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
   if (inFlight) return inFlight;
-  inFlight=(async()=>{
+  inFlight=withUpdateLock(DATA_FILE,async()=>{
     await getUpdateStatus();
+    current=null;
     const old=await readSnapshot().catch(()=>null);
     if (!force && old && Date.now()-Date.parse(old.checkedAt)<15*60*1000) return old;
     status={...status,running:true,startedAt:Date.now(),error:null,phase:'Kaynaklar kontrol ediliyor',completed:0,total:0};
@@ -95,12 +98,14 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
     const data={schema:1,checkedAt,latestPatch,stats,champions,items,itemCatalog,changes:changed,failures,source:source.BASE,methodologyVersion:2};
     for(const [id,item] of Object.entries(items)){if(old?.items[id]?.official)item.official=old.items[id].official;if(old?.items[id]?.removedIn)item.removedIn=old.items[id].removedIn;}
     await collectEvidence(data,{previous:old?.evidence,onProgress:(n,total)=>Object.assign(status,{phase:'Ek kaynak kontrolü',completed:n,total})});
-    data.methodologyVersion=3;
+    data.methodologyVersion=3;data.localRevisionAt=new Date().toISOString();
     validateSnapshot(data);
     await fs.mkdir(path.dirname(DATA_FILE),{recursive:true});
     const temp=DATA_FILE+'.tmp';await fs.writeFile(temp,JSON.stringify(data));
     if(old) await fs.copyFile(DATA_FILE,DATA_FILE+'.previous').catch(()=>{});
     await fs.rename(temp,DATA_FILE);current=data;
+    Object.assign(status,{phase:"GitHub veri gönderimi"});
+    await syncSnapshot(DATA_FILE).catch(e=>console.error("[Wild Rift gönderim]",e.message));
     const done=Date.now();status={...status,running:false,finishedAt:done,lastSuccessAt:done,phase:'Tamamlandı',error:null,events:[{at:done,ok:true,patch:latestPatch.version,failedGuides:failures.length},...(status.events||[])].slice(0,10)};
     await saveStatus().catch(e=>console.error('[Wild Rift durum kaydı]',e.message));
     return data;
@@ -108,7 +113,7 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
       const done=Date.now();status={...status,running:false,finishedAt:done,phase:'Kontrol başarısız',error:'Kaynak güncellenemedi; son doğrulanmış veri korundu.',events:[{at:done,ok:false},...(status.events||[])].slice(0,10)};
       await saveStatus().catch(e=>console.error('[Wild Rift durum kaydı]',e.message));throw error;
     }
-  })().finally(()=>{inFlight=null;});
+  }).finally(()=>{inFlight=null;});
   return inFlight;
 }
 module.exports={readSnapshot,updateSnapshot,validateSnapshot,getUpdateStatus};
