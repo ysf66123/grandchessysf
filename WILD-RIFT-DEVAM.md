@@ -1,4 +1,12 @@
-## Eşya motoru güncellemesi — 24 Eylül 2026
+## İkinci eşya sistemi — 24 Eylül 2026
+
+Kullanıcının onayladığı plan uygulandı. Varlık sürümü `20260924-items2`. Pozitif Wild Rift eşya kimliği, resmî kaldırılma üstünlüğü, parça/tam eşya ayrımı, aile çakışması kontrolü; şampiyon dizilim uyumu ve etki uygulama koşulları; can/direnç/seviye sinyalleri; hedefli takım görevleri; esnek üç değişiklik seçeneği; kaynakların ayrı tam dizilimleri; karar belirsizliği ve değişiklik açıklaması; alışveriş sırası/yuva/parça/birikim dönüşümü kontrolleri eklendi.
+
+Paket: 142 şampiyonun temel nitelikleri, 103 Fire eşya taraması, 181 ana rol dizilimi, 222 ek Core dizilimi. Katalogda 160 kayıt var; 150 doğrulanmış kullanılabilir eşya/parça, 3 kaldırılmış, 7 doğrulanamadığı için önerilmeyen kayıt. Core 429 verdi; istekler durduruldu, 108 şampiyonun son ek kaynak kontrolü başarısız/ertelenmiş olarak kayıtlı. Önceki geçerli dizilimler kendi zamanlarıyla korundu. Sonraki taramalar altı saatlik önbelleğe ve bir saatlik bekleme süresine uyar. Bu sayılar tüm oyunun eksiksiz kataloğu veya 222 bağımsız uzman onayı anlamına gelmez.
+
+110 birim/HTTP testi geçti; bunlardan biri 162 rol/kompozisyon/aşama senaryosunu kapsıyor. Önceki yayımlı motorla aynı veri üzerinde 102 senaryo karşılaştırıldı: 8 sonuç değişti, yeni 102 sonuç da eşya geçerlilik kontrolünden geçti. Karşılaştırma `.wr-source-cache/item-upgrade/evaluation.json` içinde; uzman etiketli kalite veya kazanma ölçümü değildir. Genişletilmiş tarayıcı ve gerçek statik site entegrasyonu geçti. Paket gzip 103 KB. Yayın sonucu tamamlandıktan sonra aşağıya kaydedilecek.
+
+## Önceki eşya motoru güncellemesi — 24 Eylül 2026
 
 Canlı doğrulama tamamlandı: `eb80f5dc014bdd5dfced8c0dd363b7b4bc0dddca`, standart Pages işi https://github.com/ysf66123/grandchessysf/actions/runs/35924579719 başarılı. Canlı index, üç yeni modül, Wild Rift UI ve veri JSON içerikleri yerel dosyalarla SHA-256 üzerinden (satır sonları normalize edilerek) eşleşti. Veri localRevisionAt: `2026-09-23T21:40:39.64Z`. 181 dizilimin yerel hesap süresi toplam 26 ms, en yavaş 2,56 ms; gerçek telefon performans ölçümü değildir. Yayın doğrulamasından sonraki bu paragraf yerel devam notudur.
 

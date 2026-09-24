@@ -18,7 +18,7 @@ window.openWildRift=async function(){
   if(!await window.syncWildRiftAccess())return window.showToast?.('Bu alan yalnızca yetkili yönetici hesaplarına açıktır.','error');
   const button=document.getElementById('wr-open');if(button)button.disabled=true;
   try{
-    modulePromise ||= import('./wild-rift-ui.mjs?v=20260924-items1').catch(e=>{modulePromise=null;throw e;});
+    modulePromise ||= import('./wild-rift-ui.mjs?v=20260924-items2').catch(e=>{modulePromise=null;throw e;});
     const mod=await modulePromise;
     if(!isSiteAdmin())return;
     window.switchView('view-wild-rift');await mod.mount();

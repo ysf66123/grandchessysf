@@ -1,6 +1,6 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20260924-items1';
-import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260924-items1';
-import {itemFacts} from './wild-rift-item-rules.mjs?v=20260924-items1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260924-items2';
+import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260924-items2';
+import {itemFacts,itemFamily,BOOTS,TRANSFORM_FROM,RULES_PATCH} from './wild-rift-item-rules.mjs?v=20260924-items2';
 export function itemCost(data,id,now=Date.now()){
   return priceEvidence(data,id,now).cost;
 }
@@ -35,9 +35,18 @@ export function affordableComponents(data,id,gold,owned=[],now=Date.now()){
 }
 export function purchasePlan(data,draft,result,now=Date.now()){
   if(result.missing)return null;
-  const remaining=result.final.filter(id=>!draft.locked.includes(id)),costs=remaining.map(id=>itemCost(data,id,now));
-  let inventory=[...(draft.owned||[])];
-  const rows=remaining.map((id,i)=>{const detail=completionCost(data,id,inventory,now);if(detail.exact)inventory=inventory.filter((_,i)=>!detail.used.includes(i));return {id,cost:costs[i],completion:detail.cost,exact:detail.exact,affordable:detail.exact&&detail.cost!==null&&detail.cost<=draft.gold};});
+  const transform=data.latestPatch.version===RULES_PATCH?TRANSFORM_FROM:{};
+  const toFinal=id=>result.final.find(f=>transform[f]===id)||id;
+  const completed=new Set([...draft.locked,...(draft.owned||[]).filter(id=>result.final.includes(toFinal(id)))].map(toFinal));
+  const core=(result.base.purchaseOrder||result.base.core).map(id=>result.final.find(f=>itemFamily(f)===itemFamily(id))).filter(Boolean);
+  const boot=result.final.find(id=>BOOTS.includes(id)),defensiveBoot=result.changes.some(c=>c.to===boot)&&draft.phase==='lane'&&draft.ownState==='behind';
+  const desired=defensiveBoot?[boot,...core]:[core[0],boot,...core.slice(1)];
+  const order=[...new Set([...desired,...result.final].filter(Boolean))];
+  let remaining=order.filter(id=>!completed.has(id));
+  if(remaining.includes(draft.purchaseTarget))remaining=[draft.purchaseTarget,...remaining.filter(id=>id!==draft.purchaseTarget)];
+  const costs=remaining.map(id=>itemCost(data,transform[id]||id,now)),slots=completed.size+(draft.owned||[]).filter(id=>!completed.has(toFinal(id))).length;
+  let inventory=[...(draft.owned||[])].filter(id=>!completed.has(toFinal(id)));
+  const rows=remaining.map((finalId,i)=>{const id=transform[finalId]||finalId,detail=completionCost(data,id,inventory,now),room=slots+1-detail.used.length<=6;if(detail.exact)inventory=inventory.filter((_,i)=>!detail.used.includes(i));return {id,finalId,cost:costs[i],completion:detail.cost,exact:detail.exact,room,affordable:room&&detail.exact&&detail.cost!==null&&detail.cost<=draft.gold};});
   // Without recipes, components cannot be discounted from a full item's price.
   // Do not invent an exact completion cost, even if the component's own price is known.
   const hasComponents=(draft.owned||[]).length>0;
@@ -53,7 +62,11 @@ export function purchasePlan(data,draft,result,now=Date.now()){
       }
     }
   }
+  const starters=draft.phase==='lane'&&!completed.size&&!draft.owned.length?result.base.starting.filter(id=>itemAvailability(data,id)).map(id=>({id,cost:itemCost(data,id,now)})).filter(i=>i.cost!==null):[];
   return {rows,next:rows[0]||null,early:early.sort((a,b)=>a.cost-b.cost).slice(0,1),hasComponents,total:costs.every(c=>c!==null)?costs.reduce((a,b)=>a+b,0):null,
-    complete:remaining.length===0,exactCompletion:rows[0]?.exact??!hasComponents,components:remaining.length?affordableComponents(data,remaining[0],draft.gold,draft.owned,now):[],
+    totalCompletion:rows.every(r=>r.exact&&r.completion!==null)?rows.reduce((n,r)=>n+r.completion,0):null,starters,slots,
+    transformations:result.final.filter(id=>transform[id]).map(id=>({from:transform[id],to:id,owned:completed.has(id)})),
+    orderReason:draft.purchaseTarget&&remaining[0]===draft.purchaseTarget?'Seçtiğin alışveriş hedefi öne alındı.':defensiveBoot?'Geride olduğun koridorda savunma botu öne alındı; ilk ana eşyanın tamamlanması gecikir.':'Kaynak ana eşyaları esas alındı; bot ilk ana eşyanın ardından yerleştirildi. Bu sıra maç durumuna göre değiştirilebilir.',
+    complete:remaining.length===0,exactCompletion:rows[0]?.exact??!hasComponents,components:remaining.length?affordableComponents(data,transform[remaining[0]]||remaining[0],draft.gold,draft.owned,now).filter(c=>slots+1-c.used.length<=6):[],
     message:hasComponents?'Resmî tarif bulunan eşyada uygun parçaların değeri bir kez düşülür. Tarif doğrulanmadıysa gösterilen liste fiyatı tamamlama bedeli değildir.':'Resmî yama fiyatları önceliklidir. Güncel kaynaklar çelişiyor ve resmî doğrulama yoksa fiyat hesabı durdurulur.'};
 }

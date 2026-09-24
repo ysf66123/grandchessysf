@@ -13,6 +13,7 @@ async function main(){
     data.evidence.items.push(...updated.map(i=>({id:i.id,name:i.name,cost:i.cost,source:'wildriftfire',patch:i.costPatch,checkedAt:i.costCheckedAt,url:i.costSource})));
   }
   for(const item of Object.values(data.items))if(item.official?.patch===data.latestPatch.version&&item.official.cost)Object.assign(item,{cost:item.official.cost,costPatch:item.official.patch,costCheckedAt:item.official.checkedAt,costSource:item.official.url});
+  data.itemRegistry=require('../server/wild-rift-registry.cjs').buildRegistry(data);
   data.localRevisionAt=new Date().toISOString();validateSnapshot(data);
   await fs.writeFile(file+'.tmp',JSON.stringify(data));await fs.copyFile(file,file+'.previous');await fs.rename(file+'.tmp',file);await syncSnapshot(file);
   console.log(JSON.stringify(data.itemCatalog));

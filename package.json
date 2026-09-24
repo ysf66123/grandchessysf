@@ -12,6 +12,7 @@
     "test:site": "node tests/site-integration.cjs",
     "update:wild-rift": "node scripts/update-wild-rift.cjs --force",
     "update:wild-rift:prices": "node scripts/update-wild-rift-prices.cjs",
+    "update:wild-rift:items": "node scripts/update-wild-rift-item-system.cjs",
     "wild-rift:watch": "node scripts/wild-rift-local.cjs --watch",
     "wild-rift:sync": "node scripts/wild-rift-local.cjs"
   },

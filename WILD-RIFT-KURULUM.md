@@ -1,5 +1,18 @@
 # Wild Rift asistanı
 
+## Eşya sistemi ikinci sürüm — 24 Eylül 2026
+
+- Eşyalar yalnızca güncel Wild Rift kimlik kaydıyla önerilir. Resmî kaldırılma bilgisi diğer kaynaklardan önce gelir. Parçalar son dizilim eşyası sayılmaz; çakışan eşya aileleri birlikte önerilmez. Katalogda doğrulanamayan eşya gizlenir; bu, oyunda kesinlikle yok olduğu iddiası değildir.
+- Şampiyonun kaynak dizilimine göre kritik, saldırı hızı, yetenek/fiziksel hasar, mana ve savunma düzeni değerlendirilir. Karşı eşyanın hangi hasar türüyle uygulandığı ve vazgeçilen nitelikler hesaba katılır. Bunlar hasar simülasyonu değil, kaynaklı kurallardır.
+- Koridor, takım savaşı, önde/geride olma ve gözlenen rakip can/zırh/direnç yatırımları kullanılır. İsteğe bağlı rakip seviyesi, güncel şampiyon nitelikleriyle doğal dirençlere katkı verir. Bilinmeyen eşya sıfır yatırım sayılmaz.
+- Takım arkadaşının karşı eşyası belirli bir hedefe atanabilir. Uygulama koşulu uyuşmuyorsa görev ihtiyaçtan düşülmez; aynı görev tekrar edilerek ihtiyaç sıfırlanamaz.
+- Varsayılan iki değişiklik sınırı korunur. Esnek modda en fazla üç değişiklik yapılabilir. İlk iki ana eşyanın farklılaşması, kaynakların tam dizilim seçenekleriyle açıkça seçilir. Kaynak seçmek mevcut alışveriş işaretlerini temizler.
+- Alışveriş hedefi elle değiştirilebilir. Ana eşya sırası, başlangıç seçenekleri, parçalar ve boş yuvalar kontrol edilir. Muramana gibi birikim dönüşümleri ikinci bir satın alma değildir. Yerleştirilemeyen satın alma kaydı yok sayılmaz; yeni öneri durdurulur.
+- WildRiftCore'un yalnızca güncel `.engine-builds` bölümü alınır; eski tarihsel bölüm ve farklı koridorlar karıştırılmaz. Çin sunucusu kaynakları etiketlidir. Kapsam kısmi olabilir; hata alan kaynağın eski kayıtları kendi tarihleriyle kalır. İstek sınırında tarama durur ve bir saat beklenir; altı saatten yeni ek dizilimler tekrar indirilmez.
+- `npm run update:wild-rift:items` eşya verisini ve ek kaynak dizilimlerini kontrol eder. Normal tam güncelleme de yeni sistemi besler. Güncellemeler mevcut yerel işlem kilidini ve otomatik GitHub veri gönderimini kullanır. GitHub Pages düğmesi yayımlanmış paketi alır.
+
+Doğrulanmış ara parça etkisi olmayan yerde erken karşı parça uydurulmaz. İstatistik veya etki çelişkisinde karar güveni düşürülür. Uzman değerlendirmesi ve gerçek maç verisi olmadan kazanma oranı artışı iddia edilmez.
+
 ## 24 Eylül eşya güncellemesi
 
 Eşya dizilimi ekranında maç aşamasını (seçim, koridor, takım savaşları) ve önceliğini (dengeli, hayatta kalma, hasar düzeni) seçebilirsin. İkili koridorda rakip destek de hesaba katılır. Öne geçen rakip, gördüğün rakip eşyaları ve takım arkadaşının aldığı iyileşme/kalkan azaltma eşyası ihtiyaçların ağırlığını değiştirir.

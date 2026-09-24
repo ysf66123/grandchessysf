@@ -77,6 +77,16 @@ function parsePatch(html) {
   return found[0];
 }
 function comparePatch(a,b) { const split=s=>s.match(/(\d+)\.(\d+)([a-z]?)/).slice(1); const x=split(a),y=split(b); return +x[0]-+y[0] || +x[1]-+y[1] || x[2].localeCompare(y[2]); }
+function parseChampionFacts(html,champion){
+ const $=load(html),patch=$('#patch').val(),stats={},keys={'Health':'health','Mana':'mana','Armor':'armor','Magic Res.':'magicResist','Attack Dmg.':'ad','Attack Spd.':'attackSpeed'};
+ if(!/^\d+\.\d+[a-z]?$/.test(patch||''))throw Error('Şampiyon nitelik yaması doğrulanamadı.');
+ $('.statsBlock.champion .statsBlock__block').each((_,e)=>{const key=keys[$(e).find('.name').text().trim()],node=$(e).find('.value'),base=Number(node.attr('data-base')),growth=Number(node.attr('data-increase'));
+  if(key&&Number.isFinite(base)&&Number.isFinite(growth)&&base>=0&&base<=10000&&growth>=0&&growth<=1000)stats[key]={base,growth};
+ });
+ if(!stats.health||!stats.armor||!stats.magicResist)throw Error('Şampiyon nitelikleri eksik.');
+ const abilities=$('.statsBlock').not('.champion').text().replace(/\s+/g,' ');
+ return {patch,checkedAt:new Date().toISOString(),source:champion.guide,stats,usesMana:!!stats.mana,trueDamage:/\btrue damage\b/i.test(abilities)};
+}
 function parseGuide(html,champion) {
   const $=load(html), patch=$('#patch').val();
   if (!/^\d+\.\d+[a-z]?$/.test(patch||'')) throw new Error('Dizilim sürümü bulunamadı.');
@@ -112,7 +122,8 @@ function parseGuide(html,champion) {
   });
   if (!builds.length) throw new Error('Şampiyon rehberi eksik.');
   const tags=$('.wf-champion__about__tags').first().find('span').map((_,x)=>$(x).text().trim()).get();
-  return {builds,items,tags,contentHash:hash(JSON.stringify({builds,items,tags})),fetchedAt:new Date().toISOString()};
+  let combatFacts;try{combatFacts=parseChampionFacts(html,champion);}catch{}
+  return {builds,items,tags,combatFacts,contentHash:hash(JSON.stringify({builds,items,tags})),fetchedAt:new Date().toISOString()};
 }
 function parseItemCatalog(html){
   const $=load(html),patch=$('title').text().match(/Patch (\d+\.\d+[a-z]?)/)?.[1],entries=new Map();
@@ -121,24 +132,37 @@ function parseItemCatalog(html){
     const src=$(e).find('img[src*="/items/"]').first().attr('src'),sourceId=Number($(e).attr('data-id'));
     if(!src||!Number.isInteger(sourceId)||sourceId<1)return;
     const id=slug(src).replace(/\.png.*$/,'');if(!/^[a-z0-9-]+$/.test(id))return;
-    entries.set(id,{id,sourceId});
+    const name=$(e).find('.name').first().text().trim()||$(e).children('span').first().text().trim();
+    entries.set(id,{id,sourceId,name:name||id,icon:new URL(src,BASE).href,categories:($(e).attr('data-sort')||'').split(',').filter(Boolean)});
   });
   if(entries.size<50)throw Error('Eşya kataloğu eksik.');
   return {patch,entries:[...entries.values()],source:BASE+'/item-list'};
+}
+function parseEffectText(text){
+  const effects={},mechanics={};
+  const patterns={antiHeal:/\bGrievous Wounds\b/i,antiShield:/shield reduction|reduces? (?:any |all |their )?shields?/i,stasis:/\bstasis\b/i,revive:/\bresurrect|\brevive/i,spellShield:/spell shield|blocks? the next (?:hostile |enemy )?ability/i,cleanse:/removes? (?:all )?(?:crowd control|immobilizing)/i,critReduction:/Critical Strikes deal \d+% less damage/i,attackReduction:/Basic attacks from champions deal \d+% reduced damage/i,sustain:/\b(?:Physical Vamp|Omnivamp|Lifesteal|Life Steal)\b/i,shield:/\b(?:gain|grants?|generates?|receive)(?:\s+\w+){0,8}\s+(?:a\s+)?shield\b/i};
+  for(const [key,pattern] of Object.entries(patterns))if(pattern.test(text))effects[key]=true;
+  if(effects.antiHeal)mechanics.antiHeal=/physical damage (?:dealt|to)|dealing physical damage/i.test(text)?'physicalDamage':/dealing magic damage/i.test(text)?'magicDamage':/when struck.*or dealing damage/i.test(text)?'damageOrIncomingAttack':'unknown';
+  if(effects.antiShield)mechanics.antiShield=/dealing ability damage/i.test(text)?'abilityDamage':/dealing damage|when you damage/i.test(text)?'damage':'unknown';
+  if(/(?:enemy|target).{0,20}max(?:imum)? Health/i.test(text))mechanics.healthDamage='maximum';
+  else if(/target.{0,15}current Health/i.test(text))mechanics.healthDamage='current';
+  if(/basic attacks deal.{0,45}(?:on.hit|target.{0,15}current Health)/i.test(text))mechanics.onHit=true;
+  if(/melee.{0,150}ranged|ranged.{0,150}melee/i.test(text))mechanics.rangeDependent=true;
+  if(/Area of effect.{0,200}single target/i.test(text))mechanics.areaDependent=true;
+  if(/Spellblade/i.test(text))mechanics.spellblade=true;
+  return {effects,mechanics};
 }
 function parseItemDetails(html,entry){
   const $=load(html),image=$('.tt__image img').attr('src'),id=slug(image||'').replace(/\.png.*$/,'');
   const raw=$('.tt__info__cost span').first().text().trim();
   if(id!==entry.id||!/^\d{2,5}$/.test(raw))throw Error('Eşya kimliği veya fiyatı doğrulanamadı.');
   const cost=Number(raw);if(cost<100||cost>10000)throw Error('Eşya fiyatı aralık dışında.');
-  const stats={},keys={'Armor':'armor','Magic Resistance':'magicResist','Magic Resist':'magicResist','Critical Strike Chance':'crit','Health':'health','Attack Damage':'ad','Ability Power':'ap','Attack Speed':'attackSpeed','Ability Haste':'haste','Armor Penetration':'armorPen','Magic Penetration':'magicPen','Physical Vamp':'physicalVamp','Omnivamp':'omniVamp','Lifesteal':'lifesteal'};
+  const stats={},keys={'Armor':'armor','Magic Resistance':'magicResist','Magic Resist':'magicResist','Critical Strike Chance':'crit','Health':'health','Mana':'mana','Attack Damage':'ad','Ability Power':'ap','Attack Speed':'attackSpeed','Ability Haste':'haste','Armor Penetration':'armorPen','Magic Penetration':'magicPen','Physical Vamp':'physicalVamp','Omnivamp':'omniVamp','Lifesteal':'lifesteal'};
   $('.tt__info__stats > span').each((_,e)=>{
     const value=$(e).find('span').first().text().trim(),label=$(e).clone().children().remove().end().text().trim(),key=keys[label];
     if(key&&/^\+?\d+(?:\.\d+)?%?$/.test(value)){const n=Number(value.replace(/[+%]/g,''));if(n>=0&&n<=2000)stats[key]=n;}
   });
-  const text=$('.tt__info').text().replace(/\s+/g,' '),effects={};
-  const patterns={antiHeal:/\bGrievous Wounds\b/i,antiShield:/shield reduction|reduces? (?:any |all |their )?shields?/i,stasis:/\bstasis\b/i,revive:/\bresurrect|\brevive/i,spellShield:/spell shield|blocks? the next (?:hostile |enemy )?ability/i,cleanse:/removes? (?:all )?(?:crowd control|immobilizing)/i,critReduction:/Critical Strikes deal \d+% less damage/i,attackReduction:/Basic attacks from champions deal \d+% reduced damage/i,sustain:/\b(?:Physical Vamp|Omnivamp|Lifesteal|Life Steal)\b/i,shield:/\b(?:gain|grants?|generates?|receive)(?:\s+\w+){0,8}\s+(?:a\s+)?shield\b/i};
-  for(const [key,pattern] of Object.entries(patterns))if(pattern.test(text))effects[key]=true;
-  return {cost,stats,effects,costSource:BASE+`/ajax/tooltip?relation_type=Item&relation_id=${entry.sourceId}&lang=en`};
+  const text=$('.tt__info').text().replace(/\s+/g,' ');
+  return {cost,stats,...parseEffectText(text),costSource:BASE+`/ajax/tooltip?relation_type=Item&relation_id=${entry.sourceId}&lang=en`};
 }
-module.exports={BASE,PATCH_URL,fetchText,parseStats,parseCatalog,parsePatch,parseGuide,parseItemCatalog,parseItemDetails,comparePatch,hash};
+module.exports={BASE,PATCH_URL,fetchText,parseStats,parseCatalog,parsePatch,parseGuide,parseChampionFacts,parseItemCatalog,parseItemDetails,parseEffectText,comparePatch,hash};

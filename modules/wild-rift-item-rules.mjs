@@ -1,7 +1,7 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20260924-items1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260924-items2';
 export const PHASES={draft:'Seçim aşaması / genel plan',lane:'Koridor ve ilk eşyalar',team:'Takım savaşları'};
 export const BUILD_PRIORITIES={balanced:'Dengeli',survive:'Hayatta kalma öncelikli',damage:'Hasar düzenini koru'};
-export const NEED_LABELS={heal:'İyileşme',shield:'Kalkan',magic:'Büyü hasarı',physical:'Fiziksel hasar',cc:'Kontrol etkileri',burst:'Ani hasar',tank:'Dayanıklı hedef',attack:'Normal saldırılar',critical:'Kritik vuruş yatırımı',armor:'Zırh yatırımı',magicResist:'Büyü direnci yatırımı'};
+export const NEED_LABELS={heal:'İyileşme',shield:'Kalkan',magic:'Büyü hasarı',physical:'Fiziksel hasar',cc:'Kontrol etkileri',burst:'Ani hasar',tank:'Dayanıklı hedef',health:'Can yatırımı',trueDamage:'Gerçek hasar',attack:'Normal saldırılar',critical:'Kritik vuruş yatırımı',armor:'Zırh yatırımı',magicResist:'Büyü direnci yatırımı'};
 export const TEAR_ITEMS=['tear-of-the-goddess','manamune','muramana','archangels-staff','seraphs-embrace','winters-approach','fimbulwinter','whispering-circlet','diadem-of-songs'];
 export const BOOTS=['berserkers-greaves','boots-of-mana','boots-of-dynamism','mercurys-treads','plated-steelcaps','ionian-boots-of-lucidity','gluttonous-greaves'];
 export const SUPPORT_ITEMS=['bulwark-of-the-mountain','black-mist-scythe','relic-shield','spectral-sickle'];
@@ -11,12 +11,25 @@ export function itemConflicts(items,id){
  return items.includes(id)||groups.some(g=>g.includes(id)&&items.some(i=>g.includes(i)));
 }
 export function itemFacts(data,id,now=Date.now()){
- const i=data.items[id]||{},stats={},effects={};
- if((i.statsPatch||i.costPatch)===data.latestPatch.version&&ageInDays(i.statsCheckedAt||i.costCheckedAt,now)<=7)Object.assign(stats,i.stats);
- if(i.official?.patch===data.latestPatch.version&&ageInDays(i.official.checkedAt,now)<=7)Object.assign(stats,i.official.stats);
- if(i.effectsPatch===data.latestPatch.version&&ageInDays(i.effectsCheckedAt,now)<=7)Object.assign(effects,i.effects);
- return {stats,effects};
+ const i=data.items[id]||{},stats={},effects={},mechanics={},conflicts=[],sources=[];
+ const valid=(patch,date)=>patch===data.latestPatch.version&&ageInDays(date,now)<=7;
+ const core=valid(i.coreFacts?.patch,i.coreFacts?.checkedAt)?i.coreFacts:null;
+ const fire=valid(i.statsPatch||i.costPatch,i.statsCheckedAt||i.costCheckedAt)?i.stats:null;
+ const official=valid(i.official?.patch,i.official?.checkedAt)?i.official?.stats:null;
+ if(core){Object.assign(stats,core.stats);Object.assign(effects,core.effects);Object.assign(mechanics,core.mechanics);sources.push('wildriftcore');}
+ if(fire){Object.assign(stats,fire);sources.push('wildriftfire');}
+ if(core&&fire)for(const [key,value] of Object.entries(fire))if(Number.isFinite(core.stats?.[key])&&core.stats[key]!==value&&!Number.isFinite(official?.[key])){delete stats[key];conflicts.push(key);}
+ if(official){Object.assign(stats,official);sources.push('riot');}
+ if(valid(i.effectsPatch,i.effectsCheckedAt)){for(const k of Object.keys(effects))delete effects[k];Object.assign(effects,i.effects);}
+ if(valid(i.mechanicsPatch,i.mechanicsCheckedAt)){for(const k of Object.keys(mechanics))delete mechanics[k];Object.assign(mechanics,i.mechanics);}
+ return {stats,effects,mechanics,conflicts,sources,known:!!(fire||core||official),effectsKnown:!!core||valid(i.effectsPatch,i.effectsCheckedAt)};
 }
+// This interpretation must be reviewed when the gameplay patch changes. Raw
+// current stats can still be displayed; old semantic weights cannot be reused.
+export const RULES_PATCH='7.3';
+// Verified 7.3 automatic forms: these occupy the same slot as the purchased
+// parent. They must not be shown as a second shop purchase.
+export const TRANSFORM_FROM={'muramana':'manamune','seraphs-embrace':'archangels-staff','fimbulwinter':'winters-approach','diadem-of-songs':'whispering-circlet'};
 // Explanatory item roles. These never introduce a swap outside the champion's guide.
 export const ITEM_ROLES={
  'zhonyas-hourglass':{covers:{burst:1,physical:.45},loss:'Zamanlamayla kullanılan staz savunmasından vazgeçersin.'},

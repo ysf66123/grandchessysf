@@ -79,12 +79,12 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
         const c=champions[cursor++];
         try {
           const result=source.parseGuide(await source.fetchText(c.guide),c);
-          c.builds=result.builds.filter(b=>b.role && c.roles.includes(b.role)); c.tags=result.tags;c.fetchedAt=result.fetchedAt;c.contentHash=result.contentHash;
+          c.builds=result.builds.filter(b=>b.role && c.roles.includes(b.role)); c.tags=result.tags;c.fetchedAt=result.fetchedAt;c.contentHash=result.contentHash;c.combatFacts=result.combatFacts;
           Object.assign(items,result.items);
         } catch(e) {
           failures.push({id:c.id,message:e.message});
           const previous=old?.champions.find(x=>x.id===c.id);
-          if(previous){Object.assign(c,{builds:previous.builds,tags:previous.tags,fetchedAt:previous.fetchedAt,contentHash:previous.contentHash});Object.assign(items,old.items);}
+          if(previous){Object.assign(c,{builds:previous.builds,tags:previous.tags,fetchedAt:previous.fetchedAt,contentHash:previous.contentHash,combatFacts:previous.combatFacts});Object.assign(items,old.items);}
           else c.builds=[];
           c.refreshFailed=true;
         }
@@ -98,11 +98,13 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
     const changed=champions.filter(c=>c.contentHash!==old?.champions.find(x=>x.id===c.id)?.contentHash).map(c=>c.id);
     let itemCatalog;
     try{itemCatalog=await enrichItems(items,{previous:old?.items,onProgress:(n,total)=>Object.assign(status,{phase:'Eşya fiyatları',completed:n,total})});}
-    catch{itemCatalog={...(old?.itemCatalog||{}),refreshFailed:true};for(const [id,item] of Object.entries(items))if(old?.items[id]?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats','statsPatch','statsCheckedAt','effects','effectsPatch','effectsCheckedAt','effectsSource'])item[key]=old.items[id][key];}
+    catch{itemCatalog={...(old?.itemCatalog||{}),refreshFailed:true};for(const [id,item] of Object.entries(items))if(old?.items[id]?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats','statsPatch','statsCheckedAt','effects','effectsPatch','effectsCheckedAt','effectsSource','mechanics','mechanicsPatch','mechanicsCheckedAt','coreFacts'])item[key]=old.items[id][key];}
     const data={schema:1,checkedAt,latestPatch,stats,champions,items,itemCatalog,changes:changed,failures,source:source.BASE,methodologyVersion:2};
     for(const [id,item] of Object.entries(items)){if(old?.items[id]?.official)item.official=old.items[id].official;if(old?.items[id]?.removedIn)item.removedIn=old.items[id].removedIn;}
     await collectEvidence(data,{previous:old?.evidence,onProgress:(n,total)=>{Object.assign(status,{phase:'Ek kaynak kontrolü',completed:n,total});onProgress(n,total,'ek-kaynaklar');}});
-    data.methodologyVersion=3;data.localRevisionAt=new Date().toISOString();
+    await require('./wild-rift-build-sources.cjs').collectBuildSources(data,{previous:old,onProgress:(n,total)=>Object.assign(status,{phase:'Ek meta dizilimleri',completed:n,total})});
+    data.itemRegistry=require('./wild-rift-registry.cjs').buildRegistry(data);
+    data.methodologyVersion=4;data.localRevisionAt=new Date().toISOString();
     validateSnapshot(data);
     await fs.mkdir(path.dirname(DATA_FILE),{recursive:true});
     const temp=DATA_FILE+'.tmp';await fs.writeFile(temp,JSON.stringify(data));

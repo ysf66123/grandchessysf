@@ -1,11 +1,11 @@
-import {planBuild} from './wild-rift-build-planner.mjs?v=20260924-items1';
-import {PHASES,BUILD_PRIORITIES} from './wild-rift-item-rules.mjs?v=20260924-items1';
-import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260924-items1';
-import {ageInDays,guideQuality} from './wild-rift-quality.mjs?v=20260924-items1';
-import {relationshipEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260924-items1';
+import {planBuild} from './wild-rift-build-planner.mjs?v=20260924-items2';
+import {PHASES,BUILD_PRIORITIES} from './wild-rift-item-rules.mjs?v=20260924-items2';
+import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260924-items2';
+import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260924-items2';
+import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260924-items2';
 export {ROLES};
 export const SORT_MODES={balanced:'Dengeli öneri',lane:'Koridor eşleşmesi',team:'Takım uyumu',safe:'Güvenli seçim'};
-export const emptyDraft=()=>({blue:{},red:{},role:'mid',rank:'diamond',bans:[],pool:[],fed:'',locked:[],tab:'counters',uncertain:[],comfort:{},sort:'balanced',overrides:{},compare:[],gold:0,owned:[],enemyItems:{},variant:'',phase:'draft',buildPriority:'balanced',teamCoverage:{heal:false,shield:false}});
+export const emptyDraft=()=>({blue:{},red:{},role:'mid',rank:'diamond',bans:[],pool:[],fed:'',locked:[],tab:'counters',uncertain:[],comfort:{},sort:'balanced',overrides:{},compare:[],gold:0,owned:[],enemyItems:{},variant:'',phase:'draft',buildPriority:'balanced',teamCoverage:{heal:false,shield:false},teamAssignments:[],enemyLevels:{},purchaseTarget:'',ownState:'even',adaptation:'standard'});
 export function sanitizeDraft(value,data){
   const d=emptyDraft(),ids=new Set(data.champions.map(c=>c.id));
   if(!value || typeof value!=='object')return d;
@@ -28,11 +28,16 @@ export function sanitizeDraft(value,data){
   if(PHASES[value.phase])d.phase=value.phase;
   if(BUILD_PRIORITIES[value.buildPriority])d.buildPriority=value.buildPriority;
   d.teamCoverage={heal:value.teamCoverage?.heal===true,shield:value.teamCoverage?.shield===true};
+  if(['ahead','even','behind'].includes(value.ownState))d.ownState=value.ownState;
+  if(['standard','extended'].includes(value.adaptation))d.adaptation=value.adaptation;
+  if(itemAvailability(data,value.purchaseTarget))d.purchaseTarget=value.purchaseTarget;
+  for(const id of Object.values(d.red))if(Number.isInteger(value.enemyLevels?.[id])&&value.enemyLevels[id]>=1&&value.enemyLevels[id]<=15)d.enemyLevels[id]=value.enemyLevels[id];
+  d.teamAssignments=(Array.isArray(value.teamAssignments)?value.teamAssignments:[]).filter(a=>Object.values(d.blue).includes(a.ally)&&a.ally!==d.blue[d.role]&&itemAvailability(data,a.item)&&Object.values(d.red).includes(a.target)).slice(0,10).map(a=>({ally:a.ally,item:a.item,target:a.target}));
   const own=data.champions.find(c=>c.id===d.blue[d.role]);
-  if(own?.builds.some(b=>b.role===d.role&&b.guideId===value.variant))d.variant=value.variant;
+  if(championBuilds(own).some(b=>b.role===d.role&&b.guideId===value.variant))d.variant=value.variant;
   d.tab=['counters','build','coach','team','patch'].includes(value.tab)?value.tab:'counters';return d;
 }
-export function buildFor(c,role,variant=''){return c?.builds?.find(b=>b.role===role&&b.guideId===variant)||c?.builds?.find(b=>b.role===role)||null;}
+export function buildFor(c,role,variant=''){return championBuilds(c).find(b=>b.role===role&&b.guideId===variant)||c?.builds?.find(b=>b.role===role)||null;}
 export function movePick(data,draft,side,from,to){
   if(!['blue','red'].includes(side)||!ROLES[from]||!ROLES[to]||!draft[side]?.[from])return draft;
   const next=structuredClone(draft),first=next[side][from],second=next[side][to];
@@ -114,11 +119,12 @@ export function recommendations(data,draft){
   }).sort((a,b)=>b.score-a.score||a.champion.name.localeCompare(b.champion.name,'tr'));
 }
 export function recommendBuild(data,draft){
-  const c=data.champions.find(c=>c.id===draft.blue[draft.role]),base=buildFor(c,draft.role,draft.variant);
+  const c=data.champions.find(c=>c.id===draft.blue[draft.role]);let base=buildFor(c,draft.role,draft.variant),sourceFallback=false;
   if(!base)return {champion:c,missing:true};
-  const invalidItems=base.final.filter(id=>!itemAvailability(data,id));
+  let invalidItems=invalidFinalItems(data,base.final);
+  if(invalidItems.length&&!draft.variant){const other=championBuilds(c).find(b=>b.role===draft.role&&finalBuildAvailable(data,b.final)&&guideQuality(data,c,draft.role,Date.now(),b.guideId).usable);if(other){base=other;invalidItems=[];sourceFallback=true;}}
   if(invalidItems.length)return {champion:c,missing:true,invalidItems};
-  return {...planBuild(data,draft,c,base,laneScenarios(data,draft)),threat:threats(data,draft)};
+  return {...planBuild(data,draft,c,base,laneScenarios(data,draft)),sourceFallback,threat:threats(data,draft)};
 }
 export function coaching(data,draft){
   const c=data.champions.find(c=>c.id===draft.blue[draft.role]),enemy=data.champions.find(c=>c.id===draft.red[draft.role]);

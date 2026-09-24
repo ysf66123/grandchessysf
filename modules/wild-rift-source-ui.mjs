@@ -1,5 +1,5 @@
-import {priceEvidence} from './wild-rift-evidence.mjs?v=20260924-items1';
-import {itemName} from './wild-rift-tr.mjs?v=20260924-items1';
+import {priceEvidence} from './wild-rift-evidence.mjs?v=20260924-items2';
+import {itemName} from './wild-rift-tr.mjs?v=20260924-items2';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const names={riot:'Riot Games',wildriftfire:'WildRiftFire',wildriftcore:'WildRiftCore',wrmeta:'WR-META',riftgg:'RiftGG',riftforge:'RiftForge',lolegacy:'LoLegacy'};
 const statuses={available:'Veri alındı',partial:'Kısmen alındı',unavailable:'Son kontrol başarısız',manual:'Dış kaynak',pending:'Kontrol bekliyor'};
@@ -12,7 +12,7 @@ function championProof(data,draft){
  return `<details class="wr-details"><summary>${esc(c.name)} için diğer kaynakların meta görünümü</summary><p>WildRiftCore rol seviyesi: <b>${esc(core?.tiers?.[role]||'Belirtilmemiş')}</b></p>${row?`<p>Kaynağın genel kazanma oranı: %${row.win.toFixed(2).replace('.',',')} · ${esc(stats.asOf)} · Çin sunucusu.</p><p>Lig kapsamı belirtilmediği için bu oran seçtiğin ligin oranına eklenmez; yalnızca karşılaştırma içindir.</p>`:'<p>Bu rol için karşılaştırılabilir ek istatistik bulunamadı.</p>'}</details>`;
 }
 export function priceProof(data,id){
- const proof=priceEvidence(data,id),labels={official:'Resmî yama fiyatı',agreement:'Kaynaklar aynı fiyatı veriyor',single:'Tek kaynak fiyatı',conflict:'Güncel kaynaklar çelişiyor',missing:'Güncel fiyat doğrulanamadı',removed:'Bu eşya kaldırıldı'};
+ const proof=priceEvidence(data,id),labels={official:'Resmî yama fiyatı',agreement:'Kaynaklar aynı fiyatı veriyor',single:'Tek kaynak fiyatı',conflict:'Güncel kaynaklar çelişiyor',missing:'Güncel fiyat doğrulanamadı',removed:'Bu eşya kaldırıldı',unverified:'Wild Rift eşya kimliği doğrulanamadı'};
  return `<div class="wr-price-proof"><b>${esc(itemName(id))} · ${labels[proof.status]}</b>${proof.conflict?'<p class="wr-risk">Topluluk kaynakları resmî yamayla çelişiyor; Riot verisi kullanılıyor.</p>':''}<ul>${data.items[id]?.official?.cost?`<li><a href="${link(data.items[id].official.url)}" target="_blank" rel="noopener noreferrer">Riot Games ↗</a> · ${data.items[id].official.cost} altın · ${esc(data.items[id].official.patch)}</li>`:''}${proof.observations.map(o=>`<li><a href="${link(o.url)}" target="_blank" rel="noopener noreferrer">${names[o.source]||esc(o.source)} ↗</a> · ${o.cost} altın · ${o.patch?'Yama '+esc(o.patch):'Yama belirtilmemiş'} · Kontrol: ${esc(new Date(o.checkedAt).toLocaleDateString('tr-TR'))}</li>`).join('')}</ul></div>`;
 }
 export function sourcesView(data,draft,selected){
