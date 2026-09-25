@@ -1,4 +1,4 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20260924-items2';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260925-counters1';
 export const PHASES={draft:'Seçim aşaması / genel plan',lane:'Koridor ve ilk eşyalar',team:'Takım savaşları'};
 export const BUILD_PRIORITIES={balanced:'Dengeli',survive:'Hayatta kalma öncelikli',damage:'Hasar düzenini koru'};
 export const NEED_LABELS={heal:'İyileşme',shield:'Kalkan',magic:'Büyü hasarı',physical:'Fiziksel hasar',cc:'Kontrol etkileri',burst:'Ani hasar',tank:'Dayanıklı hedef',health:'Can yatırımı',trueDamage:'Gerçek hasar',attack:'Normal saldırılar',critical:'Kritik vuruş yatırımı',armor:'Zırh yatırımı',magicResist:'Büyü direnci yatırımı'};

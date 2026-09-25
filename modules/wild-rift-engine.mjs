@@ -1,8 +1,9 @@
-import {planBuild} from './wild-rift-build-planner.mjs?v=20260924-items2';
-import {PHASES,BUILD_PRIORITIES} from './wild-rift-item-rules.mjs?v=20260924-items2';
-import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260924-items2';
-import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260924-items2';
-import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260924-items2';
+import {evaluateMatchup,mechanicalContext,duoContext} from './wild-rift-counters.mjs?v=20260925-counters1';
+import {planBuild} from './wild-rift-build-planner.mjs?v=20260925-counters1';
+import {PHASES,BUILD_PRIORITIES} from './wild-rift-item-rules.mjs?v=20260925-counters1';
+import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260925-counters1';
+import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260925-counters1';
+import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260925-counters1';
 export {ROLES};
 export const SORT_MODES={balanced:'Dengeli öneri',lane:'Koridor eşleşmesi',team:'Takım uyumu',safe:'Güvenli seçim'};
 export const emptyDraft=()=>({blue:{},red:{},role:'mid',rank:'diamond',bans:[],pool:[],fed:'',locked:[],tab:'counters',uncertain:[],comfort:{},sort:'balanced',overrides:{},compare:[],gold:0,owned:[],enemyItems:{},variant:'',phase:'draft',buildPriority:'balanced',teamCoverage:{heal:false,shield:false},teamAssignments:[],enemyLevels:{},purchaseTarget:'',ownState:'even',adaptation:'standard'});
@@ -84,38 +85,52 @@ export function recommendations(data,draft){
   const threat=threats(data,draft),state=freshness(data),rankRows=data.stats.brackets[draft.rank]||[];
   return data.champions.filter(c=>c.roles.includes(draft.role)&&!taken.has(c.id)&&(!draft.pool.length||draft.pool.includes(c.id))).map(c=>{
     const t=traits(c),b=buildFor(c,draft.role),stat=rankRows.find(s=>s.id===c.id&&s.role===draft.role),tier=c.tiers[draft.role];
-    const base=({ 'S+':38,S:32,A:23,B:14,C:7 })[tier]??12;
     const quality=guideQuality(data,c,draft.role),current=quality.usable,reasons=[],risks=[...quality.issues];
+    const base=current?({'S+':24,S:21,A:17,B:12,C:7})[tier]??10:10;
     const matchups=scenarios.opponents.map(enemy=>{
-      const oppBuild=buildFor(enemy,draft.role),oppCurrent=enemy&&guideQuality(data,enemy,draft.role).usable;
-      const supporting=enemy?relationshipEvidence(data,enemy.id,c.id,draft.role):[],opposing=enemy?relationshipEvidence(data,c.id,enemy.id,draft.role):[];
-      const positive=supporting.length>0,negative=opposing.length>0;
-      if(positive&&negative){risks.push(`${enemy.name} için iki kaynak rehber birbiriyle çelişiyor; karşı seçim bonusu verilmedi.`);return {enemy,value:0,known:false,conflict:true};}
-      if(positive)reasons.push(`${enemy.name} için ${supporting.length} kaynakta karşı seçim olarak yer alıyor.${scenarios.uncertain?' Koridoru kesinleşmeli.':''}`);
-      if(negative)risks.push(`${enemy.name}, bu şampiyonun rehberinde zor eşleşme olarak belirtiliyor.`);
-      return {enemy,value:positive?Math.min(27,23+(supporting.length-1)*2):negative?-20:0,known:positive||negative,sources:[...supporting,...opposing]};
+      const m=evaluateMatchup(data,c,enemy,draft.role);
+      if(m.conflict)risks.push(`${enemy.name} için kaynak değerlendirmeleri çelişiyor; katkı sınırlandı.`);
+      else if(m.status==='advantage')reasons.push(`${enemy.name} karşısında ${m.families} kaynak grubunda avantaj kaydı var.`);
+      else if(m.status==='disadvantage')risks.push(`${enemy.name}, kaynaklarda zor eşleşme olarak belirtiliyor.`);
+      else if(m.status==='skill')risks.push(`${enemy.name} eşleşmesi kaynakta oyuncu becerisine bağlı olarak belirtiliyor.`);
+      return m;
     });
     const laneMin=Math.min(...matchups.map(m=>m.value)),laneMax=Math.max(...matchups.map(m=>m.value));
     // Until the lane is confirmed use the worst supported scenario; never average into a fake win chance.
-    const parts={meta:base,statistics:state.statsCurrent&&stat?Math.max(-5,Math.min(5,(stat.win-50)*.8)):0,lane:laneMin,team:0,comfort:(draft.comfort?.[c.id]||0)*3,safety:0};
-    const add=(value,reason)=>{parts.team+=value;reasons.push(reason);};
+    const parts={meta:base,statistics:state.statsCurrent&&stat?Math.max(-5,Math.min(5,(stat.win-50)*.8)):0,lane:laneMin,team:0,comfort:(draft.comfort?.[c.id]||0)*3,safety:0,mechanics:0,duo:0,composition:0,synergy:0};
+    const add=(value,reason)=>{if(data.latestPatch.version==='7.3'){parts.team+=value;reasons.push(reason);}};
     if(t.tankbuster&&threat.tank>=2)add(10,'Rakibin dayanıklı ön saflarına karşı sürekli hasar sağlar.');
     if(t.peel&&threat.engage>=2)add(9,'Rakibin dalışına karşı taşıyıcını koruyabilir.');
     if(t.engage&&team.length>=2&&!team.some(a=>traits(a).engage))add(7,'Takımın eksik olan savaşı başlatma ihtiyacını karşılar.');
     if(t.magic&&team.length>=2&&team.every(a=>traits(a).damage==='physical'))add(7,'Takımın hasar dağılımına büyü hasarı ekler.');
     if(t.tank&&team.length>=2&&!team.some(a=>traits(a).tank))add(6,'Takıma ön saflarda dayanıklılık kazandırır.');
-    for(const ally of team)if(relationshipEvidence(data,c.id,ally.id,draft.role,'synergy').length)add(5,`${ally.name} ile kaynakta belirtilmiş uyumu var.`);
-    parts.team=Math.min(24,parts.team);
-    if(t.scaling&&scenarios.opponents.some(e=>traits(e).burst)){parts.safety-=4;risks.push('Güçlenmeden önce erken baskıya karşı dikkatli oyna.');}
+    parts.composition=parts.team;
+    for(const ally of team){
+      const allyRole=Object.entries(draft.blue).find(([,id])=>id===ally.id)?.[0];
+      if(['duo','support'].includes(draft.role)&&allyRole===(draft.role==='duo'?'support':'duo'))continue; // Pair synergy is counted once, in duoContext.
+      const synergy=[...relationshipEvidence(data,c.id,ally.id,draft.role,'synergy'),...relationshipEvidence(data,ally.id,c.id,allyRole,'synergy')];
+      if(synergy.length){parts.synergy+=4;reasons.push(`${ally.name} ile kaynakta belirtilmiş uyumu var.`);}
+    }
+    parts.synergy=Math.min(8,parts.synergy);
+    if(data.latestPatch.version==='7.3'&&team.length>=3&&!t.tank&&!team.some(a=>traits(a).tank)){parts.composition-=4;risks.push('Bu seçimden sonra takımın dayanıklı ön hat ihtiyacı sürüyor.');}
+    if(data.latestPatch.version==='7.3'&&team.length>=3&&t.damage==='physical'&&team.every(a=>traits(a).damage==='physical')){parts.composition-=4;risks.push('Takımın fiziksel hasara yığılıyor; rakibin zırh tercihi kolaylaşabilir.');}
+    if(data.latestPatch.version!=='7.3')parts.composition=0;
+    parts.team=Math.max(-8,Math.min(24,parts.composition+parts.synergy));
+    const mechanical=mechanicalContext(data,c,scenarios.opponents.filter(Boolean)),duo=duoContext(data,draft,c,byId);
+    parts.mechanics=scenarios.valid?mechanical.score:0;parts.duo=duo.score;
+    reasons.push(...mechanical.reasons,...duo.reasons);risks.push(...mechanical.risks,...duo.risks);
+    if(scenarios.opponents.some(e=>!e)||matchups.some(m=>!m.known))parts.safety-=3;
+
     if(!current)parts.safety-=8;
     if(matchups.some(m=>m.conflict))parts.safety-=5;
     if(state.stale)risks.push('Meta kaynağının son kontrolü eski; yeniden kontrol et.');
     if(!scenarios.valid)risks.push('Rakiplerin olası koridorları çakışıyor. Koridorları netleştir.');
     if(!reasons.length)reasons.push('Meta ve takım özelliklerine göre aday; doğrudan karşı seçim kanıtı sınırlı.');
     const weights={balanced:{lane:1,team:1,safety:1},lane:{lane:1.5,team:.5,safety:1},team:{lane:.75,team:1.5,safety:1},safe:{lane:1.25,team:.75,safety:2}}[draft.sort]||{lane:1,team:1,safety:1};
-    const score=parts.meta+parts.statistics+parts.comfort+parts.lane*weights.lane+parts.team*weights.team+parts.safety*weights.safety;
-    const known=matchups.some(m=>m.known),confidence=!current||state.stale?'low':scenarios.uncertain||matchups.some(m=>m.conflict)||!known?'limited':'supported';
-    return {champion:c,tier,stat,statsCurrent:state.statsCurrent,score:Math.round(score),parts,laneRange:[laneMin,laneMax],matchups,quality,confidence,reasons,risks:[...new Set(risks)],evidence:known?'Rehber eşleşmesi':'Meta ve takım kuralları'};
+    const score=parts.meta+parts.statistics+parts.comfort+(parts.lane+parts.mechanics+parts.duo)*weights.lane+parts.team*weights.team+parts.safety*weights.safety;
+    const known=matchups.some(m=>m.known),confidence=!current?'low':scenarios.uncertain||!duo.complete||matchups.some(m=>m.conflict||!m.agreement)||!known?'limited':'supported';
+    const evidence=matchups.some(m=>m.conflict)?'Kaynaklar çelişiyor':matchups.some(m=>m.status==='advantage')?'Kaynaklarla desteklenen karşı seçim':matchups.some(m=>m.status==='disadvantage')?'Zor koridor; takım katkısıyla değerlendir':matchups.some(m=>m.status==='skill')?'Beceriye bağlı eşleşme':parts.mechanics>0?'Mekanik açıdan uygun; doğrudan kanıt sınırlı':'Eşleşme verisi sınırlı';
+    return {champion:c,tier,stat,statsCurrent:state.statsCurrent,score:Math.round(score),parts,laneRange:[laneMin,laneMax],matchups,quality,confidence,reasons,risks:[...new Set(risks)],evidence,mechanical,duo};
   }).sort((a,b)=>b.score-a.score||a.champion.name.localeCompare(b.champion.name,'tr'));
 }
 export function recommendBuild(data,draft){

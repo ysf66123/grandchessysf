@@ -30,3 +30,5 @@ body[data-active-view="view-wild-rift"] .app-container{max-width:1320px;backgrou
 .wr-decision-change{padding:12px 16px;border-left:3px solid #4cd5b0;border-radius:8px;background:#112c2b;color:#b9f7e6}
 
 .wr-assignment-controls label{min-width:0}.wr-assignment-controls select{width:100%;max-width:100%}
+
+.wr-counter-parts{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}.wr-counter-parts span{font-size:12px;padding:6px 8px;background:rgba(100,140,190,.1);border-radius:7px}.wr-counter-parts b{margin-left:5px}.wr-counter-proof{overflow-wrap:anywhere}.wr-counter-proof li{margin:8px 0}.wr-counter-proof a{color:#73caff}

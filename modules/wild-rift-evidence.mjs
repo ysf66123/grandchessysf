@@ -1,5 +1,5 @@
-import {ageInDays,guideQuality} from './wild-rift-quality.mjs?v=20260924-items2';
-import {itemConflicts} from './wild-rift-item-rules.mjs?v=20260924-items2';
+import {ageInDays,guideQuality} from './wild-rift-quality.mjs?v=20260925-counters1';
+import {itemConflicts} from './wild-rift-item-rules.mjs?v=20260925-counters1';
 const cache=new WeakMap();
 function index(data){
  if(cache.has(data))return cache.get(data);
@@ -46,10 +46,10 @@ export function priceEvidence(data,id,now=Date.now()){
  return {cost:valid?item.cost:current[0]?.cost??null,status:current.length>=2?'agreement':valid?'single':'missing',observations};
 }
 export function relationshipEvidence(data,subject,opponent,role,kind='counter',now=Date.now()){
- const rows=(index(data).relations.get(subject+':'+opponent+':'+role)||[]).filter(r=>r.kind===kind&&r.patch===data.latestPatch.version&&ageInDays(r.checkedAt,now)<=7);
+ const rows=(index(data).relations.get(subject+':'+opponent+':'+role)||[]).filter(r=>r.kind===kind&&(!r.game||r.game==='wild-rift')&&r.patch===data.latestPatch.version&&ageInDays(r.checkedAt,now)<=7&&(!r.updatedAt||ageInDays(r.updatedAt,now)!==Infinity));
  const c=data.champions.find(c=>c.id===subject),guide=c?.builds?.find(b=>b.role===role);
- if(guide&&guideQuality(data,c,role,now).usable&&(kind==='counter'?guide.counters:guide.synergies).includes(opponent))rows.unshift({source:'wildriftfire',patch:guide.patch,url:guide.source,checkedAt:c.fetchedAt});
- return [...new Map(rows.map(r=>[r.source,r])).values()];
+ if(guide&&guideQuality(data,c,role,now).usable&&(['counter','synergy'].includes(kind))&&((kind==='counter'?guide.counters:guide.synergies)||[]).includes(opponent))rows.unshift({subject,opponent,role,kind,source:'wildriftfire',family:'wildriftfire',basis:'guide',strength:'unspecified',patch:guide.patch,url:guide.source,checkedAt:guide.fetchedAt||c.fetchedAt,updatedAt:guide.updatedAt||null});
+ return [...new Map(rows.map(r=>[r.source+':'+(r.owner||r.subject)+':'+(r.strength||''),r])).values()];
 }
 export function statisticUsable(data,row,rank,role,now=Date.now()){
  return row?.patch===data.latestPatch.version&&row.rank===rank&&row.role===role&&row.region==='CN'&&ageInDays(row.asOf,now)<=4;

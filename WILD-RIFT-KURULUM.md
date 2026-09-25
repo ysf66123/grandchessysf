@@ -154,3 +154,10 @@ Bu kaynaklar uzman kalibrasyonu, canlı hasar simülasyonu veya her şampiyon ç
 
 
 Son mimari: kaynak taraması ve veri gönderimi bilgisayarda; yayın `main / (root)` üzerinden standart GitHub Pages ile. Özel veri/yayın Actions iş akışı kaldırıldı.
+
+
+## Karşı seçim kaynaklarını yenileme
+
+`npm run update:wild-rift:counters`: en fazla 48 Core rehberini eksik/eski kayıt ve popülerlik önceliğiyle kontrol eder. Altı saatlik önbellek ve kaynak hatasında bir saatlik bekleme uygulanır. Önceki ilişkiler kendi tarihiyle korunur. Kaynak tarihi bulunan WR-META önbelleği yeni indirme iddiası olmadan tekrar işlenir. Başarılı doğrulamada veri dosyası mevcut yerel GitHub eşitlemesine gönderilir. `-- --no-sync` sadece yerel doğrulama için gönderimi atlar.
+
+Tam güncelleme de bu toplayıcıyı çalıştırır; tarayıcıdaki seçimler dış kaynakları sorgulamaz. Her kaydın koridoru, yönü ve yaması önemlidir. Kaynakların aynı eşleşmede uyuşması maç kazanma yüzdesi ya da bağımsız maç örneklemi anlamına gelmez. Eksik eşleşme dengeli kabul edilmez. Üçüncü kaynak ilk yayında 42 şampiyonu kapsar; kalanlar sonraki başarılı taramalarda tamamlanır.

@@ -117,7 +117,7 @@ function parseGuide(html,champion) {
     const skillOrder=Array.from({length:15},(_,i)=>Number(skills.find(`li.lit[level="${i+1}"]`).closest('ul').attr('data-row'))||null);
     const counters=skills.find('.counters a[href^="/guide/"]').map((_,x)=>slug($(x).attr('href'))).get();
     const synergies=skills.find('.synergies a[href^="/guide/"]').map((_,x)=>slug($(x).attr('href'))).get();
-    builds.push({role,guideId,patch,source:champion.guide,sourceSlotCount,starting:names($(e).find('.section.starting')),core:names($(e).find('.section.core')),boots:names($(e).find('.section.boots')),final,situational,
+    builds.push({role,guideId,patch,updatedAt:require('./wild-rift-counter-sources.cjs').sourceDate($),source:champion.guide,sourceSlotCount,starting:names($(e).find('.section.starting')),core:names($(e).find('.section.core')),boots:names($(e).find('.section.boots')),final,situational,
       spells:spells.find('.section.spells .name').map((_,x)=>$(x).text().trim()).get(),runes:spells.find('.section.runes .name').map((_,x)=>$(x).text().trim()).get(),skillOrder,counters,synergies});
   });
   if (!builds.length) throw new Error('Şampiyon rehberi eksik.');

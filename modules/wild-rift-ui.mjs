@@ -1,13 +1,14 @@
-import {strategyView,adaptationView,itemFactView,advancedStrategy} from './wild-rift-build-ui.mjs?v=20260924-items2';
-import {sourcesView,priceProof} from './wild-rift-source-ui.mjs?v=20260924-items2';
-import {staticMode,publishedSnapshot} from './wild-rift-static.mjs?v=20260924-items2';
-import {itemAvailability,priceEvidence,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260924-items2';
-import {emptyDraft,sanitizeDraft,recommendations,recommendBuild,coaching,matchupPlan,threats,freshness,laneScenarios,movePick,SORT_MODES,ROLES} from './wild-rift-engine.mjs?v=20260924-items2';
-import {dataQuality,championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260924-items2';
-import {createHistory,readWorkspace,writeWorkspace} from './wild-rift-workspace.mjs?v=20260924-items2';
-import {purchasePlan,itemCost} from './wild-rift-purchase.mjs?v=20260924-items2';
-import {RANKS,traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20260924-items2';
-import {itemName,termName} from './wild-rift-tr.mjs?v=20260924-items2';
+import {counterSummary,counterProof} from './wild-rift-counter-ui.mjs?v=20260925-counters1';
+import {strategyView,adaptationView,itemFactView,advancedStrategy} from './wild-rift-build-ui.mjs?v=20260925-counters1';
+import {sourcesView,priceProof} from './wild-rift-source-ui.mjs?v=20260925-counters1';
+import {staticMode,publishedSnapshot} from './wild-rift-static.mjs?v=20260925-counters1';
+import {itemAvailability,priceEvidence,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260925-counters1';
+import {emptyDraft,sanitizeDraft,recommendations,recommendBuild,coaching,matchupPlan,threats,freshness,laneScenarios,movePick,SORT_MODES,ROLES} from './wild-rift-engine.mjs?v=20260925-counters1';
+import {dataQuality,championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260925-counters1';
+import {createHistory,readWorkspace,writeWorkspace} from './wild-rift-workspace.mjs?v=20260925-counters1';
+import {purchasePlan,itemCost} from './wild-rift-purchase.mjs?v=20260925-counters1';
+import {RANKS,traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20260925-counters1';
+import {itemName,termName} from './wild-rift-tr.mjs?v=20260925-counters1';
 let data=null,draft=emptyDraft(),root=null,picker=null,queryTimer=null,controller=null,updating=false,pollTimer=null,pollResolve=null,owner=null;
 const history=createHistory();
 let lastBuildDecision=null,decisionNotice='';
@@ -50,7 +51,7 @@ export async function mount(){
   if(!window.isSiteAdmin?.())return;
   owner=window.currentUser.uid;
   controller?.abort();controller=new AbortController();root=document.getElementById('wr-root');
-  if(!document.getElementById('wr-css')){const link=document.createElement('link');link.id='wr-css';link.rel='stylesheet';link.href=new URL('../wild-rift.css?v=20260924-items2',import.meta.url).href;document.head.append(link);}
+  if(!document.getElementById('wr-css')){const link=document.createElement('link');link.id='wr-css';link.rel='stylesheet';link.href=new URL('../wild-rift.css?v=20260925-counters1',import.meta.url).href;document.head.append(link);}
   root.innerHTML='<div class="wr-empty" role="status">Wild Rift verileri hazırlanıyor…</div>';
   if(!data){
     try{accept(await (staticMode()?publishedSnapshot(controller.signal):api()));}
@@ -93,10 +94,11 @@ function counterView(){
   const opponents=scenarios.opponents.map(c=>c?.name||'Henüz seçilmemiş rakip').join(' / ');
   const labels={supported:'Rehberle destekli',limited:'Sınırlı eşleşme kanıtı',low:'Güncellik zayıf'};
   return `<div class="wr-section-head"><div><h2>${ROLES[draft.role]} için öneriler</h2><p>${scenarios.uncertain?'Olası koridor rakipleri: '+esc(opponents)+'. En zor desteklenmiş senaryo esas alınıyor.':scenarios.opponents[0]?esc(opponents)+' eşleşmesi ve rakip takım birlikte değerlendiriliyor.':'Rakibin koridorunu belirleyerek eşleşme değerlendirmesini güçlendir.'}</p></div><span class="wr-pill">${Object.values(draft.red).length}/5 rakip belli</span></div>
+    ${data.counterSources?.retryAfter&&Date.parse(data.counterSources.retryAfter)>Date.now()?'<p class="wr-muted">Ek karşı seçim kaynağı bekleme süresinde; son doğrulanmış kayıtlar kendi tarihleriyle kullanılıyor.</p>':''}
     ${!scenarios.valid?'<div class="wr-notice">Olası koridorlar çakışıyor. Rakip yerleşimlerini düzelt; eşleşme bonusları şimdilik kapalı.</div>':''}
     <div class="wr-choice-controls"><label>Önceliğim<select id="wr-sort">${Object.entries(SORT_MODES).map(([id,name])=>`<option value="${id}" ${id===draft.sort?'selected':''}>${name}</option>`).join('')}</select></label><p class="wr-muted">İlk üç aday gösteriliyor. Şampiyon tecrübeni belirtebilir, üç adaya kadar karşılaştırabilirsin.</p></div>
-    ${comparisonView(all)}<div class="wr-recommendations">${list.map((r,i)=>`<article class="wr-rec"><div class="wr-rec-head"><span class="wr-rank">${i+1}</span>${image(r.champion.portrait,r.champion.name)}<div><h3>${esc(r.champion.name)}</h3><small>${esc(r.evidence)}</small></div><span class="wr-tier">${esc(r.tier||'?')}<small>META</small></span></div><span class="wr-evidence ${r.confidence}">${labels[r.confidence]}</span><ul>${r.reasons.slice(0,3).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>${r.risks.length?`<p class="wr-risk">${r.risks.map(esc).join(' ')}</p>`:''}
-    <details class="wr-details"><summary>Kararın dayanağı</summary><p>${esc(r.quality.label)}. Kaynak kontrolü: ${date(r.champion.fetchedAt)}.</p><p>Meta: ${r.parts.meta} · Genel istatistik: ${r.parts.statistics.toFixed(1)} · Eşleşme: ${r.parts.lane} · Takım: ${r.parts.team} · Tecrübe: ${r.parts.comfort} · Risk düzeltmesi: ${r.parts.safety}</p><p>Bu değerler sıralama katkılarıdır; kazanma yüzdesi veya istatistiksel güven aralığı değildir. Seçtiğin öncelik katkıların ağırlığını değiştirir.</p>${r.matchups.filter(m=>m.enemy).map(m=>`<p>${esc(m.enemy.name)}: ${m.conflict?'Çelişen rehberler':m.value>0?'Kaynakta avantajlı':m.value<0?'Kaynakta zor eşleşme':'Doğrudan eşleşme kanıtı yok'}</p>`).join('')}</details>
+    <p class="wr-muted">${all.length} uygun adayın ${all.filter(r=>r.matchups.some(m=>m.known)).length} tanesi için doğrudan eşleşme kaydı var. Veri bulunmaması, eşleşmenin dengeli olduğu anlamına gelmez.</p>${comparisonView(all)}<div class="wr-recommendations">${list.map((r,i)=>`<article class="wr-rec"><div class="wr-rec-head"><span class="wr-rank">${i+1}</span>${image(r.champion.portrait,r.champion.name)}<div><h3>${esc(r.champion.name)}</h3><small>${esc(r.evidence)}</small></div><span class="wr-tier">${esc(r.tier||'?')}<small>META</small></span></div><span class="wr-evidence ${r.confidence}">${labels[r.confidence]}</span>${counterSummary(r)}<ul>${r.reasons.slice(0,3).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>${r.risks.length?`<p class="wr-risk">${r.risks.map(esc).join(' ')}</p>`:''}
+    <details class="wr-details"><summary>Kararın dayanağı</summary><p>${esc(r.quality.label)}. Kaynak kontrolü: ${date(r.champion.fetchedAt)}.</p><p>Meta: ${r.parts.meta} · Genel istatistik: ${r.parts.statistics.toFixed(1)} · Eşleşme: ${r.parts.lane} · Mekanik: ${r.parts.mechanics} · İkiye iki: ${r.parts.duo} · Takım: ${r.parts.team} · Tecrübe: ${r.parts.comfort} · Risk düzeltmesi: ${r.parts.safety}</p><p>Bu değerler sıralama katkılarıdır; kazanma yüzdesi veya istatistiksel güven aralığı değildir. Seçtiğin öncelik katkıların ağırlığını değiştirir.</p>${counterProof(r)}</details>
     <label class="wr-experience">Bu şampiyondaki tecrübem<select data-comfort="${r.champion.id}"><option value="0">Belirtilmedi / yeni öğreniyorum</option><option value="1" ${draft.comfort[r.champion.id]===1?'selected':''}>Rahat oynarım</option><option value="2" ${draft.comfort[r.champion.id]===2?'selected':''}>Çok tecrübeliyim</option></select></label>
     <div class="wr-rec-actions"><label class="wr-check"><input type="checkbox" data-compare="${r.champion.id}" ${draft.compare.includes(r.champion.id)?'checked':''}> Karşılaştır</label><button class="secondary" data-action="feedback" data-id="${r.champion.id}">Öneriyi değerlendir</button></div>
     <div class="wr-rec-bottom"><span>${r.stat?`${r.statsCurrent?'Genel kazanma':'Eski genel oran'}: %${r.stat.win.toFixed(2).replace('.',',')}<small>${esc(data.stats.asOf)} · Çin sunucusu<br>Bu rakibe özel oran değildir.</small>`:'Bu lig/rol için istatistik yok.'}</span><button data-action="choose" data-id="${r.champion.id}">Şampiyonumu seç</button></div></article>`).join('')||'<div class="wr-empty">Bu rol ve havuz için kullanılabilir şampiyon kalmadı. Yasakları veya havuzunu düzenle.</div>'}</div>

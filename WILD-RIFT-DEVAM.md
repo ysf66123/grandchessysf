@@ -1,3 +1,15 @@
+## Karşı seçim güncellemesi — 25 Eylül 2026
+
+Onaylı paket uygulandı; varlık sürümü `20260925-counters1`. Yön/rol/yama kontrollü karşı seçim, açık kaynak güç derecesi, beceriye bağlı eşleşme, kaynak grubu başına sınırlı oy, çelişkide sınırlı katkı ve ayrı kontrol/içerik tarihi eklendi. Meta puan aralığı daraltıldı; kör/flex seçimlerde bilinmeyen durum güvenli kabul edilmez. Genel Çin kazanma oranları rakibe özel oran değildir.
+
+Core ilk 48 sayfa kontrolünde 42 şampiyondan 303 kayıt: 165 karşı seçim, 65 beceri eşleşmesi, 73 sinerji. Devam kontrolü üç başarısız yanıttan sonra bir saat beklemeye geçti; bu nedenle tüm 142 şampiyonda üçüncü kaynak kapsamı iddia edilmez. Eski kayıtlar özgün tarihleriyle korunur. 108 önbellek WR-META rehberi tekrar ayrıştırıldı; 938 ilişkiye gerçek içerik tarihi eklendi, indirme tarihleri yenilenmedi. Core kaydında olumlu eşleşme ters yönde doğru normalize edilir; kaynak sahipliği ayrıca saklanır.
+
+İkiye iki değerlendirmede kendi partneri, rakip ikili, kaynak sinerjisi ve partnerin kendi eşleşmesi kullanılır. Eksik/flex ikilide katkı yok. Mekanik kurallar sınırlı ve 7.3 yamalıdır; yeni yamada yeniden inceleme olmadan uygulanmaz. Tam yetenek/dalga simülasyonu ve uzman etiketli kazanma modeli değildir. Türkçe kartlarda katkılar, kaynak bağlantısı/tarihleri, çelişki, kapsam ve genel oyun aşaması ilkeleri gösterilir.
+
+123 birim/HTTP testi (120 yeni karşı seçim senaryosu dahil), genişletilmiş 360 px tarayıcı testi ve gerçek statik uygulama entegrasyonu geçti. Yerel 200 hesap ölçümü: medyan 1,8 ms, p95 3,33 ms; gerçek telefon ölçümü değildir. Gzip veri yaklaşık 107 KB. Seçimlerde veri isteği yok. Yayın tamamlandığında canlı doğrulama bu notun üstüne eklenecek.
+
+Önceki eşya güncellemesi 8964bd6 için Pages işi 36048759044 başarıyla tamamlanmıştı. Aşağıdaki eski bölümler tarihsel kayıttır; 23 Eylül faturalandırma engeli, mevcut standart Pages yayın yolunun durumu değildir.
+
 ## İkinci eşya sistemi — 24 Eylül 2026
 
 Kullanıcının onayladığı plan uygulandı. Varlık sürümü `20260924-items2`. Pozitif Wild Rift eşya kimliği, resmî kaldırılma üstünlüğü, parça/tam eşya ayrımı, aile çakışması kontrolü; şampiyon dizilim uyumu ve etki uygulama koşulları; can/direnç/seviye sinyalleri; hedefli takım görevleri; esnek üç değişiklik seçeneği; kaynakların ayrı tam dizilimleri; karar belirsizliği ve değişiklik açıklaması; alışveriş sırası/yuva/parça/birikim dönüşümü kontrolleri eklendi.

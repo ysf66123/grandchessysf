@@ -39,13 +39,13 @@ function parseMetaItems(html,data,checkedAt){
 }
 function parseMetaGuide(html,champion,data,checkedAt,url){
  const $=load(html),resolve=championResolver(data),patch=$('h1').first().text().match(/\((\d+\.\d+[a-z]?)\)/)?.[1];
- if(!patch)throw Error('WR-META rehber yaması doğrulanamadı.');const relationships=[];
+ if(!patch)throw Error('WR-META rehber yaması doğrulanamadı.');const relationships=[],updatedAt=require('./wild-rift-counter-sources.cjs').sourceDate($);
  $('.tabs-b4').each((_,section)=>{
    const heading=$(section).find('h2').first().text().trim(),role=ROLE[heading.split(/\s+/)[0]];if(!role||!heading.includes('Counters'))return;
    $(section).find('.tabs-box2').each((_,box)=>{
      const title=$(box).find('h3').first().text().trim(),kind=title==='Threats'?'counter':title==='Synergies'?'synergy':null;if(!kind)return;
      // Only publicly visible cards; locked content is never requested or inferred.
-     $(box).find('.counter-champion').each((_,card)=>{if($(card).closest('.lock-block').length)return;const opponent=resolve($(card).find('.top-title').text().trim());if(opponent&&opponent!==champion.id)relationships.push({subject:champion.id,opponent,role,kind,source:'wrmeta',patch,checkedAt,url});});
+     $(box).find('.counter-champion').each((_,card)=>{if($(card).closest('.lock-block').length)return;const opponent=resolve($(card).find('.top-title').text().trim());if(opponent&&opponent!==champion.id){const group=$(card).closest('.tabs-b2'),position=$(box).children('.tabs-b2').index(group),label=$(box).find('.tabs-sel2 > span').eq(position).text().trim().split(/\s/)[0];const level={Extreme:'hard',Major:'moderate',Even:'skill',Minor:'minor'}[label]||'unspecified';if(level==='minor')return;relationships.push({subject:champion.id,opponent,role,kind:level==='skill'?'skill':kind,strength:level==='skill'?'unspecified':level,source:'wrmeta',family:'wrmeta',basis:'guide',game:'wild-rift',patch,checkedAt,updatedAt,url});}});
    });
  });
  return relationships;
@@ -80,7 +80,7 @@ async function collectEvidence(data,{previous=null,onProgress=()=>{},guideLimit=
  await run('wrmeta',async()=>{const [html,home]=await Promise.all([fetchText('https://wr-meta.com/items/'),fetchText('https://wr-meta.com/')]);const observations=parseMetaItems(html,data,checkedAt);result.items.push(...observations);const $=load(home),resolve=championResolver(data),seen=new Set();$('a[href]').each((_,e)=>{const href=$(e).attr('href'),id=resolve($(e).text().trim());if(id&&!seen.has(id)&&/^https:\/\/wr-meta\.com\/\d+-[a-z0-9-]+\.html$/.test(href)){seen.add(id);metaCatalog.push({id,url:href});}});Object.assign(provider('wrmeta'),{items:observations.length,message:'Ücretsiz görünen eşleşme kartları kullanılır; kilitli içerik alınmaz. Eşya sayfasında yama etiketi yok.'});});
  const tasks=data.champions.slice(0,guideLimit),failures={wrmeta:[],riftgg:[]};let cursor=0,completed=0;
  async function worker(){while(cursor<tasks.length){const c=tasks[cursor++],meta=metaCatalog.find(x=>x.id===c.id);
-   if(meta)try{result.relationships.push(...parseMetaGuide(await fetchText(meta.url),c,data,checkedAt,meta.url));}catch{failures.wrmeta.push(c.id);}
+   if(meta)try{result.relationships.push(...parseMetaGuide(await fetchText(meta.url),c,data,checkedAt,meta.url));}catch{failures.wrmeta.push(c.id);result.relationships.push(...(previous?.relationships||[]).filter(r=>r.source==='wrmeta'&&r.subject===c.id));}
    const url=`https://www.riftgg.app/en/champions/${c.id}/cn-stats`;
    try{result.matchups.push(...parseRiftGG(await fetchText(url),c,data,checkedAt,url));}catch{failures.riftgg.push(c.id);}
    onProgress(++completed,tasks.length,c.id);await new Promise(r=>setTimeout(r,200));
@@ -93,6 +93,8 @@ async function collectEvidence(data,{previous=null,onProgress=()=>{},guideLimit=
  // Historical records cannot affect ranking. Ship a bounded example per champion
  // rather than transferring every obsolete rank/role row to mobile clients.
  const selected=new Map();result.matchups=result.matchups.filter(row=>{if(Date.now()-Date.parse(row.asOf)<7*86400000)return true;const key=row.subject+':'+row.rankLevel;const n=selected.get(key)||0;selected.set(key,n+1);return n<3;});
+ // Keep the dedicated counter collector's records with their own dates.
+ result.relationships.push(...(previous?.relationships||[]).filter(r=>r.source==='wildriftcore'));
  data.evidence=result;return result;
 }
 module.exports={SOURCES,flightObjects,parseCore,parseMetaItems,parseMetaGuide,parseForge,parseRiftGG,collectEvidence};

@@ -102,6 +102,7 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
     const data={schema:1,checkedAt,latestPatch,stats,champions,items,itemCatalog,changes:changed,failures,source:source.BASE,methodologyVersion:2};
     for(const [id,item] of Object.entries(items)){if(old?.items[id]?.official)item.official=old.items[id].official;if(old?.items[id]?.removedIn)item.removedIn=old.items[id].removedIn;}
     await collectEvidence(data,{previous:old?.evidence,onProgress:(n,total)=>{Object.assign(status,{phase:'Ek kaynak kontrolü',completed:n,total});onProgress(n,total,'ek-kaynaklar');}});
+    await require('./wild-rift-counter-sources.cjs').collectCounterSources(data,{previous:old?.counterSources,onProgress:(n,total)=>Object.assign(status,{phase:'Karşı seçim kanıtları',completed:n,total})});
     await require('./wild-rift-build-sources.cjs').collectBuildSources(data,{previous:old,onProgress:(n,total)=>Object.assign(status,{phase:'Ek meta dizilimleri',completed:n,total})});
     data.itemRegistry=require('./wild-rift-registry.cjs').buildRegistry(data);
     data.methodologyVersion=4;data.localRevisionAt=new Date().toISOString();
