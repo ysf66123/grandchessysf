@@ -1,14 +1,14 @@
-import {counterSummary,counterProof} from './wild-rift-counter-ui.mjs?v=20260925-counters1';
-import {strategyView,adaptationView,itemFactView,advancedStrategy} from './wild-rift-build-ui.mjs?v=20260925-counters1';
-import {sourcesView,priceProof} from './wild-rift-source-ui.mjs?v=20260925-counters1';
-import {staticMode,publishedSnapshot} from './wild-rift-static.mjs?v=20260925-counters1';
-import {itemAvailability,priceEvidence,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260925-counters1';
-import {emptyDraft,sanitizeDraft,recommendations,recommendBuild,coaching,matchupPlan,threats,freshness,laneScenarios,movePick,SORT_MODES,ROLES} from './wild-rift-engine.mjs?v=20260925-counters1';
-import {dataQuality,championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260925-counters1';
-import {createHistory,readWorkspace,writeWorkspace} from './wild-rift-workspace.mjs?v=20260925-counters1';
-import {purchasePlan,itemCost} from './wild-rift-purchase.mjs?v=20260925-counters1';
-import {RANKS,traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20260925-counters1';
-import {itemName,termName} from './wild-rift-tr.mjs?v=20260925-counters1';
+import {counterSummary,counterProof,counterCoverage} from './wild-rift-counter-ui.mjs?v=20260925-counters2';
+import {strategyView,adaptationView,itemFactView,advancedStrategy} from './wild-rift-build-ui.mjs?v=20260925-counters2';
+import {sourcesView,priceProof} from './wild-rift-source-ui.mjs?v=20260925-counters2';
+import {staticMode,publishedSnapshot} from './wild-rift-static.mjs?v=20260925-counters2';
+import {itemAvailability,priceEvidence,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260925-counters2';
+import {emptyDraft,sanitizeDraft,recommendations,recommendBuild,coaching,matchupPlan,threats,freshness,laneScenarios,movePick,SORT_MODES,ROLES} from './wild-rift-engine.mjs?v=20260925-counters2';
+import {dataQuality,championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260925-counters2';
+import {createHistory,readWorkspace,writeWorkspace} from './wild-rift-workspace.mjs?v=20260925-counters2';
+import {purchasePlan,itemCost} from './wild-rift-purchase.mjs?v=20260925-counters2';
+import {RANKS,traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20260925-counters2';
+import {itemName,termName} from './wild-rift-tr.mjs?v=20260925-counters2';
 let data=null,draft=emptyDraft(),root=null,picker=null,queryTimer=null,controller=null,updating=false,pollTimer=null,pollResolve=null,owner=null;
 const history=createHistory();
 let lastBuildDecision=null,decisionNotice='';
@@ -51,7 +51,7 @@ export async function mount(){
   if(!window.isSiteAdmin?.())return;
   owner=window.currentUser.uid;
   controller?.abort();controller=new AbortController();root=document.getElementById('wr-root');
-  if(!document.getElementById('wr-css')){const link=document.createElement('link');link.id='wr-css';link.rel='stylesheet';link.href=new URL('../wild-rift.css?v=20260925-counters1',import.meta.url).href;document.head.append(link);}
+  if(!document.getElementById('wr-css')){const link=document.createElement('link');link.id='wr-css';link.rel='stylesheet';link.href=new URL('../wild-rift.css?v=20260925-counters2',import.meta.url).href;document.head.append(link);}
   root.innerHTML='<div class="wr-empty" role="status">Wild Rift verileri hazırlanıyor…</div>';
   if(!data){
     try{accept(await (staticMode()?publishedSnapshot(controller.signal):api()));}
@@ -94,6 +94,7 @@ function counterView(){
   const opponents=scenarios.opponents.map(c=>c?.name||'Henüz seçilmemiş rakip').join(' / ');
   const labels={supported:'Rehberle destekli',limited:'Sınırlı eşleşme kanıtı',low:'Güncellik zayıf'};
   return `<div class="wr-section-head"><div><h2>${ROLES[draft.role]} için öneriler</h2><p>${scenarios.uncertain?'Olası koridor rakipleri: '+esc(opponents)+'. En zor desteklenmiş senaryo esas alınıyor.':scenarios.opponents[0]?esc(opponents)+' eşleşmesi ve rakip takım birlikte değerlendiriliyor.':'Rakibin koridorunu belirleyerek eşleşme değerlendirmesini güçlendir.'}</p></div><span class="wr-pill">${Object.values(draft.red).length}/5 rakip belli</span></div>
+    ${counterCoverage(data)}
     ${data.counterSources?.retryAfter&&Date.parse(data.counterSources.retryAfter)>Date.now()?'<p class="wr-muted">Ek karşı seçim kaynağı bekleme süresinde; son doğrulanmış kayıtlar kendi tarihleriyle kullanılıyor.</p>':''}
     ${!scenarios.valid?'<div class="wr-notice">Olası koridorlar çakışıyor. Rakip yerleşimlerini düzelt; eşleşme bonusları şimdilik kapalı.</div>':''}
     <div class="wr-choice-controls"><label>Önceliğim<select id="wr-sort">${Object.entries(SORT_MODES).map(([id,name])=>`<option value="${id}" ${id===draft.sort?'selected':''}>${name}</option>`).join('')}</select></label><p class="wr-muted">İlk üç aday gösteriliyor. Şampiyon tecrübeni belirtebilir, üç adaya kadar karşılaştırabilirsin.</p></div>

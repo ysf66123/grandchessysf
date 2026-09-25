@@ -1,8 +1,8 @@
-import {traits,CONDITIONS} from './wild-rift-knowledge.mjs?v=20260925-counters1';
-import {itemAvailability,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260925-counters1';
-import {guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260925-counters1';
-import {ITEM_ROLES,itemFacts,itemConflicts,itemFamily,BOOTS,SUPPORT_ITEMS,NEED_LABELS,RULES_PATCH,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20260925-counters1';
-import {championProfile,combatFacts,application,incompatibleItem,buildFit} from './wild-rift-build-fit.mjs?v=20260925-counters1';
+import {traits,CONDITIONS} from './wild-rift-knowledge.mjs?v=20260925-counters2';
+import {itemAvailability,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260925-counters2';
+import {guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260925-counters2';
+import {ITEM_ROLES,itemFacts,itemConflicts,itemFamily,BOOTS,SUPPORT_ITEMS,NEED_LABELS,RULES_PATCH,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20260925-counters2';
+import {championProfile,combatFacts,application,incompatibleItem,buildFit} from './wild-rift-build-fit.mjs?v=20260925-counters2';
 const ENCHANTERS=new Set('janna karma lulu milio nami sona soraka yuumi'.split(' '));
 const STRONG_HEAL=new Set('aatrox dr-mundo kayn soraka swain vladimir warwick yuumi'.split(' '));
 const STRONG_SHIELD=new Set('janna karma lulu sett shen'.split(' '));

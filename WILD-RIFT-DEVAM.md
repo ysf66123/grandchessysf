@@ -1,3 +1,9 @@
+## Üçüncü kaynak tam şampiyon kapsamı — 25 Eylül 2026
+
+`20260925-counters2`: WildRiftCore 142/142 şampiyon sayfası doğrulandı. 591 karşı seçim, 227 beceri eşleşmesi ve 428 sinerji: toplam 1.246 kayıt. Eksik şampiyon yok; her olası rol/şampiyon çifti için veri olduğu iddia edilmez. Kaynak dizini kanonik adresleri sağlar (Kai’Sa, Cho’Gath, Nunu & Willump vb.). sup/bot etiketleri ve şampiyon kimliği takma adları çözüldü. Tek rollü şampiyonda partnerin rolünü taşıyan sinerji kartları öznenin rolüne normalleştirildi. Ayrıştırma hatası üç kez olunca tüm kaynağı durduran yanlış sınıflandırma düzeltildi; gerçek 403/429 ve ardışık bağlantı hatalarında bekleme korunuyor. Eski v1 ayrıştırıcı kaynaklı yanlış bekleme, v2 göçünde kaldırıldı.
+
+Tam tarama altı saatlik taze sayfaları yeniden indirmez, tek işçi ve 1,5 saniye aralık kullanır. 48 sayfa sınırı kaldırıldı. Arayüzde güncel doğrulanmış şampiyon kapsamı gösteriliyor. 127 test ve mobil tarayıcı kontrolleri geçti; gzip veri yaklaşık 117 KB. Yayın doğrulaması sonrasında yerel not eklenecek.
+
 ## Karşı seçim güncellemesi — 25 Eylül 2026
 
 Onaylı paket uygulandı; varlık sürümü `20260925-counters1`. Yön/rol/yama kontrollü karşı seçim, açık kaynak güç derecesi, beceriye bağlı eşleşme, kaynak grubu başına sınırlı oy, çelişkide sınırlı katkı ve ayrı kontrol/içerik tarihi eklendi. Meta puan aralığı daraltıldı; kör/flex seçimlerde bilinmeyen durum güvenli kabul edilmez. Genel Çin kazanma oranları rakibe özel oran değildir.
@@ -6,7 +12,7 @@ Core ilk 48 sayfa kontrolünde 42 şampiyondan 303 kayıt: 165 karşı seçim, 6
 
 İkiye iki değerlendirmede kendi partneri, rakip ikili, kaynak sinerjisi ve partnerin kendi eşleşmesi kullanılır. Eksik/flex ikilide katkı yok. Mekanik kurallar sınırlı ve 7.3 yamalıdır; yeni yamada yeniden inceleme olmadan uygulanmaz. Tam yetenek/dalga simülasyonu ve uzman etiketli kazanma modeli değildir. Türkçe kartlarda katkılar, kaynak bağlantısı/tarihleri, çelişki, kapsam ve genel oyun aşaması ilkeleri gösterilir.
 
-123 birim/HTTP testi (120 yeni karşı seçim senaryosu dahil), genişletilmiş 360 px tarayıcı testi ve gerçek statik uygulama entegrasyonu geçti. Yerel 200 hesap ölçümü: medyan 1,8 ms, p95 3,33 ms; gerçek telefon ölçümü değildir. Gzip veri yaklaşık 107 KB. Seçimlerde veri isteği yok. Yayın tamamlandığında canlı doğrulama bu notun üstüne eklenecek.
+123 birim/HTTP testi (120 yeni karşı seçim senaryosu dahil), genişletilmiş 360 px tarayıcı testi ve gerçek statik uygulama entegrasyonu geçti. Yerel 200 hesap ölçümü: medyan 1,8 ms, p95 3,33 ms; gerçek telefon ölçümü değildir. Gzip veri yaklaşık 107 KB. Seçimlerde veri isteği yok. Canlı yayın doğrulandı: commit `393ec5ce93a169f919559ca5ba3f783f147950ac`, Pages işi https://github.com/ysf66123/grandchessysf/actions/runs/36127794766 başarılı. Canlı index, app-v2, karşı seçim motoru/UI, ana motor ve JSON SHA-256 karşılaştırmaları yerelle eşleşti. Bu yayın doğrulama cümlesi yerel devam notudur.
 
 Önceki eşya güncellemesi 8964bd6 için Pages işi 36048759044 başarıyla tamamlanmıştı. Aşağıdaki eski bölümler tarihsel kayıttır; 23 Eylül faturalandırma engeli, mevcut standart Pages yayın yolunun durumu değildir.
 

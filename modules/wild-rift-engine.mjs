@@ -1,9 +1,9 @@
-import {evaluateMatchup,mechanicalContext,duoContext} from './wild-rift-counters.mjs?v=20260925-counters1';
-import {planBuild} from './wild-rift-build-planner.mjs?v=20260925-counters1';
-import {PHASES,BUILD_PRIORITIES} from './wild-rift-item-rules.mjs?v=20260925-counters1';
-import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260925-counters1';
-import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260925-counters1';
-import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260925-counters1';
+import {evaluateMatchup,mechanicalContext,duoContext} from './wild-rift-counters.mjs?v=20260925-counters2';
+import {planBuild} from './wild-rift-build-planner.mjs?v=20260925-counters2';
+import {PHASES,BUILD_PRIORITIES} from './wild-rift-item-rules.mjs?v=20260925-counters2';
+import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260925-counters2';
+import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260925-counters2';
+import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260925-counters2';
 export {ROLES};
 export const SORT_MODES={balanced:'Dengeli öneri',lane:'Koridor eşleşmesi',team:'Takım uyumu',safe:'Güvenli seçim'};
 export const emptyDraft=()=>({blue:{},red:{},role:'mid',rank:'diamond',bans:[],pool:[],fed:'',locked:[],tab:'counters',uncertain:[],comfort:{},sort:'balanced',overrides:{},compare:[],gold:0,owned:[],enemyItems:{},variant:'',phase:'draft',buildPriority:'balanced',teamCoverage:{heal:false,shield:false},teamAssignments:[],enemyLevels:{},purchaseTarget:'',ownState:'even',adaptation:'standard'});

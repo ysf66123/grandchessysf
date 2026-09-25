@@ -1,6 +1,6 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20260925-counters1';
-import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260925-counters1';
-import {itemFacts,itemFamily,BOOTS,TRANSFORM_FROM,RULES_PATCH} from './wild-rift-item-rules.mjs?v=20260925-counters1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260925-counters2';
+import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260925-counters2';
+import {itemFacts,itemFamily,BOOTS,TRANSFORM_FROM,RULES_PATCH} from './wild-rift-item-rules.mjs?v=20260925-counters2';
 export function itemCost(data,id,now=Date.now()){
   return priceEvidence(data,id,now).cost;
 }

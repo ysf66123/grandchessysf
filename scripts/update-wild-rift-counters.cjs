@@ -7,7 +7,7 @@ const {validateSnapshot}=require('../server/wild-rift-store.cjs');
  await withUpdateLock(file,async()=>{
   const data=JSON.parse(await fs.readFile(file,'utf8'));
   const reparsed=await reparseCachedMeta(data);console.log(`${reparsed} önbellek rehberi özgün kontrol tarihiyle yeniden işlendi.`);
-  await collectCounterSources(data,{limit:48,onProgress:(n,total)=>{if(n%12===0)console.log(`${n}/${total} karşı seçim kaynağı kontrol edildi.`);}});
+  await collectCounterSources(data,{onProgress:(n,total)=>{if(n%12===0)console.log(`${n}/${total} karşı seçim kaynağı kontrol edildi.`);}});
   data.localRevisionAt=new Date().toISOString();validateSnapshot(data);
   await fs.writeFile(file+'.tmp',JSON.stringify(data));await fs.copyFile(file,file+'.previous');await fs.rename(file+'.tmp',file);
   if(!process.argv.includes('--no-sync'))await syncSnapshot(file);
