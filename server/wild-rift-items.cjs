@@ -22,7 +22,7 @@ async function enrichItems(items,{previous={},onProgress=()=>{}}={}){
   await Promise.all([worker(),worker()]);
   let coreFailed=false;
   try{const core=require('./wild-rift-build-sources.cjs').parseCoreItems(await source.fetchText('https://wildriftcore.com/en/items/'),items,checkedAt);
-   for(const fact of core.items){if(!items[fact.id])items[fact.id]={id:fact.id,name:fact.name,icon:null};items[fact.id].coreFacts=fact;}
+   for(const fact of core.items){if(!items[fact.id])items[fact.id]={id:fact.id,name:fact.name,icon:null};items[fact.id].coreFacts=require('./wild-rift-build-sources.cjs').reviewCoreItem(fact,catalog.patch);}
   }catch{coreFailed=true;for(const [id,i] of Object.entries(items))if(previous[id]?.coreFacts)i.coreFacts=previous[id].coreFacts;}
   return {patch:catalog.patch,checkedAt,source:catalog.source,entries:catalog.entries,priced:entries.length-failures.length,total:entries.length,failures,coreFailed,recipesAvailable:false};
 }

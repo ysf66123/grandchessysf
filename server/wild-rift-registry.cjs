@@ -10,7 +10,8 @@ function buildRegistry(data,now=Date.now()){
  const catalog=data.itemCatalog,fire=new Set(catalog?.patch===patch&&fresh(catalog.checkedAt,now)?(catalog.entries||[]).map(e=>e.id):[]);
  for(const [id,item] of Object.entries(data.items)){
   if(item.removedIn&&comparePatch(item.removedIn,patch)<=0){items[id]={status:'removed',kind:'unknown',sources:['riot']};continue;}
-  const official=item.official?.patch===patch&&fresh(item.official.checkedAt,now),core=item.coreFacts?.patch===patch&&fresh(item.coreFacts.checkedAt,now);
+  const cf=item.coreFacts,reviewed=patch==='7.3a'&&cf?.patch==='7.3'&&cf.verifiedForPatch==='7.3a'&&cf.patchReviewUrl==='https://wildrift.leagueoflegends.com/tr-tr/news/game-updates/wild-rift-patch-notes-7-3a/';
+  const official=item.official?.patch===patch&&fresh(item.official.checkedAt,now),core=(cf?.patch===patch||reviewed)&&fresh(cf?.checkedAt,now);
   const sources=[...(fire.has(id)?['wildriftfire']:[]),...(official?['riot']:[]),...(core?['wildriftcore']:[])];
   // Components named by current official recipes can be bought, but cannot
   // silently become a full-build replacement just because they have a price.

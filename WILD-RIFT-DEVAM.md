@@ -1,8 +1,20 @@
+## Meta seti ve alışveriş motoru — 29 Eylül 2026
+
+Varlık sürümü: 20260929-meta1. Tam kaynak setleri otomatik karşılaştırılır; tek sabit şampiyon/rol profiline göre karşı etki, kaybedilen ana nitelikler, vuruş etkisi/güçlendirilmiş saldırı düzeni, kaynak belirsizliği ve eldeki parçaların kullanılabilirliği birlikte puanlanır. En iyi aday ve iki alternatif Türkçe gösterilir; kullanıcı kaynak setini sabitleyebilir. İlk iki ana eşya seçilen tam set içinde korunur; farklı çekirdek gerekiyorsa doğrulanmış başka tam set seçilir. Kaynak değiştirmek satın alınan eşyaları silmez. Uygunsuz envanter sessizce yok sayılmaz.
+
+Alışveriş sırası son altı yuvalı görünümden ayrıdır. Destek gelir eşyası önce gelir; ana eşyalar, savunma botu, esnek karşı eşyaların sırası, güncel altın ve tarif parçaları birlikte ele alınır. Tam eşya alınabiliyorsa gereksiz erken parça önerilmez. Parça alternatifleri tek bütçeyi birden çok kez harcamaz; sonraki alışverişlerin yuvaları parça tüketimiyle hesaplanır. Kai’Sa'nın Wild Rift tam eşya gelişimi, Yun Tal'ın anlık %0 / birikimli en fazla %25 kritiği, birikimli eşya dönüşümleri açıklanır. Rakibin ormancısı ve oyuncunun seçtiği erişilebilir hedef hesaba katılır; eksik rakip eşyaları varsayılmaz.
+
+Veri: Riot 7.3a (29 Eylül), 142 şampiyon, 181 ana rol rehberi; 142 şampiyondan 531 ek tam kaynak seti (önce 83 şampiyondan 222). Bunların 408'i güncellik/uyumluluk ve eşya geçerliliği filtresini geçiyor; hepsi aynı rol veya arketipte kullanılabilir iddiası yok. 150 kullanılabilir Wild Rift eşyası/parçası, 50 resmî tarif. Kaldırılmış ve doğrulanamayan eşyalar kapalı. Core kanonik şampiyon adresleri düzeltildi. İndirme, içerik tarihi, orijinal yama ve incelenen ara yama ayrı tutulur. Core 7.3 kayıtları yalnızca 7.3a'da değişmeyen eşya/şampiyonlarda açık uyumluluk incelemesiyle kullanılabilir; 7.3b ve sonrası otomatik uyumlu sayılmaz. Riot 7.3 + 7.3a belgeleri yeniden alınır; Yun Tal saldırı hızı 35, Ölümün Dansı 3300 ve tarif farkı uygulanır.
+
+29 Eylül kaynak istatistikleri hâlâ 7.3 etiketlidir; 7.3a puanına katılmaz. Diamond/master var; boş challenger/apex için satır üretilmez. İstatistikteki eksik lig tüm eşya/rehber güncellemesini durdurmaz. Kaynak rehberleri, motor uyarlamaları ve gerçek istatistikler farklı şeylerdir; kazanma oranı garantisi veya tam savaş simülasyonu yok.
+
+Doğrulama: 140 birim/HTTP testi, 360 tam set senaryosu, önceki 162 eşya senaryosu; gerçek statik uygulama entegrasyonu ve 360 px mobil tarayıcı testi başarılı. Seçimlerde ek ağ isteği yok. Yerel 200 motor çalıştırması medyan 1,40 ms / p95 2,95 ms; telefon performansı ölçümü değildir. Veri gzip 134.117 bayt. Yayın tamamlandıktan sonra canlı doğrulama aşağıya eklenecek.
+
 ## Üçüncü kaynak tam şampiyon kapsamı — 25 Eylül 2026
 
 `20260925-counters2`: WildRiftCore 142/142 şampiyon sayfası doğrulandı. 591 karşı seçim, 227 beceri eşleşmesi ve 428 sinerji: toplam 1.246 kayıt. Eksik şampiyon yok; her olası rol/şampiyon çifti için veri olduğu iddia edilmez. Kaynak dizini kanonik adresleri sağlar (Kai’Sa, Cho’Gath, Nunu & Willump vb.). sup/bot etiketleri ve şampiyon kimliği takma adları çözüldü. Tek rollü şampiyonda partnerin rolünü taşıyan sinerji kartları öznenin rolüne normalleştirildi. Ayrıştırma hatası üç kez olunca tüm kaynağı durduran yanlış sınıflandırma düzeltildi; gerçek 403/429 ve ardışık bağlantı hatalarında bekleme korunuyor. Eski v1 ayrıştırıcı kaynaklı yanlış bekleme, v2 göçünde kaldırıldı.
 
-Tam tarama altı saatlik taze sayfaları yeniden indirmez, tek işçi ve 1,5 saniye aralık kullanır. 48 sayfa sınırı kaldırıldı. Arayüzde güncel doğrulanmış şampiyon kapsamı gösteriliyor. 127 test ve mobil tarayıcı kontrolleri geçti; gzip veri yaklaşık 117 KB. Yayın doğrulaması sonrasında yerel not eklenecek.
+Tam tarama altı saatlik taze sayfaları yeniden indirmez, tek işçi ve 1,5 saniye aralık kullanır. 48 sayfa sınırı kaldırıldı. Arayüzde güncel doğrulanmış şampiyon kapsamı gösteriliyor. 127 test ve mobil tarayıcı kontrolleri geçti; gzip veri yaklaşık 117 KB. Canlı yayın doğrulandı: cd3d8fd, Pages işi https://github.com/ysf66123/grandchessysf/actions/runs/36130251238 başarılı. Index, app-v2, iki UI modülü ve veri JSON SHA-256 eşleşti; canlı kapsam 142/142. Bu son doğrulama yerel devam notudur.
 
 ## Karşı seçim güncellemesi — 25 Eylül 2026
 

@@ -1,8 +1,8 @@
-import {traits,CONDITIONS} from './wild-rift-knowledge.mjs?v=20260925-counters2';
-import {itemAvailability,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260925-counters2';
-import {guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260925-counters2';
-import {ITEM_ROLES,itemFacts,itemConflicts,itemFamily,BOOTS,SUPPORT_ITEMS,NEED_LABELS,RULES_PATCH,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20260925-counters2';
-import {championProfile,combatFacts,application,incompatibleItem,buildFit} from './wild-rift-build-fit.mjs?v=20260925-counters2';
+import {traits,CONDITIONS} from './wild-rift-knowledge.mjs?v=20260929-meta1';
+import {itemAvailability,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260929-meta1';
+import {guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260929-meta1';
+import {ITEM_ROLES,itemFacts,itemConflicts,itemFamily,BOOTS,SUPPORT_ITEMS,NEED_LABELS,rulesUsable,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20260929-meta1';
+import {championProfile,combatFacts,application,incompatibleItem,buildFit} from './wild-rift-build-fit.mjs?v=20260929-meta1';
 const ENCHANTERS=new Set('janna karma lulu milio nami sona soraka yuumi'.split(' '));
 const STRONG_HEAL=new Set('aatrox dr-mundo kayn soraka swain vladimir warwick yuumi'.split(' '));
 const STRONG_SHIELD=new Set('janna karma lulu sett shen'.split(' '));
@@ -13,7 +13,7 @@ export function buildContext(data,draft,scenarios){
   const c=data.champions.find(c=>c.id===id);if(!c)continue;
   const t=traits(c),uncertain=(draft.uncertain||[]).includes(id),duo=['duo','support'].includes(draft.role);
   const lane=!uncertain&&(duo?['duo','support'].includes(role):draft.role!=='jungle'&&role===draft.role);
-  const weight=(draft.phase==='lane'?(lane?2.1:.7):draft.phase==='team'?(lane?1.1:1):(lane?1.5:1))+(draft.fed===id?1.7:0);
+  const weight=(draft.phase==='lane'?(lane?2.1:role==='jungle'?1:.7):draft.phase==='team'?(lane?1.1:1):(lane?1.5:1))+(draft.fed===id?1.7:0);
   const keys={},gear=(draft.enemyItems?.[id]||[]).filter(i=>itemAvailability(data,i)),stats={armor:0,magicResist:0,crit:0,ad:0,ap:0,health:0,attackSpeed:0},effects={},unknown=[];
   for(const item of gear){const fact=itemFacts(data,item);for(const k of Object.keys(stats))stats[k]+=fact.stats[k]||0;Object.assign(effects,fact.effects);if(!fact.known||fact.conflicts.length)unknown.push(item);}
   const native=combatFacts(data,c,draft.enemyLevels?.[id]);
@@ -39,8 +39,9 @@ export function buildContext(data,draft,scenarios){
    for(const need of ['heal','shield']){const a=application(data,assignment.item,profile,need);if(a.factor>=.75){applied[need]=Math.max(applied[need]||0,.4*a.factor);assignments.push({...assignment,need,allyName:ally.name,targetName:c.name});}}
   }
   for(const need of ['heal','shield'])keys[need]*=1-(applied[need]||0);
-  for(const k of Object.keys(pressure))pressure[k]+=keys[k]*weight;
-  rows.push({id,name:c.name,role,lane,uncertain,fed:draft.fed===id,weight,keys,gear,stats,native,unknown,damage,inventoryKnown:gear.length>0});
+  const targetWeight=draft.targetEnemy===id?1.35:1;
+  for(const k of Object.keys(pressure))pressure[k]+=keys[k]*weight*(['health','armor','magicResist','heal','shield'].includes(k)?targetWeight:1);
+  rows.push({id,name:c.name,role,lane,uncertain,fed:draft.fed===id,target:draft.targetEnemy===id,weight,keys,gear,stats,native,unknown,damage,inventoryKnown:gear.length>0});
  }
  const coverage=draft.teamCoverage||{};
  for(const k of ['heal','shield'])if(coverage[k]&&!assignments.some(a=>a.need===k))pressure[k]*=.9;
@@ -48,7 +49,7 @@ export function buildContext(data,draft,scenarios){
  return {pressure,rows,priorities,assignments,phase:draft.phase||'draft',uncertain:scenarios.uncertain,valid:scenarios.valid,missing:5-rows.length,unknownInventories:rows.filter(r=>!r.inventoryKnown).length};
 }
 function cover(id,data,profile){
- const result={...(data.latestPatch.version===RULES_PATCH?ITEM_ROLES[id]?.covers||{}:{})},facts=itemFacts(data,id);
+ const result={...(rulesUsable(data)?ITEM_ROLES[id]?.covers||{}:{})},facts=itemFacts(data,id);
  if(!finalItemAvailable(data,id))return {};
  delete result.heal;delete result.shield;
  if(facts.effects.antiHeal)result.heal=application(data,id,profile,'heal').factor;
@@ -56,7 +57,7 @@ function cover(id,data,profile){
  if(facts.mechanics.healthDamage)result.health=facts.mechanics.onHit&&!profile.attack?.45:1;
  return result;
 }
-function coverage(items,data,profile){
+export function coverage(items,data,profile){
  const sums={};for(const id of items)for(const [key,value] of Object.entries(cover(id,data,profile)))sums[key]=(sums[key]||0)+value;
  return Object.fromEntries(Object.entries(sums).map(([k,v])=>[k,Math.min(1.3,v)]));
 }
@@ -65,8 +66,15 @@ function conditionKey(condition,to){
  if(key==='tank'&&['void-staff','bloodletters-curse'].includes(to))return 'magicResist';
  return key;
 }
+export function contextUtility(pressure,cov,draft){
+ return Object.entries(pressure).reduce((sum,[key,value])=>{
+  const defensive=['magic','physical','cc','burst','critical','attack'].includes(key),mode=draft.buildPriority==='survive'?(defensive?1.35:.85):draft.buildPriority==='damage'?(defensive?.75:1.1):1;
+  const state=draft.ownState==='behind'&&defensive?1.15:draft.ownState==='ahead'&&key==='burst'?1.1:1;
+  return sum+value*(cov[key]||0)*FACTOR[key]*mode*state;
+ },0);
+}
 export function planBuild(data,draft,champion,base,scenarios){
- const quality=guideQuality(data,champion,draft.role,Date.now(),base.guideId),current=quality.usable,rulesCurrent=data.latestPatch.version===RULES_PATCH;
+ const quality=guideQuality(data,champion,draft.role,Date.now(),base.guideId),current=quality.usable,rulesCurrent=rulesUsable(data);
  const context=buildContext(data,draft,scenarios),profile=championProfile(data,champion,base),p=context.pressure,protectedCore=new Set(base.core.slice(0,2).map(itemFamily)),alternatives=[],rejected=[];
  const maxChanges=draft.adaptation==='extended'?3:2;
  const boot=base.final.find(id=>BOOTS.includes(id));
@@ -114,11 +122,7 @@ export function planBuild(data,draft,champion,base,scenarios){
   initial[slot]=to;fixed.add(slot);fixedChanges.push({...a,label:'Elle seçtiğin kaynak alternatifi',mode:'manual'});
  }
  const initialCover=coverage(initial,data,profile),baseUtility=utility(initial),candidates=[];
- function utility(items){const cov=coverage(items,data,profile);return Object.entries(p).reduce((sum,[key,value])=>{
-  const defensive=['magic','physical','cc','burst','critical','attack'].includes(key),mode=draft.buildPriority==='survive'?(defensive?1.35:.85):draft.buildPriority==='damage'?(defensive?.75:1.1):1;
-  const state=draft.ownState==='behind'&&defensive?1.15:draft.ownState==='ahead'&&key==='burst'?1.1:1;
-  return sum+value*(cov[key]||0)*FACTOR[key]*mode*state;
- },0)-buildFit(data,items,profile).penalty*(draft.buildPriority==='damage'?1.5:1);}
+ function utility(items){return contextUtility(p,coverage(items,data,profile),draft)-buildFit(data,items,profile).penalty*(draft.buildPriority==='damage'?1.5:1);}
  // Enumerate bounded combinations instead of greedily taking the first same-slot swap.
  function search(slot,items,chosen){
   if(slot===initial.length){

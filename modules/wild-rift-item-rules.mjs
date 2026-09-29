@@ -1,4 +1,4 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20260925-counters2';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260929-meta1';
 export const PHASES={draft:'Seçim aşaması / genel plan',lane:'Koridor ve ilk eşyalar',team:'Takım savaşları'};
 export const BUILD_PRIORITIES={balanced:'Dengeli',survive:'Hayatta kalma öncelikli',damage:'Hasar düzenini koru'};
 export const NEED_LABELS={heal:'İyileşme',shield:'Kalkan',magic:'Büyü hasarı',physical:'Fiziksel hasar',cc:'Kontrol etkileri',burst:'Ani hasar',tank:'Dayanıklı hedef',health:'Can yatırımı',trueDamage:'Gerçek hasar',attack:'Normal saldırılar',critical:'Kritik vuruş yatırımı',armor:'Zırh yatırımı',magicResist:'Büyü direnci yatırımı'};
@@ -13,7 +13,7 @@ export function itemConflicts(items,id){
 export function itemFacts(data,id,now=Date.now()){
  const i=data.items[id]||{},stats={},effects={},mechanics={},conflicts=[],sources=[];
  const valid=(patch,date)=>patch===data.latestPatch.version&&ageInDays(date,now)<=7;
- const core=valid(i.coreFacts?.patch,i.coreFacts?.checkedAt)?i.coreFacts:null;
+ const core=factPatchUsable(data,i.coreFacts)&&ageInDays(i.coreFacts.checkedAt,now)<=7?i.coreFacts:null;
  const fire=valid(i.statsPatch||i.costPatch,i.statsCheckedAt||i.costCheckedAt)?i.stats:null;
  const official=valid(i.official?.patch,i.official?.checkedAt)?i.official?.stats:null;
  if(core){Object.assign(stats,core.stats);Object.assign(effects,core.effects);Object.assign(mechanics,core.mechanics);sources.push('wildriftcore');}
@@ -27,6 +27,8 @@ export function itemFacts(data,id,now=Date.now()){
 // This interpretation must be reviewed when the gameplay patch changes. Raw
 // current stats can still be displayed; old semantic weights cannot be reused.
 export const RULES_PATCH='7.3';
+export const rulesUsable=data=>['7.3','7.3a'].includes(data.latestPatch.version);
+export const factPatchUsable=(data,fact)=>!!fact&&(fact.patch===data.latestPatch.version||data.latestPatch.version==='7.3a'&&fact.patch==='7.3'&&fact.verifiedForPatch==='7.3a'&&fact.patchReviewUrl==='https://wildrift.leagueoflegends.com/tr-tr/news/game-updates/wild-rift-patch-notes-7-3a/');
 // Verified 7.3 automatic forms: these occupy the same slot as the purchased
 // parent. They must not be shown as a second shop purchase.
 export const TRANSFORM_FROM={'muramana':'manamune','seraphs-embrace':'archangels-staff','fimbulwinter':'winters-approach','diadem-of-songs':'whispering-circlet'};

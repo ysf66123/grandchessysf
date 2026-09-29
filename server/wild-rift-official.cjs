@@ -8,13 +8,14 @@ function parseOfficialItems(html,items,patch,url,checkedAt=new Date().toISOStrin
   if(declared!==patch)throw Error('Resmî eşya yaması doğrulanamadı.');
   for(const heading of $('h3,h4').toArray()){
     const name=$(heading).text().trim(),section=$(heading).nextUntil('h2,h3,h4');
+    if(patch==='7.3a'&&!['Yun Tal Wildarrows','Whispering Circlet','Diadem of Songs',"Death's Dance"].includes(name))continue;
     if(/^(?:Items )?Removed$/i.test(name)){
       section.find('li').filter((_,e)=>!$(e).find('li').length).each((_,e)=>{const text=$(e).text().trim();if(text.length<65&&!/[.!]/.test(text))removed.push(resolve(text));});continue;
     }
     // Only item sections containing a build path or price; champion stats are not item facts.
     const lines=section.find('li').map((_,e)=>$(e).text().replace(/\s+/g,' ').trim()).get();
     const pathLine=lines.find(t=>/Build Path:/i.test(t)),priceLine=lines.find(t=>/^(?:\[New\]\s*)?(?:Total )?Price:/i.test(t));
-    if(!pathLine&&!priceLine)continue;
+    if(!pathLine&&!priceLine&&patch!=='7.3a')continue;
     const id=resolve(name);if(!/^[a-z0-9-]+$/.test(id))continue;
     const fact={id,name,source:'riot',url,patch,checkedAt,stats:{}};
     if(priceLine){const value=priceLine.split('→').pop().split(':').pop().trim();if(/^\d+$/.test(value))fact.cost=Number(value);}
@@ -25,9 +26,9 @@ function parseOfficialItems(html,items,patch,url,checkedAt=new Date().toISOStrin
     }
     const keys={'Armor':'armor','Magic Resist':'magicResist','Magic Resistance':'magicResist','Critical Rate':'crit','Critical Strike Chance':'crit','Attack Damage':'ad','Ability Power':'ap','Health':'health','Max Health':'health','Attack Speed':'attackSpeed','Ability Haste':'haste','Armor Penetration':'armorPen'};
     for(const line of lines){const match=line.match(/^(\[Removed\]\s*)?(?:\[New\]\s*)?([^:]+):\s*(.*)$/);if(!match||!keys[match[2]])continue;const value=match[3].split('→').pop().trim();if(match[1])fact.stats[keys[match[2]]]=0;else if(/^\d+(?:\.\d+)?%?$/.test(value))fact.stats[keys[match[2]]]=Number(value.replace('%',''));}
-    if(fact.cost||fact.recipe)facts[id]=fact;
+    if(fact.cost||fact.recipe||patch==='7.3a')facts[id]=fact;
   }
-  if(Object.keys(facts).length<3)throw Error('Resmî eşya değişiklikleri okunamadı.');
+  if(Object.keys(facts).length<(patch==='7.3a'?4:3))throw Error('Resmî eşya değişiklikleri okunamadı.');
   return {patch,source:url,checkedAt,items:facts,removed:[...new Set(removed)]};
 }
 function applyOfficial(data,official){
@@ -38,11 +39,29 @@ function applyOfficial(data,official){
     item.stats={...item.stats,...fact.stats};data.items[fact.id]=item;
     for(const component of fact.componentFacts||[]){
       const c=data.items[component.id]||{id:component.id,name:component.name,icon:null};
-      if(!c.official?.cost)Object.assign(c,{cost:component.cost,costPatch:official.patch,costCheckedAt:official.checkedAt,costSource:fact.url,official:{id:c.id,cost:component.cost,patch:official.patch,checkedAt:official.checkedAt,url:fact.url,source:'riot'}});
+      if(!c.official?.cost||c.official.patch!==official.patch)Object.assign(c,{cost:component.cost,costPatch:official.patch,costCheckedAt:official.checkedAt,costSource:fact.url,official:{id:c.id,cost:component.cost,patch:official.patch,checkedAt:official.checkedAt,url:fact.url,source:'riot'}});
       data.items[c.id]=c;
     }
   }
   for(const id of official.removed)if(data.items[id])data.items[id].removedIn=official.patch;
   data.official={patch:official.patch,url:official.source,checkedAt:official.checkedAt,removed:official.removed,itemCount:Object.keys(official.items).length};
 }
-module.exports={parseOfficialItems,applyOfficial,resolver,normalize};
+// Explicitly reviewed patch chain. Re-fetch both official documents; do not
+// forward arbitrary old facts or infer compatibility with a future patch.
+async function collectOfficial(data,fetchPage,checkedAt=new Date().toISOString()){
+ const patch=data.latestPatch.version,versionUrl=p=>`https://wildrift.leagueoflegends.com/en-us/news/game-updates/wild-rift-patch-notes-${p.replace('.','-')}/`;
+ const url=versionUrl(patch),delta=parseOfficialItems(await fetchPage(url),data.items,patch,url,checkedAt);
+ if(patch!=='7.3a')return delta;
+ const parent=parseOfficialItems(await fetchPage(versionUrl('7.3')),data.items,'7.3',versionUrl('7.3'),checkedAt);
+ for(const f of Object.values(parent.items)){
+  f.basePatch='7.3';f.patch=patch;f.reviewedThrough=url;
+  // Recipe component costs share the same checked patch chain.
+ }
+ for(const [id,change] of Object.entries(delta.items)){
+  const old=parent.items[id]||{},merged={...old,...change,stats:{...old.stats,...change.stats},basePatch:old.basePatch,reviewedThrough:url};
+  if(merged.recipe&&change.cost&&old.cost)merged.recipe={...merged.recipe,fee:merged.recipe.fee+change.cost-old.cost};
+  parent.items[id]=merged;
+ }
+ return {...delta,items:parent.items,removed:[...new Set([...parent.removed,...delta.removed])]};
+}
+module.exports={parseOfficialItems,applyOfficial,collectOfficial,resolver,normalize};

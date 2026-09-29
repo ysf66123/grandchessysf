@@ -1,6 +1,6 @@
-import {relationshipEvidence} from './wild-rift-evidence.mjs?v=20260925-counters2';
-import {ageInDays} from './wild-rift-quality.mjs?v=20260925-counters2';
-import {traits} from './wild-rift-knowledge.mjs?v=20260925-counters2';
+import {relationshipEvidence} from './wild-rift-evidence.mjs?v=20260929-meta1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260929-meta1';
+import {traits} from './wild-rift-knowledge.mjs?v=20260929-meta1';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 // Recommendation weights, not measured probabilities or combat simulation.
 export function evaluateMatchup(data,candidate,enemy,role,now=Date.now()){

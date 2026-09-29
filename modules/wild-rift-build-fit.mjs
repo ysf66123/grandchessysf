@@ -1,10 +1,10 @@
-import {itemFacts,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20260925-counters2';
-import {traits} from './wild-rift-knowledge.mjs?v=20260925-counters2';
-import {ageInDays} from './wild-rift-quality.mjs?v=20260925-counters2';
+import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20260929-meta1';
+import {traits} from './wild-rift-knowledge.mjs?v=20260929-meta1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260929-meta1';
 export function itemTotals(data,ids){
  const totals={},unknown=[];
  for(const id of ids){const f=itemFacts(data,id);if(!f.known||f.conflicts.length)unknown.push(id);for(const [k,n] of Object.entries(f.stats))if(Number.isFinite(n))totals[k]=(totals[k]||0)+n;}
- return {stats:totals,unknown};
+ return {stats:totals,unknown,scalingCrit:rulesUsable(data)&&ids.includes('yun-tal-wildarrows')?25:0};
 }
 export function combatFacts(data,champion,level){
  const f=champion?.combatFacts;
@@ -19,9 +19,11 @@ export function championProfile(data,champion,base){
  const damage=mixed?'mixed':ap>ad*1.25&&ap>=70?'magic':ad>=50?'physical':t.magic?'magic':t.mixed?'mixed':t.attack?'physical':'unknown';
  const support=base.role==='support'&&base.final.some(id=>SUPPORT_ITEMS.includes(id));
  const tank=(s.armor||0)+(s.magicResist||0)>=100&&ad<110&&ap<140;
- const kind=support?(tank?'supportTank':'support'):tank?'tank':mixed?'hybrid':damage==='magic'?(attack?'onHitMage':'mage'):attack?((s.crit||0)>=50?'crit':'onHit'):'fighter';
+ const kind=support?(tank?'supportTank':'support'):tank?'tank':mixed?'hybrid':damage==='magic'?(attack?'onHitMage':'mage'):attack?((s.crit||0)+total.scalingCrit>=50?'crit':'onHit'):'fighter';
  const labels={supportTank:'Ön saf desteği',support:'Takım desteği',tank:'Dayanıklı ön saf',hybrid:'Karma hasar',onHitMage:'Büyü ve normal saldırı',mage:'Yetenek hasarı',crit:'Kritik ve normal saldırı',onHit:'Sürekli normal saldırı',fighter:'Fiziksel yetenek / dövüşçü'};
- return {kind,label:labels[kind],damage,attack,support,tank,usesMana:combat?.usesMana??null,stats:s,unknown:total.unknown,champion};
+ const core=base.core.filter(id=>!BOOTS.includes(id)),spellblade=core.some(id=>['trinity-force','divine-sunderer','iceborn-gauntlet','lich-bane'].includes(id));
+ const onHit=core.some(id=>['guinsoos-rageblade','nashors-tooth','blade-of-the-ruined-king','kraken-slayer'].includes(id));
+ return {kind,label:labels[kind],damage,attack,support,tank,spellblade,onHit,scalingCrit:total.scalingCrit,usesMana:combat?.usesMana??null,stats:s,unknown:total.unknown,champion};
 }
 export function application(data,id,profile,need){
  const facts=itemFacts(data,id),trigger=facts.mechanics[need==='heal'?'antiHeal':'antiShield'];
@@ -57,5 +59,11 @@ export function buildFit(data,items,profile){
  // Missing values are uncertainty, never proof of zero cost or higher damage.
  if(current.unknown.length>profile.unknown.length)penalty+=.45;
  if(profile.usesMana===false&&(s.mana||0)>(b.mana||0))penalty+=.8;
- return {penalty,losses,stats:s,unknown:current.unknown,label:penalty<.55?'Ana düzen korunuyor':penalty<1.2?'Ölçülü ödünleşim':'Belirgin eşya ödünleşimi'};
+ const warnings=[];
+ if(rulesUsable(data)){
+  if(profile.spellblade&&!items.some(id=>['trinity-force','divine-sunderer','iceborn-gauntlet','lich-bane'].includes(id))){penalty+=1.5;warnings.push('Ana rehberin güçlendirilmiş saldırı eşyası kayboluyor.');}
+  if(profile.onHit&&!items.some(id=>['guinsoos-rageblade','nashors-tooth','blade-of-the-ruined-king','kraken-slayer'].includes(id))){penalty+=1.5;warnings.push('Ana rehberin vuruş etkisi düzeni kayboluyor.');}
+  if(!['yasuo','yone'].includes(profile.champion?.id)&&(s.crit||0)+current.scalingCrit>100){penalty+=((s.crit||0)+current.scalingCrit-100)/25;warnings.push('Birikim tamamlandığında kritik ihtimali sınırını aşan yatırım var.');}
+ }
+ return {penalty,losses,warnings,stats:s,scalingCrit:current.scalingCrit,unknown:current.unknown,label:penalty<.55?'Ana düzen korunuyor':penalty<1.2?'Ölçülü ödünleşim':'Belirgin eşya ödünleşimi'};
 }

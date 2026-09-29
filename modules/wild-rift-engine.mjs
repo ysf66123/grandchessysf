@@ -1,12 +1,13 @@
-import {evaluateMatchup,mechanicalContext,duoContext} from './wild-rift-counters.mjs?v=20260925-counters2';
-import {planBuild} from './wild-rift-build-planner.mjs?v=20260925-counters2';
-import {PHASES,BUILD_PRIORITIES} from './wild-rift-item-rules.mjs?v=20260925-counters2';
-import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260925-counters2';
-import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260925-counters2';
-import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260925-counters2';
+import {evaluateMatchup,mechanicalContext,duoContext} from './wild-rift-counters.mjs?v=20260929-meta1';
+import {planBuild} from './wild-rift-build-planner.mjs?v=20260929-meta1';
+import {selectMetaBuild} from './wild-rift-meta-builds.mjs?v=20260929-meta1';
+import {PHASES,BUILD_PRIORITIES} from './wild-rift-item-rules.mjs?v=20260929-meta1';
+import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260929-meta1';
+import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260929-meta1';
+import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260929-meta1';
 export {ROLES};
 export const SORT_MODES={balanced:'Dengeli öneri',lane:'Koridor eşleşmesi',team:'Takım uyumu',safe:'Güvenli seçim'};
-export const emptyDraft=()=>({blue:{},red:{},role:'mid',rank:'diamond',bans:[],pool:[],fed:'',locked:[],tab:'counters',uncertain:[],comfort:{},sort:'balanced',overrides:{},compare:[],gold:0,owned:[],enemyItems:{},variant:'',phase:'draft',buildPriority:'balanced',teamCoverage:{heal:false,shield:false},teamAssignments:[],enemyLevels:{},purchaseTarget:'',ownState:'even',adaptation:'standard'});
+export const emptyDraft=()=>({blue:{},red:{},role:'mid',rank:'diamond',bans:[],pool:[],fed:'',targetEnemy:'',locked:[],tab:'counters',uncertain:[],comfort:{},sort:'balanced',overrides:{},compare:[],gold:0,owned:[],enemyItems:{},variant:'',phase:'draft',buildPriority:'balanced',teamCoverage:{heal:false,shield:false},teamAssignments:[],enemyLevels:{},purchaseTarget:'',ownState:'even',adaptation:'standard'});
 export function sanitizeDraft(value,data){
   const d=emptyDraft(),ids=new Set(data.champions.map(c=>c.id));
   if(!value || typeof value!=='object')return d;
@@ -17,6 +18,7 @@ export function sanitizeDraft(value,data){
   d.bans=[...new Set((Array.isArray(value.bans)?value.bans:[]).filter(id=>ids.has(id)&&!used.has(id)))];
   d.pool=[...new Set((Array.isArray(value.pool)?value.pool:[]).filter(id=>ids.has(id)))];
   d.fed=Object.values(d.red).includes(value.fed)?value.fed:'';
+  d.targetEnemy=Object.values(d.red).includes(value.targetEnemy)?value.targetEnemy:'';
   d.locked=[...new Set((Array.isArray(value.locked)?value.locked:[]).filter(id=>itemAvailability(data,id)))].slice(0,6);
   d.uncertain=[...new Set((Array.isArray(value.uncertain)?value.uncertain:[]).filter(id=>Object.values(d.red).includes(id)))];
   if(SORT_MODES[value.sort])d.sort=value.sort;
@@ -139,7 +141,7 @@ export function recommendBuild(data,draft){
   let invalidItems=invalidFinalItems(data,base.final);
   if(invalidItems.length&&!draft.variant){const other=championBuilds(c).find(b=>b.role===draft.role&&finalBuildAvailable(data,b.final)&&guideQuality(data,c,draft.role,Date.now(),b.guideId).usable);if(other){base=other;invalidItems=[];sourceFallback=true;}}
   if(invalidItems.length)return {champion:c,missing:true,invalidItems};
-  return {...planBuild(data,draft,c,base,laneScenarios(data,draft)),sourceFallback,threat:threats(data,draft)};
+  return {...selectMetaBuild(data,draft,c,base,laneScenarios(data,draft)),sourceFallback,threat:threats(data,draft)};
 }
 export function coaching(data,draft){
   const c=data.champions.find(c=>c.id===draft.blue[draft.role]),enemy=data.champions.find(c=>c.id===draft.red[draft.role]);

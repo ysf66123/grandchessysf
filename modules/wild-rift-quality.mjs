@@ -6,15 +6,16 @@ export function ageInDays(value,now=Date.now()){
 }
 export function guideQuality(data,champion,role,now=Date.now(),variant=''){
   const build=championBuilds(champion).find(b=>b.role===role&&b.guideId===variant)||champion?.builds?.find(b=>b.role===role),issues=[];
+  const reviewed=build?.patch==='7.3'&&data.latestPatch?.version==='7.3a'&&build?.verifiedForPatch==='7.3a'&&build?.patchReviewUrl==='https://wildrift.leagueoflegends.com/tr-tr/news/game-updates/wild-rift-patch-notes-7-3a/';
   const failed=build?.sourceId==='wildriftcore'?false:champion?.refreshFailed,fetchedAt=build?.fetchedAt||champion?.fetchedAt;
   if(!build)issues.push('Bu rol için kaynak rehber yok.');
-  if(build&&build.patch!==data.latestPatch?.version)issues.push('Rehber, son resmî yamayla eşleşmiyor.');
+  if(build&&build.patch!==data.latestPatch?.version)issues.push(reviewed?'Kaynak 7.3 etiketli; şampiyon ve bu setteki eşyalar 7.3a değişikliklerinden etkilenmiyor.':'Rehber, son resmî yamayla eşleşmiyor.');
   if(failed)issues.push('Son kontrolde bu rehber yenilenemedi.');
   if(ageInDays(fetchedAt,now)>7)issues.push('Rehber yedi gündür doğrulanmadı.');
   const normalized=build?.sourceSlotCount===7||build?.situational?.some(s=>s.condition==='Active item alternative');
   if(normalized)issues.push('Kaynak yedi eşya verdi; altı yuvalı dizilime dönüştürüldü. Son yuva ayrıca kontrol edilmeli.');
-  const usable=!!build&&build.patch===data.latestPatch?.version&&!failed&&ageInDays(fetchedAt,now)<=7;
-  return {usable,normalized,issues,level:!usable?'old':normalized?'limited':'current',label:!usable?'Doğrulama bekliyor':normalized?'Kaynakta tutarsızlık var':'Yama ve tarih uyumlu'};
+  const usable=!!build&&(build.patch===data.latestPatch?.version||reviewed)&&!failed&&ageInDays(fetchedAt,now)<=7;
+  return {usable,normalized,reviewed,issues,level:!usable?'old':normalized||reviewed?'limited':'current',label:!usable?'Doğrulama bekliyor':normalized?'Kaynakta tutarsızlık var':reviewed?'Ara yama uyumluluğu kontrol edildi':'Yama ve tarih uyumlu'};
 }
 export function championBuilds(champion){return [...(champion?.builds||[]),...(champion?.sourceBuilds||[])];}
 export function dataQuality(data,now=Date.now()){

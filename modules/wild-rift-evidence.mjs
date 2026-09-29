@@ -1,12 +1,12 @@
-import {ageInDays,guideQuality} from './wild-rift-quality.mjs?v=20260925-counters2';
-import {itemConflicts} from './wild-rift-item-rules.mjs?v=20260925-counters2';
+import {ageInDays,guideQuality} from './wild-rift-quality.mjs?v=20260929-meta1';
+import {itemConflicts,factPatchUsable} from './wild-rift-item-rules.mjs?v=20260929-meta1';
 const cache=new WeakMap();
 function index(data){
- if(cache.has(data))return cache.get(data);
+ if(cache.has(data)&&cache.get(data).evidence===data.evidence)return cache.get(data);
  const items=new Map(),relations=new Map();
  for(const row of data.evidence?.items||[]){if(!items.has(row.id))items.set(row.id,[]);items.get(row.id).push(row);}
  for(const row of data.evidence?.relationships||[]){const key=row.subject+':'+row.opponent+':'+row.role;if(!relations.has(key))relations.set(key,[]);relations.get(key).push(row);}
- const result={items,relations};cache.set(data,result);return result;
+ const result={items,relations,evidence:data.evidence};cache.set(data,result);return result;
 }
 export function itemStatus(data,id,now=Date.now()){
  const item=data.items[id],patch=data.latestPatch.version;
@@ -31,12 +31,12 @@ export function priceEvidence(data,id,now=Date.now()){
  const item=data.items[id];if(!item)return {cost:null,status:'missing',observations:[]};
  let observations=[...(index(data).items.get(id)||[])];
  const core=item.coreFacts;
- if(core&&Number.isFinite(core.cost)&&core.patch===data.latestPatch.version&&ageInDays(core.checkedAt,now)<=7){
+ if(core&&Number.isFinite(core.cost)&&factPatchUsable(data,core)&&ageInDays(core.checkedAt,now)<=7){
   observations=observations.filter(o=>o.source!=='wildriftcore');
-  observations.push({source:'wildriftcore',cost:core.cost,patch:core.patch,checkedAt:core.checkedAt,url:core.source});
+  observations.push({source:'wildriftcore',cost:core.cost,patch:core.patch,verifiedForPatch:core.verifiedForPatch,patchReviewUrl:core.patchReviewUrl,checkedAt:core.checkedAt,url:core.source});
  }
  if(item.costSource?.includes('wildriftfire.com')&&!observations.some(o=>o.source==='wildriftfire'))observations.unshift({source:'wildriftfire',cost:item.cost,patch:item.costPatch,checkedAt:item.costCheckedAt,url:item.costSource});
- const current=observations.filter(o=>o.patch===data.latestPatch.version&&ageInDays(o.checkedAt,now)<=7&&Number.isFinite(o.cost));
+ const current=observations.filter(o=>factPatchUsable(data,o)&&ageInDays(o.checkedAt,now)<=7&&Number.isFinite(o.cost));
  const official=item.official;
  if(!itemAvailability(data,id))return {cost:null,status:item.removedIn?'removed':'unverified',observations};
  if(official?.patch===data.latestPatch.version&&ageInDays(official.checkedAt,now)<=7&&Number.isInteger(official.cost))return {cost:official.cost,status:'official',observations,conflict:current.some(o=>o.cost!==official.cost),source:official.url};

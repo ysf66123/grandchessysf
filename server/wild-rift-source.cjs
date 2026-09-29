@@ -34,16 +34,18 @@ async function fetchText(url) {
 function parseStats(html) {
   const $ = load(html), raw = JSON.parse($('#wf-stats-data').text());
   if (!/^\d+\.\d+[a-z]?$/.test(raw.patch) || !/^\d{4}-\d{2}-\d{2}$/.test(raw.updated)) throw new Error('İstatistik sürümü doğrulanamadı.');
-  const brackets = {};
+  const brackets = {},missingBrackets=[];
   for (const key of ['diamond','master','challenger','apex']) {
     const rows = raw.brackets?.[key]?.rows;
-    if (!Array.isArray(rows) || rows.length < 50) throw new Error('İstatistik kapsamı eksik.');
+    if (!Array.isArray(rows)) throw new Error('İstatistik kapsamı eksik.');
+    if(rows.length<50){missingBrackets.push(key);continue;}
     brackets[key] = rows.map(r => {
       if (!roles[r.role] || !/^[a-z0-9-]+$/.test(r.slug) || ![r.win,r.pick,r.ban].every(n => Number.isFinite(n) && n>=0 && n<=100)) throw new Error('Geçersiz istatistik satırı.');
       return {id:r.slug,name:r.champion,role:roles[r.role],tier:String(r.tier).toUpperCase().replace('PLUS','+'),win:r.win,pick:r.pick,ban:r.ban};
     });
   }
-  return {patch:raw.patch,asOf:raw.updated,region:'CN',sampleSize:null,source:BASE+'/stats',brackets};
+  if(!brackets.diamond)throw new Error('İstatistik kapsamı eksik.');
+  return {patch:raw.patch,asOf:raw.updated,region:'CN',sampleSize:null,source:BASE+'/stats',brackets,missingBrackets};
 }
 function parseCatalog(html) {
   const $ = load(html), map = new Map();

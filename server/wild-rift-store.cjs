@@ -65,7 +65,12 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
     try{
     await saveStatus();
     const [statsHtml,catalogHtml,patchHtml]=await Promise.all([source.fetchText(source.BASE+'/stats'),source.fetchText(source.BASE+'/tier-list'),source.fetchText(source.PATCH_URL)]);
-    const stats=source.parseStats(statsHtml), champions=source.parseCatalog(catalogHtml), latestPatch=source.parsePatch(patchHtml);
+    const champions=source.parseCatalog(catalogHtml), latestPatch=source.parsePatch(patchHtml);
+    let stats;
+    try{stats=source.parseStats(statsHtml);}catch(e){
+      if(!old?.stats)throw e;
+      stats={...old.stats,refreshFailed:true,lastAttemptAt:new Date().toISOString(),refreshError:'Kaynak yeni yama için yeterli istatistik yayımlamadı; eski kayıtların yaması ve tarihi korunuyor.'};
+    }
     if(old&&champions.length<old.champions.length*.9)throw new Error('Şampiyon kapsamı beklenmedik biçimde azaldı; önceki veri korundu.');
     if(old&&source.comparePatch(latestPatch.version,old.latestPatch.version)<0)throw new Error('Resmî kaynak daha eski yama döndürdü; önceki veri korundu.');
     const patchPage=await source.fetchText(latestPatch.url);

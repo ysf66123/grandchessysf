@@ -2,6 +2,10 @@ const {load}=require('cheerio');
 const {fetchText,parseEffectText}=require('./wild-rift-source.cjs');
 const {resolver,normalize}=require('./wild-rift-official.cjs');
 const CORE='https://wildriftcore.com';
+function reviewCoreItem(fact,patch){
+ if(fact.patch==='7.3'&&patch==='7.3a'&&!['yun-tal-wildarrows','whispering-circlet','diadem-of-songs','deaths-dance'].includes(fact.id))return {...fact,verifiedForPatch:'7.3a',patchReviewUrl:'https://wildrift.leagueoflegends.com/tr-tr/news/game-updates/wild-rift-patch-notes-7-3a/'};
+ return fact;
+}
 const ROLE={'mid lane':'mid',mid:'mid',jungle:'jungle','solo lane':'baron','baron lane':'baron','top lane':'baron',top:'baron','dragon lane':'duo','duo lane':'duo',adc:'duo',support:'support'};
 function parseCoreItems(html,items,checkedAt=new Date().toISOString()){
  const $=load(html),patch=$('body').text().match(/Patch spotlight\s+(\d+\.\d+[a-z]?)/i)?.[1];
@@ -21,22 +25,26 @@ function parseCoreItems(html,items,checkedAt=new Date().toISOString()){
 function parseCoreBuilds(html,champion,data,checkedAt=new Date().toISOString()){
  const $=load(html),section=$('.engine-builds').first(),patch=section.find('h2').text().match(/patch (\d+\.\d+[a-z]?)/i)?.[1];
  if(!normalize($('h1').text()).startsWith(normalize(champion.name)))throw Error('Ek dizilim şampiyonu doğrulanamadı.');
- if(patch!==data.latestPatch.version)throw Error('Ek dizilim güncel yamaya ait değil.');
+ const reviewed=patch==='7.3'&&data.latestPatch.version==='7.3a';
+ if(patch!==data.latestPatch.version&&!reviewed)throw Error('Ek dizilim güncel yamaya ait değil.');
  const panels=section.find('.eb-rolepanel').length?section.find('.eb-rolepanel').toArray():[section[0]],rows=[];
  for(const panel of panels){const scope=$(panel);
  const summary=scope.find('p').map((_,e)=>$(e).text().trim()).get().find(t=>/^Best .+ build \(/.test(t))||'';
  const role=ROLE[summary.match(/build \(([^)]+)\)/)?.[1].toLowerCase()],primary=champion.builds.find(b=>b.role===role);
  if(!primary)continue;
  const resolve=resolver(data.items),boot=resolve(summary.match(/, boots (.*?), keystone/)?.[1]||'');
- const url=CORE+'/en/champions/'+champion.id+'/builds/';
+ const url=(data.counterSources?.urls?.[champion.id]||CORE+'/en/champions/'+champion.id+'/')+'builds/';
  scope.find('.engine-builds__variant').each((index,e)=>{
   const ids=$(e).find('.eb-items .eb-item').map((_,n)=>resolve($(n).find('span').text())).get(),title=$(e).find('h3,h4').text().trim();
   const final=[boot,...ids];
   if(ids.length!==5||new Set(final).size!==6||final.some(id=>!data.items[id]))return;
+  const affectedChampions=['hwei','samira','rammus','malphite','tristana','draven','caitlyn','senna','syndra','swain','yuumi','viego'];
+  const affectedItems=['yun-tal-wildarrows','whispering-circlet','diadem-of-songs','deaths-dance'];
+  const verifiedForPatch=reviewed&&!affectedChampions.includes(champion.id)&&!final.some(id=>affectedItems.includes(id))?'7.3a':null;
   const type=$(e).attr('data-variant-key')||(/^Safety/i.test(title)?'safety':/^Anti-resist/i.test(title)?'resist':/^Standard/i.test(title)?'standard':'alternative');
   rows.push({...primary,guideId:'core-'+role+'-'+index,source:url,sourceId:'wildriftcore',region:'CN',variantType:type,
    label:({standard:'Dengeli kaynak dizilimi',safety:'Savunmalı kaynak dizilimi',resist:'Dirençlere karşı kaynak dizilimi','anti-ad':'Fiziksel hasara karşı','anti-ap':'Büyü hasarına karşı','anti-tank':'Ön saflara karşı',bruiser:'Dayanıklı dövüşçü',peel:'Taşıyıcıyı koruma','anti-dive':'Dalışa karşı',sustain:'Uzun çatışma'})[type]||'Ek kaynak dizilimi',
-   patch,fetchedAt:checkedAt,sourceSlotCount:6,final,core:ids.slice(0,2),boots:[boot],situational:[],
+   patch,verifiedForPatch,patchReviewUrl:verifiedForPatch?'https://wildrift.leagueoflegends.com/tr-tr/news/game-updates/wild-rift-patch-notes-7-3a/':null,fetchedAt:checkedAt,updatedAt:require('./wild-rift-counter-sources.cjs').sourceDate($),basis:'computed-guide',sourceSlotCount:6,final,core:ids.slice(0,2),boots:[boot],situational:[],
    purchaseOrder:ids,starting:primary.starting,runeSource:primary.source,counters:[],synergies:[]});
   });
  }
@@ -49,15 +57,17 @@ async function collectBuildSources(data,{previous,onProgress=()=>{}}={}){
  async function worker(){while(cursor<data.champions.length){const c=data.champions[cursor++];
    try{
     const saved=old.get(c.id)||[];
-    if(saved.length&&saved.every(b=>b.patch===data.latestPatch.version&&Date.now()-Date.parse(b.fetchedAt)<6*3600000)){c.sourceBuilds=saved;onProgress(++completed,data.champions.length);continue;}
+    if(previous?.buildSources?.parserVersion===2&&previous.buildSources.patch===data.latestPatch.version&&saved.length&&saved.every(b=>Date.now()-Date.parse(b.fetchedAt)<6*3600000)){c.sourceBuilds=saved;onProgress(++completed,data.champions.length);continue;}
     if(rateLimited||consecutiveFailures>=8||Date.parse(previous?.buildSources?.retryAfter)>Date.now())throw Error('Kaynak bekleme süresinde; önceki doğrulanmış kayıt korundu.');
-    let html;try{html=await fetchText(CORE+'/en/champions/'+c.id+'/builds/');consecutiveFailures=0;}catch(e){consecutiveFailures++;throw e;}
+    const canonical=data.counterSources?.urls?.[c.id];
+    if(!canonical)throw Error('Kaynağın şampiyon dizininde adres bulunamadı.');
+    let html;try{html=await fetchText(canonical+'builds/');consecutiveFailures=0;}catch(e){consecutiveFailures++;throw e;}
     c.sourceBuilds=parseCoreBuilds(html,c,data,checkedAt);
    }catch(e){if(/429/.test(e.message))rateLimited=true;c.sourceBuilds=old.get(c.id)||[];failures.push(c.id);reasons[c.id]=e.message;}
    onProgress(++completed,data.champions.length);await new Promise(r=>setTimeout(r,650));
  }}
  await worker();
- data.buildSources={checkedAt,patch:data.latestPatch.version,source:'wildriftcore',region:'CN',count:data.champions.reduce((n,c)=>n+(c.sourceBuilds||[]).length,0),failures,reasons,...(rateLimited?{retryAfter:new Date(Date.now()+3600000).toISOString()}:Date.parse(previous?.buildSources?.retryAfter)>Date.now()?{retryAfter:previous.buildSources.retryAfter}:{})};
+ data.buildSources={parserVersion:2,checkedAt,patch:data.latestPatch.version,source:'wildriftcore',region:'CN',count:data.champions.reduce((n,c)=>n+(c.sourceBuilds||[]).length,0),failures,reasons,...(rateLimited?{retryAfter:new Date(Date.now()+3600000).toISOString()}:Date.parse(previous?.buildSources?.retryAfter)>Date.now()?{retryAfter:previous.buildSources.retryAfter}:{})};
  return data.buildSources;
 }
-module.exports={parseCoreItems,parseCoreBuilds,collectBuildSources};
+module.exports={parseCoreItems,parseCoreBuilds,collectBuildSources,reviewCoreItem};
