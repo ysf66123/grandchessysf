@@ -1,10 +1,10 @@
-import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-critical1';
-import {traits} from './wild-rift-knowledge.mjs?v=20260930-critical1';
-import {ageInDays} from './wild-rift-quality.mjs?v=20260930-critical1';
+import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-critical2';
+import {traits} from './wild-rift-knowledge.mjs?v=20260930-critical2';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260930-critical2';
 export function itemTotals(data,ids){
- const totals={},unknown=[];
- for(const id of ids){const f=itemFacts(data,id);if(!f.known||f.conflicts.length)unknown.push(id);for(const [k,n] of Object.entries(f.stats))if(Number.isFinite(n))totals[k]=(totals[k]||0)+n;}
- return {stats:totals,unknown,scalingCrit:rulesUsable(data)&&ids.includes('yun-tal-wildarrows')?25:0};
+ const totals={},unknown=[],uncertainStats=new Set();
+ for(const id of ids){const f=itemFacts(data,id);if(!f.known||f.conflicts.length)unknown.push(id);if(!f.known)uncertainStats.add('*');for(const key of f.conflicts)uncertainStats.add(key);for(const [k,n] of Object.entries(f.stats))if(Number.isFinite(n))totals[k]=(totals[k]||0)+n;}
+ return {stats:totals,unknown,uncertainStats:[...uncertainStats],scalingCrit:rulesUsable(data)&&ids.includes('yun-tal-wildarrows')?25:0};
 }
 export function combatFacts(data,champion,level){
  const f=champion?.combatFacts;
@@ -60,16 +60,19 @@ export function buildFit(data,items,profile){
  if(profile.tank){weights.health=1.3;weights.armor=.7;weights.magicResist=.7;}
  if(profile.support)weights.haste=.9;else weights.haste=.45;
  if(profile.usesMana===true)weights.mana=.5;
- let penalty=0;const losses=[];
+ let penalty=0;const losses=[],uncertainStats=[];
  const labels={ap:'Yetenek gücü',ad:'Saldırı gücü',attackSpeed:'Saldırı hızı',crit:'Kritik ihtimali',haste:'Yetenek hızı',mana:'Mana',health:'Can',armor:'Zırh',magicResist:'Büyü direnci'};
- for(const [key,weight] of Object.entries(weights))if(b[key]>0&&Number.isFinite(s[key])){
-  const lost=Math.max(0,b[key]-s[key]);penalty+=Math.min(1,lost/b[key])*weight;
+ for(const [key,weight] of Object.entries(weights))if(b[key]>0){
+  // A fully known set with no contributor has zero of this stat. An unknown
+  // item or conflicting source is uncertainty and cannot erase the fit cost.
+  if(current.uncertainStats.includes('*')||current.uncertainStats.includes(key)){penalty+=weight*.5;uncertainStats.push(labels[key]);continue;}
+  const lost=Math.max(0,b[key]-(s[key]||0));penalty+=Math.min(1,lost/b[key])*weight;
   if(lost>0)losses.push({key,label:labels[key],value:Math.round(lost*10)/10});
  }
  // Missing values are uncertainty, never proof of zero cost or higher damage.
  if(current.unknown.length>profile.unknown.length)penalty+=.45;
  if(profile.usesMana===false&&(s.mana||0)>(b.mana||0))penalty+=.8;
- const warnings=[];
+ const warnings=uncertainStats.length?['Yeni sette '+uncertainStats.join(', ')+' toplamı doğrulanamadı; katkı kaybı kesin sayı olarak gösterilmiyor.']:[];
  if(rulesUsable(data)){
   if(profile.spellblade&&!items.some(id=>['trinity-force','divine-sunderer','iceborn-gauntlet','lich-bane'].includes(id))){penalty+=1.5;warnings.push('Ana rehberin güçlendirilmiş saldırı eşyası kayboluyor.');}
   if(profile.onHit&&!items.some(id=>['guinsoos-rageblade','nashors-tooth','blade-of-the-ruined-king','kraken-slayer'].includes(id))){penalty+=1.5;warnings.push('Ana rehberin vuruş etkisi düzeni kayboluyor.');}

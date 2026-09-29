@@ -1,8 +1,8 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20260930-critical1';
-import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260930-critical1';
-import {itemFacts,itemFamily,BOOTS,SUPPORT_ITEMS,TRANSFORM_FROM,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-critical1';
-import {coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20260930-critical1';
-import {application} from './wild-rift-build-fit.mjs?v=20260930-critical1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260930-critical2';
+import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260930-critical2';
+import {itemFacts,itemFamily,BOOTS,SUPPORT_ITEMS,TRANSFORM_FROM,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-critical2';
+import {coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20260930-critical2';
+import {application} from './wild-rift-build-fit.mjs?v=20260930-critical2';
 export function itemCost(data,id,now=Date.now()){
   return priceEvidence(data,id,now).cost;
 }
@@ -24,12 +24,14 @@ export function completionCost(data,id,owned=[],now=Date.now()){
 }
 export function affordableComponents(data,id,gold,owned=[],now=Date.now()){
  const official=data.items[id]?.official;if(!official?.recipe||official.patch!==data.latestPatch.version||ageInDays(official.checkedAt,now)>7)return [];
- const candidates=[],seen=new Set();
+ const candidates=[],seen=new Set(),parts=owned.map((id,index)=>({id,index}));
  function walk(id,path=new Set()){
   if(path.has(id))return;const next=new Set(path);next.add(id);
-  const item=data.items[id],details=completionCost(data,id,owned,now);
+  const existing=parts.findIndex(p=>p.id===id);
+  if(existing>=0){parts.splice(existing,1);return;}
+  const item=data.items[id],detail=completionCost(data,id,parts.map(p=>p.id),now),details={...detail,used:detail.used.map(i=>parts[i].index)};
   if(!seen.has(id)&&itemAvailability(data,id)&&details.exact&&details.cost>0&&details.cost<=gold){candidates.push({id,cost:details.cost,used:details.used});seen.add(id);}
-  if(item?.official?.patch===data.latestPatch.version)for(const child of item.official.recipe?.components||[])walk(child,next);
+  if(item?.official?.patch===data.latestPatch.version&&ageInDays(item.official.checkedAt,now)<=7)for(const child of item.official.recipe?.components||[])walk(child,next);
  }
  for(const child of official.recipe.components)walk(child);
  // Alternatives, not a shopping basket: do not suggest spending the same gold twice.

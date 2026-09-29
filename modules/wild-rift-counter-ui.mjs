@@ -1,4 +1,4 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20260930-critical1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260930-critical2';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const names={wildriftfire:'WildRiftFire',wrmeta:'WR-META',wildriftcore:'WildRiftCore'};
 const date=v=>v&&Number.isFinite(Date.parse(v))?new Date(v).toLocaleDateString('tr-TR'):'Belirtilmemiş';

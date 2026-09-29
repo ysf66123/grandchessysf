@@ -1,3 +1,9 @@
+## İki ek kritik düzeltme — 30 Eylül 2026
+
+20260930-critical2: Dizilim uyumunda tamamen kaybolan AD/AP/kritik vb. nitelikler artık atlanmaz; bilinen sıfırın tam maliyeti hesaplanır. Eksik veri ve kaynak çelişkisi nitelik bazında belirsizlik maliyeti/açıklaması verir; uydurma sayısal kayıp gösterilmez. Bir nitelikte çelişki diğer doğrulanmış niteliklerin kaybını gizlemez.
+
+Alışveriş tarifinde her fiziksel parça bir kez tüketilir. Aynı parçadan iki tane gereken Phantom Dancer gibi tariflerde tek parçaya sahip olmak ikinci parçanın önerilmesini engellemez. Alternatif alışverişte parça indirim indeksleri gerçek envantere bağlanır; eski iç tarifler yeni parça rotası oluşturamaz. 158 birim/HTTP testi, gerçek Phantom Dancer senaryosu, mobil tarayıcı ve statik uygulama entegrasyonu geçti. Canlı yayın kontrolü bekleniyor.
+
 ## Kritik şampiyon ve eşya paketi — 30 Eylül 2026
 
 Varlık sürümü: 20260930-critical1. WR-META büyük/küçük yama harfi sorunu giderildi; 142/142 şampiyon doğrulandı, 1.137 adet 7.3a ilişki kaydı var. Boş/bozulmuş eşleşme bölümü başarılı tarama sayılmaz. Bağlantı, ayrıştırıcı ve eksik adres durumları ayrılır; kapsam düşüşü uyarılır, başarısız taramada özgün tarih korunur ve eski kayıtlar çift sayılmaz. RiftGG kısmi başarısızlıkları artık kısmi durum gösterir; tarihsel istatistikler güncel puan değildir.
@@ -8,7 +14,7 @@ Tam kaynak setleri sıra farkıyla tekrar sayılmaz. Kaynakta doğrulanmış do�
 
 Gerideki koridorda kaynak setinin savunma botu öne alınabilir. Erken direnç parçası yalnız seçilen son setin güncel resmî tarifine bağlanır; bütçe/yuva/eldeki parçalar denetlenir ve ana rotaya dönüş açıklanır. Tam eşya alınabiliyorsa parça önerisiyle geciktirilmez. Riot'un Guinsoo tarifindeki çift artı yazımı, toplam fiyat doğrulaması korunarak çözüldü: 51 resmî tarif. Yama 7.3a; 29 Eylül Fire istatistikleri hâlâ 7.3 ve güncel ara yama istatistiği gibi sunulmaz.
 
-Doğrulama: 152 birim/HTTP testi; 360 tam set ve 360 envanter/aşama senaryosu; 360 px mobil tarayıcı ve gerçek statik uygulama entegrasyonu geçti. Yeni tarayıcı kontrolleri eşya gerekçelerini, değişim nedenini ve 142/142 kapsamını doğrular. Seçimlerde ek veri isteği yok. Yerel 200 motor ölçümünde medyan 1,51 ms / p95 1,99 ms (gerçek telefon ölçümü değildir). Veri gzip yaklaşık 137 KB. Canlı yayın sonucu aşağıya eklenecek.
+Doğrulama: 152 birim/HTTP testi; 360 tam set ve 360 envanter/aşama senaryosu; 360 px mobil tarayıcı ve gerçek statik uygulama entegrasyonu geçti. Yeni tarayıcı kontrolleri eşya gerekçelerini, değişim nedenini ve 142/142 kapsamını doğrular. Seçimlerde ek veri isteği yok. Yerel 200 motor ölçümünde medyan 1,51 ms / p95 1,99 ms (gerçek telefon ölçümü değildir). Veri gzip yaklaşık 137 KB. Canlı yayın doğrulandı: 4da5008d367d4367ecf13dc86c9a747e4b1eeffc; Pages işi https://github.com/ysf66123/grandchessysf/actions/runs/36644604475 başarılı. Canlı index, app-v2, JSON ve sekiz motor/arayüz modülünün SHA-256 değerleri yerelle eşleşti. Bu yayın sonucu yerel devam notudur.
 
 ## Meta seti ve alışveriş motoru — 29 Eylül 2026
 
