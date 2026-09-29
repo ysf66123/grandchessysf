@@ -1,10 +1,11 @@
 const {load}=require('cheerio');
+const {normalizePatch}=require('./wild-rift-patch.cjs');
 const normalize=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const ALIASES={atwitsend:'wits-end',staffofflowingwaters:'staff-of-flowing-water',lorddominiksregards:'lord-dominiks-regard',steraksgage:'steraks-gage',yordletrap:'yordle-trap',bfsword:'bf-sword',vampiricscepterscepter:'vampiric-scepter'};
 function resolver(items){const index=new Map(Object.values(items).flatMap(i=>[[normalize(i.name),i.id],[normalize(i.id),i.id]]));return name=>index.get(normalize(name))||ALIASES[normalize(name)]||String(name).toLowerCase().replace(/[’']/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');}
 function parseOfficialItems(html,items,patch,url,checkedAt=new Date().toISOString()){
   const $=load(html),resolve=resolver(items),facts={},removed=[];
-  const declared=$('h1').first().text().match(/Patch Notes (\d+\.\d+[a-z]?)/)?.[1];
+  const declared=normalizePatch($('h1').first().text().match(/Patch Notes (\d+\.\d+[a-z]?)/i)?.[1]);
   if(declared!==patch)throw Error('Resmî eşya yaması doğrulanamadı.');
   for(const heading of $('h3,h4').toArray()){
     const name=$(heading).text().trim(),section=$(heading).nextUntil('h2,h3,h4');
@@ -20,7 +21,7 @@ function parseOfficialItems(html,items,patch,url,checkedAt=new Date().toISOStrin
     const fact={id,name,source:'riot',url,patch,checkedAt,stats:{}};
     if(priceLine){const value=priceLine.split('→').pop().split(':').pop().trim();if(/^\d+$/.test(value))fact.cost=Number(value);}
     if(pathLine){
-      const value=pathLine.split('→').pop().replace(/^.*Build Path:\s*/i,'').trim(),tokens=value.split(/\s*\+\s*/),components=[];let fee=0,valid=true;
+      const value=pathLine.split('→').pop().replace(/^.*Build Path:\s*/i,'').trim(),tokens=value.split(/\s*\+\s*/).map(t=>t.trim()).filter(Boolean),components=[];let fee=0,valid=true;
       for(const token of tokens){const match=token.match(/^(.+?)\s*\((\d+)\)$/);if(match)components.push({id:resolve(match[1]),name:match[1],cost:Number(match[2])});else if(/^\d+$/.test(token))fee+=Number(token);else valid=false;}
       if(valid&&components.length){const total=components.reduce((n,c)=>n+c.cost,fee);if(total>=100&&total<=10000&&(!fact.cost||total===fact.cost)){fact.cost=total;fact.recipe={components:components.map(c=>c.id),fee};fact.componentFacts=components;}else fact.recipeConflict=true;}
     }

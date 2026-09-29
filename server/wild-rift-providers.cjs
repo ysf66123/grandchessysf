@@ -1,4 +1,5 @@
 const {load}=require('cheerio');
+const {normalizePatch}=require('./wild-rift-patch.cjs');
 const {fetchText}=require('./wild-rift-source.cjs');
 const {resolver,normalize,parseOfficialItems,applyOfficial}=require('./wild-rift-official.cjs');
 const ROLE={TOP:'baron',Solo:'baron',Baron:'baron',JUNGLE:'jungle',Jungle:'jungle',MID:'mid',Mid:'mid',DRAGON:'duo',Duo:'duo',Dragon:'duo',SUPPORT:'support',Support:'support'};
@@ -38,8 +39,9 @@ function parseMetaItems(html,data,checkedAt){
  if(observations.length<50)throw Error('WR-META eşya kataloğu doğrulanamadı.');return observations;
 }
 function parseMetaGuide(html,champion,data,checkedAt,url){
- const $=load(html),resolve=championResolver(data),patch=$('h1').first().text().match(/\((\d+\.\d+[a-z]?)\)/)?.[1];
+ const $=load(html),resolve=championResolver(data),patch=normalizePatch($('h1').first().text().match(/\(\s*(\d+\.\d+[a-z]?)\s*\)/i)?.[1]);
  if(!patch)throw Error('WR-META rehber yaması doğrulanamadı.');const relationships=[],updatedAt=require('./wild-rift-counter-sources.cjs').sourceDate($);
+ if(!$('.tabs-b4 h2').toArray().some(e=>/Counters/i.test($(e).text())))throw Error('WR-META eşleşme bölümü okunamadı.');
  $('.tabs-b4').each((_,section)=>{
    const heading=$(section).find('h2').first().text().trim(),role=ROLE[heading.split(/\s+/)[0]];if(!role||!heading.includes('Counters'))return;
    $(section).find('.tabs-box2').each((_,box)=>{
@@ -78,16 +80,19 @@ async function collectEvidence(data,{previous=null,onProgress=()=>{},guideLimit=
  ]);
  let metaCatalog=[];
  await run('wrmeta',async()=>{const [html,home]=await Promise.all([fetchText('https://wr-meta.com/items/'),fetchText('https://wr-meta.com/')]);const observations=parseMetaItems(html,data,checkedAt);result.items.push(...observations);const $=load(home),resolve=championResolver(data),seen=new Set();$('a[href]').each((_,e)=>{const href=$(e).attr('href'),id=resolve($(e).text().trim());if(id&&!seen.has(id)&&/^https:\/\/wr-meta\.com\/\d+-[a-z0-9-]+\.html$/.test(href)){seen.add(id);metaCatalog.push({id,url:href});}});Object.assign(provider('wrmeta'),{items:observations.length,message:'Ücretsiz görünen eşleşme kartları kullanılır; kilitli içerik alınmaz. Eşya sayfasında yama etiketi yok.'});});
- const tasks=data.champions.slice(0,guideLimit),failures={wrmeta:[],riftgg:[]};let cursor=0,completed=0;
+ const tasks=data.champions.slice(0,guideLimit),failures={wrmeta:[],riftgg:[]},pages={};let cursor=0,completed=0;
  async function worker(){while(cursor<tasks.length){const c=tasks[cursor++],meta=metaCatalog.find(x=>x.id===c.id);
-   if(meta)try{result.relationships.push(...parseMetaGuide(await fetchText(meta.url),c,data,checkedAt,meta.url));}catch{failures.wrmeta.push(c.id);result.relationships.push(...(previous?.relationships||[]).filter(r=>r.source==='wrmeta'&&r.subject===c.id));}
+   if(meta)try{const rows=parseMetaGuide(await fetchText(meta.url),c,data,checkedAt,meta.url);result.relationships.push(...rows);pages[c.id]={status:'available',checkedAt,url:meta.url,rows:rows.length};}catch(e){failures.wrmeta.push(c.id);pages[c.id]={status:'failed',checkedAt,url:meta.url,reason:/429|403|bağlanılamadı|Kaynak yanıtı/.test(e.message)?'connection':'parser'};result.relationships.push(...(previous?.relationships||[]).filter(r=>r.source==='wrmeta'&&r.subject===c.id));}
+   else {failures.wrmeta.push(c.id);pages[c.id]={status:'failed',checkedAt,reason:'missing-url'};result.relationships.push(...(previous?.relationships||[]).filter(r=>r.source==='wrmeta'&&r.subject===c.id));}
    const url=`https://www.riftgg.app/en/champions/${c.id}/cn-stats`;
    try{result.matchups.push(...parseRiftGG(await fetchText(url),c,data,checkedAt,url));}catch{failures.riftgg.push(c.id);}
    onProgress(++completed,tasks.length,c.id);await new Promise(r=>setTimeout(r,200));
  }}
  await Promise.all([worker(),worker()]);
- if(provider('wrmeta').status==='available')Object.assign(provider('wrmeta'),{relationships:result.relationships.length,failures:failures.wrmeta,status:failures.wrmeta.length?'partial':'available'});
- Object.assign(provider('riftgg'),{status:result.matchups.length?'available':'unavailable',checkedAt,rows:result.matchups.length,failures:failures.riftgg,asOf:result.matchups.map(r=>r.asOf).sort().at(-1)||null,message:'Çin sunucusu; tarih/yama/lig kapsamı doğrulanmadan puanlamaya katılmaz.'});
+ Object.assign(provider('wrmeta'),{relationships:result.relationships.filter(r=>r.source==='wrmeta').length,failures:failures.wrmeta,pages,verifiedChampions:Object.values(pages).filter(p=>p.status==='available').length,status:tasks.length&&failures.wrmeta.length===tasks.length?'unavailable':failures.wrmeta.length?'partial':provider('wrmeta').status});
+ const priorCount=previous?.relationships?.filter(r=>r.source==='wrmeta'&&r.patch===data.latestPatch.version).length||0,newCount=result.relationships.filter(r=>r.source==='wrmeta'&&r.patch===data.latestPatch.version).length;
+ if(priorCount>100&&newCount<priorCount*.6)provider('wrmeta').warning='Güncel eşleşme kapsamı belirgin azaldı; kaynak yapısı kontrol edilmeli.';
+ Object.assign(provider('riftgg'),{status:result.matchups.length?(failures.riftgg.length?'partial':'available'):'unavailable',checkedAt,rows:result.matchups.length,failures:failures.riftgg,asOf:result.matchups.map(r=>r.asOf).sort().at(-1)||null,message:'Çin sunucusu; tarih/yama/lig kapsamı doğrulanmadan puanlamaya katılmaz.'});
  // Keep prior observations with their ORIGINAL timestamps if a provider fails.
  for(const p of result.providers)if(p.status==='unavailable'&&previous){for(const field of ['items','relationships','matchups','statistics'])result[field].push(...(previous[field]||[]).filter(r=>r.source===p.id));}
  // Historical records cannot affect ranking. Ship a bounded example per champion
@@ -95,6 +100,7 @@ async function collectEvidence(data,{previous=null,onProgress=()=>{},guideLimit=
  const selected=new Map();result.matchups=result.matchups.filter(row=>{if(Date.now()-Date.parse(row.asOf)<7*86400000)return true;const key=row.subject+':'+row.rankLevel;const n=selected.get(key)||0;selected.set(key,n+1);return n<3;});
  // Keep the dedicated counter collector's records with their own dates.
  result.relationships.push(...(previous?.relationships||[]).filter(r=>r.source==='wildriftcore'));
+ const unique=new Map();for(const row of result.relationships){const key=[row.source,row.subject,row.opponent,row.role,row.kind,row.strength,row.patch].join('|');if(!unique.has(key)||Date.parse(row.checkedAt)>Date.parse(unique.get(key).checkedAt))unique.set(key,row);}result.relationships=[...unique.values()];
  data.evidence=result;return result;
 }
 module.exports={SOURCES,flightObjects,parseCore,parseMetaItems,parseMetaGuide,parseForge,parseRiftGG,collectEvidence};

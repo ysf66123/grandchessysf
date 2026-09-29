@@ -1,8 +1,8 @@
-import {traits,CONDITIONS} from './wild-rift-knowledge.mjs?v=20260929-meta1';
-import {itemAvailability,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260929-meta1';
-import {guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260929-meta1';
-import {ITEM_ROLES,itemFacts,itemConflicts,itemFamily,BOOTS,SUPPORT_ITEMS,NEED_LABELS,rulesUsable,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20260929-meta1';
-import {championProfile,combatFacts,application,incompatibleItem,buildFit} from './wild-rift-build-fit.mjs?v=20260929-meta1';
+import {traits,CONDITIONS} from './wild-rift-knowledge.mjs?v=20260930-critical1';
+import {itemAvailability,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-critical1';
+import {guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260930-critical1';
+import {ITEM_ROLES,itemFacts,itemConflicts,itemFamily,BOOTS,SUPPORT_ITEMS,NEED_LABELS,rulesUsable,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20260930-critical1';
+import {championProfile,combatFacts,application,incompatibleItem,buildFit} from './wild-rift-build-fit.mjs?v=20260930-critical1';
 const ENCHANTERS=new Set('janna karma lulu milio nami sona soraka yuumi'.split(' '));
 const STRONG_HEAL=new Set('aatrox dr-mundo kayn soraka swain vladimir warwick yuumi'.split(' '));
 const STRONG_SHIELD=new Set('janna karma lulu sett shen'.split(' '));
@@ -18,7 +18,7 @@ export function buildContext(data,draft,scenarios){
   for(const item of gear){const fact=itemFacts(data,item);for(const k of Object.keys(stats))stats[k]+=fact.stats[k]||0;Object.assign(effects,fact.effects);if(!fact.known||fact.conflicts.length)unknown.push(item);}
   const native=combatFacts(data,c,draft.enemyLevels?.[id]);
   const enemyGuide=c.builds.find(b=>b.role===role),enemyProfile=enemyGuide?championProfile(data,c,enemyGuide):null;
-  const damage=enemyProfile?.damage||(t.magic?'magic':t.mixed?'mixed':t.attack?'physical':'unknown');
+  const damage=enemyProfile?.threatDamage||enemyProfile?.damage||(t.magic?'magic':t.mixed?'mixed':t.attack?'physical':'unknown');
   const supportDamage=role==='support'&&ENCHANTERS.has(id)?.35:1;
   // Observed substantial AP/AD investment can qualify the usual damage profile.
   const magic=damage==='magic'?1:damage==='mixed'?.5:0,physical=damage==='physical'?1:damage==='mixed'?.5:0;
@@ -44,9 +44,11 @@ export function buildContext(data,draft,scenarios){
   rows.push({id,name:c.name,role,lane,uncertain,fed:draft.fed===id,target:draft.targetEnemy===id,weight,keys,gear,stats,native,unknown,damage,inventoryKnown:gear.length>0});
  }
  const coverage=draft.teamCoverage||{};
+ const own=data.champions.find(c=>c.id===draft.blue[draft.role]),native=combatFacts(data,own)?.mechanics;
+ if(native?.innateAntiHeal)pressure.heal*=.75;
  for(const k of ['heal','shield'])if(coverage[k]&&!assignments.some(a=>a.need===k))pressure[k]*=.9;
  const priorities=Object.keys(pressure).map(key=>({key,label:NEED_LABELS[key],value:pressure[key],targets:rows.filter(r=>r.keys[key]>0).sort((a,b)=>b.keys[key]*b.weight-a.keys[key]*a.weight).map(r=>r.name)})).filter(p=>p.value>.5).sort((a,b)=>b.value*FACTOR[b.key]-a.value*FACTOR[a.key]);
- return {pressure,rows,priorities,assignments,phase:draft.phase||'draft',uncertain:scenarios.uncertain,valid:scenarios.valid,missing:5-rows.length,unknownInventories:rows.filter(r=>!r.inventoryKnown).length};
+ return {pressure,rows,priorities,assignments,nativeAntiHeal:!!native?.innateAntiHeal,phase:draft.phase||'draft',uncertain:scenarios.uncertain,valid:scenarios.valid,missing:5-rows.length,unknownInventories:rows.filter(r=>!r.inventoryKnown).length};
 }
 function cover(id,data,profile){
  const result={...(rulesUsable(data)?ITEM_ROLES[id]?.covers||{}:{})},facts=itemFacts(data,id);
@@ -55,6 +57,7 @@ function cover(id,data,profile){
  if(facts.effects.antiHeal)result.heal=application(data,id,profile,'heal').factor;
  if(facts.effects.antiShield)result.shield=application(data,id,profile,'shield').factor;
  if(facts.mechanics.healthDamage)result.health=facts.mechanics.onHit&&!profile.attack?.45:1;
+ if(facts.mechanics.requiresAttacks&&profile.native?.fixedAttackRate)for(const k of ['health','tank','armor','magicResist'])if(result[k])result[k]*=.5;
  return result;
 }
 export function coverage(items,data,profile){

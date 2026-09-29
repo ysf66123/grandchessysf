@@ -78,7 +78,7 @@ const [
     };
 
     // Load modules dynamically
-    const cacheBuster = '20260929-meta1';
+    const cacheBuster = '20260930-critical1';
     await Promise.all([
         import(`./modules/admin-access.mjs?v=${cacheBuster}`),
         import(`./modules/auth-social-v2.js?v=${cacheBuster}`),

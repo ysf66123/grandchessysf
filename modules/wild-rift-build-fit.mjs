@@ -1,6 +1,6 @@
-import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20260929-meta1';
-import {traits} from './wild-rift-knowledge.mjs?v=20260929-meta1';
-import {ageInDays} from './wild-rift-quality.mjs?v=20260929-meta1';
+import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-critical1';
+import {traits} from './wild-rift-knowledge.mjs?v=20260930-critical1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260930-critical1';
 export function itemTotals(data,ids){
  const totals={},unknown=[];
  for(const id of ids){const f=itemFacts(data,id);if(!f.known||f.conflicts.length)unknown.push(id);for(const [k,n] of Object.entries(f.stats))if(Number.isFinite(n))totals[k]=(totals[k]||0)+n;}
@@ -14,7 +14,7 @@ export function combatFacts(data,champion,level){
 }
 export function championProfile(data,champion,base){
  const total=itemTotals(data,base.final.filter(id=>!BOOTS.includes(id))),s=total.stats,t=traits(champion),combat=combatFacts(data,champion);
- const ap=s.ap||0,ad=s.ad||0,attack=(s.attackSpeed||0)>=35||(s.crit||0)>=40||base.core.some(id=>['blade-of-the-ruined-king','guinsoos-rageblade','nashors-tooth','kraken-slayer'].includes(id));
+ const native=combat?.mechanics||{},ap=s.ap||0,ad=s.ad||0,attack=!!native.magicOnAttack||(s.attackSpeed||0)>=35||(s.crit||0)>=40||base.core.some(id=>['blade-of-the-ruined-king','guinsoos-rageblade','nashors-tooth','kraken-slayer'].includes(id));
  const mixed=ap>=70&&ad>=50;
  const damage=mixed?'mixed':ap>ad*1.25&&ap>=70?'magic':ad>=50?'physical':t.magic?'magic':t.mixed?'mixed':t.attack?'physical':'unknown';
  const support=base.role==='support'&&base.final.some(id=>SUPPORT_ITEMS.includes(id));
@@ -23,20 +23,30 @@ export function championProfile(data,champion,base){
  const labels={supportTank:'Ön saf desteği',support:'Takım desteği',tank:'Dayanıklı ön saf',hybrid:'Karma hasar',onHitMage:'Büyü ve normal saldırı',mage:'Yetenek hasarı',crit:'Kritik ve normal saldırı',onHit:'Sürekli normal saldırı',fighter:'Fiziksel yetenek / dövüşçü'};
  const core=base.core.filter(id=>!BOOTS.includes(id)),spellblade=core.some(id=>['trinity-force','divine-sunderer','iceborn-gauntlet','lich-bane'].includes(id));
  const onHit=core.some(id=>['guinsoos-rageblade','nashors-tooth','blade-of-the-ruined-king','kraken-slayer'].includes(id));
- return {kind,label:labels[kind],damage,attack,support,tank,spellblade,onHit,scalingCrit:total.scalingCrit,usesMana:combat?.usesMana??null,stats:s,unknown:total.unknown,champion};
+ const coreFacts=core.map(id=>itemFacts(data,id)),sustained=coreFacts.some(f=>f.mechanics.healthDamage)||onHit;
+ const style=native.fixedAttackRate?'fixedAttack':support?kind:tank?'tank':kind==='crit'?'crit':onHit?'onHit':damage==='magic'?(sustained?'sustainedMage':'burstMage'):'adCaster';
+ const styleLabels={fixedAttack:'Sabit saldırı ritmi',support:'Koruyucu destek',supportTank:'Ön saf desteği',tank:'Dayanıklı ön saf',crit:'Kritik vuruş',onHit:'Vuruş etkisi',sustainedMage:'Sürekli büyü hasarı',burstMage:'Yetenek ve ani büyü hasarı',adCaster:'Fiziksel yetenek / dövüşçü'};
+ return {kind,label:styleLabels[style]||labels[kind],style,damage,threatDamage:t.mixed?'mixed':damage,attack,support,tank,spellblade,onHit,sustained,native,scalingCrit:total.scalingCrit,usesMana:combat?.usesMana??null,stats:s,unknown:total.unknown,champion,
+  signature:core.filter(id=>itemFacts(data,id).mechanics.spellblade||['guinsoos-rageblade','nashors-tooth'].includes(id)),evidence:combat?.source||base.source};
 }
 export function application(data,id,profile,need){
  const facts=itemFacts(data,id),trigger=facts.mechanics[need==='heal'?'antiHeal':'antiShield'];
  if(!['heal','shield'].includes(need))return {factor:1,reason:''};
  if(!facts.effects[need==='heal'?'antiHeal':'antiShield'])return {factor:0,reason:'Güncel karşı etki doğrulanmadı.'};
  if(!trigger||trigger==='unknown')return {factor:.45,reason:'Etkinin uygulama koşulu tam doğrulanmadı; katkısı sınırlı sayıldı.'};
+ if(trigger==='incomingAttack')return {factor:profile.tank?.85:.35,reason:'Etki, rakibin sana normal saldırı yapmasını gerektirir; uzaktan büyü hasarına karşı sürekli uygulanmış sayılmaz.'};
  if(trigger==='physicalDamage'&&profile.damage==='magic'&&!profile.attack)return {factor:.25,reason:'Etki fiziksel hasar istiyor; bu dizilim ağırlıklı büyü hasarı veriyor.'};
  if(trigger==='magicDamage'&&profile.damage==='physical')return {factor:.25,reason:'Etki büyü hasarı istiyor; bu dizilim ağırlıklı fiziksel hasar veriyor.'};
- return {factor:trigger==='damageOrIncomingAttack'&&!profile.tank?.85:1,reason:({physicalDamage:'Fiziksel hasar verdiğin hedefe uygulanır.',magicDamage:'Büyü hasarı verdiğin hedefe uygulanır.',abilityDamage:'Yetenek hasarı verdiğin hedefe uygulanır; alan ve tek hedef etkisi farklı olabilir.',damage:'Hasar verdiğin hedefe uygulanır; yakın ve uzak dövüş etkisi farklı olabilir.',damageOrIncomingAttack:'Hasar verdiğin veya normal saldırısını aldığın hedefe uygulanır.'})[trigger]||''};
+ const conditional=facts.mechanics.rangeDependent||facts.mechanics.areaDependent;
+ return {factor:conditional?.8:trigger==='damageOrIncomingAttack'&&!profile.tank?.85:1,conditional,reason:(({physicalDamage:'Fiziksel hasar verdiğin hedefe uygulanır.',magicDamage:'Büyü hasarı verdiğin hedefe uygulanır.',abilityDamage:'Yetenek hasarı verdiğin hedefe uygulanır; alan ve tek hedef etkisi farklı olabilir.',damage:'Hasar verdiğin hedefe uygulanır; yakın ve uzak dövüş etkisi farklı olabilir.',damageOrIncomingAttack:'Hasar verdiğin veya normal saldırısını aldığın hedefe uygulanır.'})[trigger]||'')+(conditional?' Kaynakta menzil/alan koşulu var; tam etki varsayılmadı.':'')};
 }
 export function incompatibleItem(data,id,profile){
- const f=itemFacts(data,id).stats;
- if(BOOTS.includes(id)||profile.tank||profile.support||profile.kind==='hybrid')return false;
+ const facts=itemFacts(data,id),f=facts.stats;
+ if(facts.mechanics.restriction&&profile.native?.rangeMode!==facts.mechanics.restriction)return true;
+ if(BOOTS.includes(id))return false;
+ if(profile.support&&profile.damage==='magic'&&(f.ad||0)>=35&&(f.ap||0)===0)return true;
+ if(profile.tank&&(f.crit||0)>=20)return true;
+ if(profile.tank||profile.support||profile.kind==='hybrid')return false;
  if(profile.damage==='magic'&&(f.ad||0)>=35&&(f.ap||0)===0&&!profile.attack)return true;
  if(profile.damage==='physical'&&(f.ap||0)>=60&&(f.ad||0)===0)return true;
  return false;
@@ -45,7 +55,7 @@ export function buildFit(data,items,profile){
  const current=itemTotals(data,items),s=current.stats,b=profile.stats,weights={};
  if(profile.damage==='magic'||profile.kind==='hybrid')weights.ap=3;
  if(profile.damage==='physical'||profile.kind==='hybrid')weights.ad=3;
- if(profile.attack)weights.attackSpeed=1.4;
+ if(profile.attack)weights.attackSpeed=profile.native?.fixedAttackRate?.7:1.4;
  if(profile.kind==='crit')weights.crit=1.8;
  if(profile.tank){weights.health=1.3;weights.armor=.7;weights.magicResist=.7;}
  if(profile.support)weights.haste=.9;else weights.haste=.45;
@@ -63,6 +73,7 @@ export function buildFit(data,items,profile){
  if(rulesUsable(data)){
   if(profile.spellblade&&!items.some(id=>['trinity-force','divine-sunderer','iceborn-gauntlet','lich-bane'].includes(id))){penalty+=1.5;warnings.push('Ana rehberin güçlendirilmiş saldırı eşyası kayboluyor.');}
   if(profile.onHit&&!items.some(id=>['guinsoos-rageblade','nashors-tooth','blade-of-the-ruined-king','kraken-slayer'].includes(id))){penalty+=1.5;warnings.push('Ana rehberin vuruş etkisi düzeni kayboluyor.');}
+  if(profile.native?.fixedAttackRate&&items.some(id=>['guinsoos-rageblade','nashors-tooth','terminus'].includes(id))){penalty+=2;warnings.push('Sabit saldırı ritmi, çok sayıda saldırı gerektiren pasifleri daha yavaş çalıştırır.');}
   if(!['yasuo','yone'].includes(profile.champion?.id)&&(s.crit||0)+current.scalingCrit>100){penalty+=((s.crit||0)+current.scalingCrit-100)/25;warnings.push('Birikim tamamlandığında kritik ihtimali sınırını aşan yatırım var.');}
  }
  return {penalty,losses,warnings,stats:s,scalingCrit:current.scalingCrit,unknown:current.unknown,label:penalty<.55?'Ana düzen korunuyor':penalty<1.2?'Ölçülü ödünleşim':'Belirgin eşya ödünleşimi'};

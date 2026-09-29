@@ -1,4 +1,4 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20260929-meta1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260930-critical1';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const names={wildriftfire:'WildRiftFire',wrmeta:'WR-META',wildriftcore:'WildRiftCore'};
 const date=v=>v&&Number.isFinite(Date.parse(v))?new Date(v).toLocaleDateString('tr-TR'):'Belirtilmemiş';
@@ -17,5 +17,5 @@ export function counterProof(r){
 export function counterCoverage(data){
  const state=data.counterSources;if(!state)return '';
  const count=data.champions.filter(c=>{const p=state.pages?.[c.id];return p?.status==='available'&&p.patch===data.latestPatch.version&&p.count>0&&ageInDays(p.checkedAt)<=7;}).length;
- return `<p class="wr-muted wr-counter-coverage">WildRiftCore: ${count}/${data.champions.length} şampiyonun kaynak rehberi doğrulandı. Bu kapsam, her şampiyon çifti için veri bulunduğu anlamına gelmez.</p>`;
+ return `<p class="wr-muted wr-counter-coverage">WildRiftCore: ${count}/${data.champions.length} şampiyonun kaynak rehberi doğrulandı. Bu kapsam, her şampiyon çifti için veri bulunduğu anlamına gelmez.</p>${data.evidence?.providers?.find(p=>p.id==='wrmeta')?.verifiedChampions!==undefined?`<p class="wr-muted">WR-META: ${data.evidence.providers.find(p=>p.id==='wrmeta').verifiedChampions}/${data.champions.length} şampiyon kontrol edildi; yalnızca güncel yamayla eşleşen kayıtlar puana girer.</p>`:''}`;
 }

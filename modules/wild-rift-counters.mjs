@@ -1,6 +1,8 @@
-import {relationshipEvidence} from './wild-rift-evidence.mjs?v=20260929-meta1';
-import {ageInDays} from './wild-rift-quality.mjs?v=20260929-meta1';
-import {traits} from './wild-rift-knowledge.mjs?v=20260929-meta1';
+import {relationshipEvidence} from './wild-rift-evidence.mjs?v=20260930-critical1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260930-critical1';
+import {traits} from './wild-rift-knowledge.mjs?v=20260930-critical1';
+import {rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-critical1';
+import {combatFacts} from './wild-rift-build-fit.mjs?v=20260930-critical1';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 // Recommendation weights, not measured probabilities or combat simulation.
 export function evaluateMatchup(data,candidate,enemy,role,now=Date.now()){
@@ -23,8 +25,11 @@ export function evaluateMatchup(data,candidate,enemy,role,now=Date.now()){
  return {enemy,value,known:sources.length>0,conflict,sources,families:groups.size,status,agreement:!conflict&&!skill.length&&votes.filter(v=>v!==0).length>=2};
 }
 export function mechanicalContext(data,candidate,enemies){
- if(data.latestPatch.version!=='7.3')return {score:0,reasons:[],risks:['Bu yamada mekanik kurallar yeniden doğrulanmalı; mekanik katkı kapalı.'],phases:[]};
+ // 7.3a changes magnitudes, not the qualitative poke/peel/scaling tools below.
+ if(!rulesUsable(data))return {score:0,reasons:[],risks:['Bu yamada mekanik kurallar yeniden doğrulanmalı; mekanik katkı kapalı.'],phases:[]};
  const t=traits(candidate),reasons=[],risks=[],phases=[];let score=0;
+ const native=combatFacts(data,candidate)?.mechanics;
+ if(native?.blind&&enemies.some(e=>traits(e).attack)){score+=2;reasons.push('Kaynak yeteneğinde kör etme var; normal saldırıya dayanan rakibe karşı doğru takas penceresi sunar.');}
  if(enemies.some(e=>traits(e).poke)&&!t.mobile&&!t.heal&&!t.shield){score-=2;risks.push('Mekanik çıkarım: menzilli baskıya karşı kaçış ve can koruma seçeneklerin sınırlı olabilir.');}
  if(t.peel&&enemies.some(e=>traits(e).engage)){score+=2;reasons.push('Mekanik çıkarım: rakibin girişine karşı koruma araçları sunar; zamanlama gerekir.');}
  if(t.scaling){phases.push('Erken: gelir ve deneyimi koru.','Orta/geç: ana eşyalardan sonra sürekli hasar penceresi ara.');if(enemies.some(e=>traits(e).burst)){score-=3;risks.push('Erken ani hasar baskısı, güçlenme süreni geciktirebilir.');}}
@@ -40,7 +45,7 @@ export function duoContext(data,draft,candidate,byId){
  const t=traits(candidate),p=traits(partner),opponents=red.map(traits);
  const synergy=[...relationshipEvidence(data,candidate.id,partner.id,draft.role,'synergy'),...relationshipEvidence(data,partner.id,candidate.id,other,'synergy')];
  if(synergy.length){score+=4;reasons.push(`${partner.name} ile kaynakta uyum var; bu, rakip ikiliye karşı ölçülmüş oran değildir.`);}
- if(data.latestPatch.version==='7.3'){
+ if(rulesUsable(data)){
   if(t.peel&&p.scaling&&opponents.some(e=>e.engage||e.burst)){score+=4;reasons.push(`${partner.name} güçlenirken rakip ikilinin girişine karşı koruma sağlar.`);}
   if(t.engage&&p.poke&&opponents.some(e=>e.engage)){score-=2;risks.push('Partnerin uzaktan baskı isterken giriş yapmak onu rakibin karşı girişine açık bırakabilir.');}
   if(opponents.some(e=>e.poke)&&!t.heal&&!p.heal&&!t.shield&&!p.shield&&!t.mobile){score-=3;risks.push('Bu ikili menzilli baskıda can korumakta zorlanabilir.');}

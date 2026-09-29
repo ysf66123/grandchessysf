@@ -1,3 +1,15 @@
+## Kritik şampiyon ve eşya paketi — 30 Eylül 2026
+
+Varlık sürümü: 20260930-critical1. WR-META büyük/küçük yama harfi sorunu giderildi; 142/142 şampiyon doğrulandı, 1.137 adet 7.3a ilişki kaydı var. Boş/bozulmuş eşleşme bölümü başarılı tarama sayılmaz. Bağlantı, ayrıştırıcı ve eksik adres durumları ayrılır; kapsam düşüşü uyarılır, başarısız taramada özgün tarih korunur ve eski kayıtlar çift sayılmaz. RiftGG kısmi başarısızlıkları artık kısmi durum gösterir; tarihsel istatistikler güncel puan değildir.
+
+142 şampiyonun kaynak yetenekleri yeniden okundu; 18 şampiyonda doğrudan metinle doğrulanabilen özel mekanik işaretleri, 28 eşyada yapılandırılmış etki koşulları var. Bunlar bütün yetenek/pasiflerin eksiksiz modeli değildir. Jhin sabit saldırı ritmi, Teemo normal saldırı büyü katkısı/kör etme, Varus doğuştan iyileşme azaltma gibi doğrulanmış özellikler hesaba katılır. 7.3a mekanik/ikili koridor kuralları incelendi; sonraki bilinmeyen yamada katkı kapanır. Tetikleyici, menzil/alan ve çok saldırı gerektiren pasiflerde sürekli tam etki varsayılmaz. Menzili bilinmeyen şampiyona yalnız yakın/uzak kullanım şartlı otomatik alternatif eklenmez.
+
+Tam kaynak setleri sıra farkıyla tekrar sayılmaz. Kaynakta doğrulanmış doğal karma/tank alternatifleri kendi nitelik profiliyle ve açık oynanış değişimi bedeliyle değerlendirilir. Taşıyıcıya aşırı savunma yığmanın maliyeti vardır; koridor, öndeki rakip, erişilebilir hedef, takım görevi ve eldeki envanter birlikte korunur. Her eşya için kaynak/rol gerekçesi, ilgili rakip ve değişiklik bedeli gösterilir. Son öneriyi değiştiren kullanıcı girdisi Türkçe açıklanır.
+
+Gerideki koridorda kaynak setinin savunma botu öne alınabilir. Erken direnç parçası yalnız seçilen son setin güncel resmî tarifine bağlanır; bütçe/yuva/eldeki parçalar denetlenir ve ana rotaya dönüş açıklanır. Tam eşya alınabiliyorsa parça önerisiyle geciktirilmez. Riot'un Guinsoo tarifindeki çift artı yazımı, toplam fiyat doğrulaması korunarak çözüldü: 51 resmî tarif. Yama 7.3a; 29 Eylül Fire istatistikleri hâlâ 7.3 ve güncel ara yama istatistiği gibi sunulmaz.
+
+Doğrulama: 152 birim/HTTP testi; 360 tam set ve 360 envanter/aşama senaryosu; 360 px mobil tarayıcı ve gerçek statik uygulama entegrasyonu geçti. Yeni tarayıcı kontrolleri eşya gerekçelerini, değişim nedenini ve 142/142 kapsamını doğrular. Seçimlerde ek veri isteği yok. Yerel 200 motor ölçümünde medyan 1,51 ms / p95 1,99 ms (gerçek telefon ölçümü değildir). Veri gzip yaklaşık 137 KB. Canlı yayın sonucu aşağıya eklenecek.
+
 ## Meta seti ve alışveriş motoru — 29 Eylül 2026
 
 Varlık sürümü: 20260929-meta1. Tam kaynak setleri otomatik karşılaştırılır; tek sabit şampiyon/rol profiline göre karşı etki, kaybedilen ana nitelikler, vuruş etkisi/güçlendirilmiş saldırı düzeni, kaynak belirsizliği ve eldeki parçaların kullanılabilirliği birlikte puanlanır. En iyi aday ve iki alternatif Türkçe gösterilir; kullanıcı kaynak setini sabitleyebilir. İlk iki ana eşya seçilen tam set içinde korunur; farklı çekirdek gerekiyorsa doğrulanmış başka tam set seçilir. Kaynak değiştirmek satın alınan eşyaları silmez. Uygunsuz envanter sessizce yok sayılmaz.

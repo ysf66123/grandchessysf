@@ -1,5 +1,6 @@
 const { load } = require('cheerio');
 const { createHash } = require('node:crypto');
+const {normalizePatch}=require('./wild-rift-patch.cjs');
 const BASE = 'https://www.wildriftfire.com';
 const PATCH_URL = 'https://wildrift.leagueoflegends.com/tr-tr/news/tags/patch-notes/';
 const roles = { Solo:'baron', Baron:'baron', Jungle:'jungle', Mid:'mid', Duo:'duo', Support:'support' };
@@ -32,7 +33,7 @@ async function fetchText(url) {
   return text;
 }
 function parseStats(html) {
-  const $ = load(html), raw = JSON.parse($('#wf-stats-data').text());
+  const $ = load(html), raw = JSON.parse($('#wf-stats-data').text());raw.patch=normalizePatch(raw.patch);
   if (!/^\d+\.\d+[a-z]?$/.test(raw.patch) || !/^\d{4}-\d{2}-\d{2}$/.test(raw.updated)) throw new Error('İstatistik sürümü doğrulanamadı.');
   const brackets = {},missingBrackets=[];
   for (const key of ['diamond','master','challenger','apex']) {
@@ -80,17 +81,25 @@ function parsePatch(html) {
 }
 function comparePatch(a,b) { const split=s=>s.match(/(\d+)\.(\d+)([a-z]?)/).slice(1); const x=split(a),y=split(b); return +x[0]-+y[0] || +x[1]-+y[1] || x[2].localeCompare(y[2]); }
 function parseChampionFacts(html,champion){
- const $=load(html),patch=$('#patch').val(),stats={},keys={'Health':'health','Mana':'mana','Armor':'armor','Magic Res.':'magicResist','Attack Dmg.':'ad','Attack Spd.':'attackSpeed'};
+ const $=load(html),patch=normalizePatch($('#patch').val()),stats={},keys={'Health':'health','Mana':'mana','Armor':'armor','Magic Res.':'magicResist','Attack Dmg.':'ad','Attack Spd.':'attackSpeed'};
  if(!/^\d+\.\d+[a-z]?$/.test(patch||''))throw Error('Şampiyon nitelik yaması doğrulanamadı.');
  $('.statsBlock.champion .statsBlock__block').each((_,e)=>{const key=keys[$(e).find('.name').text().trim()],node=$(e).find('.value'),base=Number(node.attr('data-base')),growth=Number(node.attr('data-increase'));
   if(key&&Number.isFinite(base)&&Number.isFinite(growth)&&base>=0&&base<=10000&&growth>=0&&growth<=1000)stats[key]={base,growth};
  });
  if(!stats.health||!stats.armor||!stats.magicResist)throw Error('Şampiyon nitelikleri eksik.');
  const abilities=$('.statsBlock').not('.champion').text().replace(/\s+/g,' ');
- return {patch,checkedAt:new Date().toISOString(),source:champion.guide,stats,usesMana:!!stats.mana,trueDamage:/\btrue damage\b/i.test(abilities)};
+ const mechanics={};
+ if(/fires at a fixed rate|attack speed.{0,20}converted into Attack Damage/i.test(abilities))mechanics.fixedAttackRate=true;
+ if(/(?:attacks|basic attacks) deal.{0,90}(?:bonus )?magic damage/i.test(abilities))mechanics.magicOnAttack=true;
+ if(/applies? \d+% Grievous Wounds|inflicts? Grievous Wounds/i.test(abilities))mechanics.innateAntiHeal=true;
+ if(/\bblinds? the target\b/i.test(abilities))mechanics.blind=true;
+ if(/evolve upon fully upgrading an item/i.test(abilities))mechanics.completedItemEvolution=true;
+ if(/resets? (?:his |her |their |the )?(?:basic |normal )?attack timer/i.test(abilities))mechanics.attackReset=true;
+ if(/can exceed the Attack Speed cap/i.test(abilities))mechanics.attackSpeedCapException=true;
+ return {patch,checkedAt:new Date().toISOString(),source:champion.guide,stats,usesMana:!!stats.mana,trueDamage:/\btrue damage\b/i.test(abilities),mechanics};
 }
 function parseGuide(html,champion) {
-  const $=load(html), patch=$('#patch').val();
+  const $=load(html), patch=normalizePatch($('#patch').val());
   if (!/^\d+\.\d+[a-z]?$/.test(patch||'')) throw new Error('Dizilim sürümü bulunamadı.');
   const items={};
   const names = element => $(element).find('.ico-holder').map((_,e)=>{
@@ -144,7 +153,7 @@ function parseEffectText(text){
   const effects={},mechanics={};
   const patterns={antiHeal:/\bGrievous Wounds\b/i,antiShield:/shield reduction|reduces? (?:any |all |their )?shields?/i,stasis:/\bstasis\b/i,revive:/\bresurrect|\brevive/i,spellShield:/spell shield|blocks? the next (?:hostile |enemy )?ability/i,cleanse:/removes? (?:all )?(?:crowd control|immobilizing)/i,critReduction:/Critical Strikes deal \d+% less damage/i,attackReduction:/Basic attacks from champions deal \d+% reduced damage/i,sustain:/\b(?:Physical Vamp|Omnivamp|Lifesteal|Life Steal)\b/i,shield:/\b(?:gain|grants?|generates?|receive)(?:\s+\w+){0,8}\s+(?:a\s+)?shield\b/i};
   for(const [key,pattern] of Object.entries(patterns))if(pattern.test(text))effects[key]=true;
-  if(effects.antiHeal)mechanics.antiHeal=/physical damage (?:dealt|to)|dealing physical damage/i.test(text)?'physicalDamage':/dealing magic damage/i.test(text)?'magicDamage':/when struck.*or dealing damage/i.test(text)?'damageOrIncomingAttack':'unknown';
+  if(effects.antiHeal)mechanics.antiHeal=/physical damage (?:dealt|to)|dealing physical damage/i.test(text)?'physicalDamage':/dealing magic damage/i.test(text)?'magicDamage':/when struck.*or dealing damage/i.test(text)?'damageOrIncomingAttack':/when (?:struck|hit) by (?:a |an )?(?:basic |normal )?attack/i.test(text)?'incomingAttack':/dealing damage|damage dealt/i.test(text)?'damage':'unknown';
   if(effects.antiShield)mechanics.antiShield=/dealing ability damage/i.test(text)?'abilityDamage':/dealing damage|when you damage/i.test(text)?'damage':'unknown';
   if(/(?:enemy|target).{0,20}max(?:imum)? Health/i.test(text))mechanics.healthDamage='maximum';
   else if(/target.{0,15}current Health/i.test(text))mechanics.healthDamage='current';
@@ -152,6 +161,10 @@ function parseEffectText(text){
   if(/melee.{0,150}ranged|ranged.{0,150}melee/i.test(text))mechanics.rangeDependent=true;
   if(/Area of effect.{0,200}single target/i.test(text))mechanics.areaDependent=true;
   if(/Spellblade/i.test(text))mechanics.spellblade=true;
+  if(/\bonly (?:usable|available) (?:by|for) melee|\bmelee only\b/i.test(text))mechanics.restriction='melee';
+  if(/\bonly (?:usable|available) (?:by|for) ranged|\branged only\b/i.test(text))mechanics.restriction='ranged';
+  if(/(?:basic attacks|attacks).{0,60}(?:stacking up to|at max stacks|stacks)/i.test(text))mechanics.requiresAttacks=true;
+  if(/heal(?:ing)? or shield(?:ing)?.{0,90}(?:allied|ally)|shielding or healing an allied/i.test(text))mechanics.allyProtection=true;
   return {effects,mechanics};
 }
 function parseItemDetails(html,entry){
