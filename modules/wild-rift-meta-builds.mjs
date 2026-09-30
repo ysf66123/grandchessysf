@@ -1,10 +1,11 @@
-import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260930-workspace2';
-import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-workspace2';
-import {planBuild,coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20260930-workspace2';
-import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20260930-workspace2';
-import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20260930-workspace2';
-import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20260930-workspace2';
-import {traits} from './wild-rift-knowledge.mjs?v=20260930-workspace2';
+import {sourceConditionFit,loadoutAdvice,bootUpgradeAdvice} from './wild-rift-loadout.mjs?v=20260930-evidence1';
+import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260930-evidence1';
+import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-evidence1';
+import {planBuild,coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20260930-evidence1';
+import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20260930-evidence1';
+import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20260930-evidence1';
+import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20260930-evidence1';
+import {traits} from './wild-rift-knowledge.mjs?v=20260930-evidence1';
 
 // Compare complete, attributed templates against one stable champion/role
 // reference. A candidate must not grade its own lost damage as zero.
@@ -15,7 +16,7 @@ export function selectMetaBuild(data,draft,champion,reference,scenarios){
  const profile=championProfile(data,champion,primary),seen=new Set(),evaluated=[],excluded=[],native=traits(champion);
  const guides=championBuilds(champion).filter(b=>b.role===draft.role&&guideQuality(data,champion,b.role,Date.now(),b.guideId).usable&&finalBuildAvailable(data,b.final));
  for(const guide of guides.slice(0,16)){
-  const identity=[...guide.final].sort().join('|');if(seen.has(identity)&&guide.guideId!==draft.variant)continue;seen.add(identity);
+  const identity=[...guide.final].sort().join('|')+'|'+(guide.usageConditions||[]).map(c=>c.key).join(',');if(seen.has(identity)&&guide.guideId!==draft.variant)continue;seen.add(identity);
   const candidateProfile=championProfile(data,champion,guide),fit=buildFit(data,guide.final,profile);
   // Explicitly pinned role builds may choose another play style. Automatic
   // selection cannot turn an AP mage into an AD carry or a support into a carry.
@@ -33,7 +34,7 @@ export function selectMetaBuild(data,draft,champion,reference,scenarios){
   const fitProfile=nativeAlternative&&styleChanged?candidateProfile:profile;
   const finalFit=buildFit(data,r.final,fitProfile),changed=primary.final.filter(id=>!r.final.includes(id)&&!BOOTS.includes(id)).length;
   const cov=coverage(r.final,data,candidateProfile),pressure=r.context.pressure;
-  const metaPenalty=(guide.sourceId==='wildriftcore'?.65:0)+(r.quality.normalized?.65:0)+(r.quality.reviewed?.25:0);
+  const metaPenalty=(guide.sourceId==='wildriftcore'?.65:0)+(r.quality.normalized?.65:0)+(r.quality.reviewed?.25:0)+(r.quality.editorialBeforePatch?.65:0);
   const allies=Object.entries(draft.blue).filter(([,id])=>id!==champion.id).map(([role,id])=>{const c=data.champions.find(c=>c.id===id),b=c?.builds.find(b=>b.role===role);return b?championProfile(data,c,b):null;}).filter(Boolean);
   const supportBonus=profile.support&&['janna','karma','lulu','milio','nami','senna','sona','soraka','yuumi'].includes(champion.id)&&r.final.includes('ardent-censer')&&allies.some(p=>p.attack)?.5:0;
   let parts=[...(draft.owned||[])],credited=0;
@@ -41,9 +42,10 @@ export function selectMetaBuild(data,draft,champion,reference,scenarios){
   const investmentBonus=Math.min(.8,credited/1500);
   const defensiveItems=r.final.filter(id=>{const v=coverage([id],data,candidateProfile);return (v.magic||0)+(v.physical||0)+(v.burst||0)>=.6;}).length;
   const overDefense=!candidateProfile.tank&&!candidateProfile.support&&defensiveItems>2?(defensiveItems-2)*1.4:0;
-  const utility=contextUtility(pressure,cov,draft)+supportBonus+investmentBonus-finalFit.penalty*1.8-changed*.7-metaPenalty-r.comparison.automatic*.35-overDefense-(nativeAlternative&&styleChanged?1.25:0);
+  const sourceFit=sourceConditionFit(guide,r.context,draft,candidateProfile);
+  const utility=sourceFit.bonus+contextUtility(pressure,cov,draft)+supportBonus+investmentBonus-finalFit.penalty*1.8-changed*.7-metaPenalty-r.comparison.automatic*.35-overDefense-(nativeAlternative&&styleChanged?1.25:0);
   const benefits=r.context.priorities.filter(n=>(cov[n.key]||0)>.5).slice(0,3).map(n=>({label:n.label,targets:n.targets}));
-  evaluated.push({result:r,score:utility,guideId:guide.guideId,final:r.final,baseFinal:guide.final,label:guide.label||'Ana meta rehberi',source:guide.source,sourceId:guide.sourceId||'wildriftfire',patch:guide.patch,reviewed:r.quality.reviewed,benefits,tradeoff:finalFit.label,losses:finalFit.losses,style:candidateProfile.label,styleChanged,coreChanged:primary.core.slice(0,2).some(id=>!guide.final.includes(id))});
+  evaluated.push({result:r,sourceFit,score:utility,guideId:guide.guideId,final:r.final,baseFinal:guide.final,label:guide.label||'Ana meta rehberi',source:guide.source,sourceId:guide.sourceId||'wildriftfire',patch:guide.patch,reviewed:r.quality.reviewed,benefits,tradeoff:finalFit.label,losses:finalFit.losses,style:candidateProfile.label,styleChanged,coreChanged:primary.core.slice(0,2).some(id=>!guide.final.includes(id))});
  }
  if(!evaluated.length)return fallback();
  evaluated.sort((a,b)=>b.score-a.score||Number(a.guideId!==primary.guideId)-Number(b.guideId!==primary.guideId)||a.guideId.localeCompare(b.guideId));
@@ -53,6 +55,8 @@ export function selectMetaBuild(data,draft,champion,reference,scenarios){
  // inventory is feasible, preventing needless switching on marginal signals.
  const primaryCandidate=evaluated.find(c=>c.guideId===primary.guideId);
  if(!draft.variant&&primaryCandidate&&winner.score-primaryCandidate.score<.8)winner=primaryCandidate;
+ winner.result.bootUpgrade=bootUpgradeAdvice(data,winner.result);
+ winner.result.loadoutAdvice=loadoutAdvice(winner.result.base,winner.result.context,draft);
  const alternatives=evaluated.filter(c=>c!==winner&&[...c.final].sort().join()!==[...winner.final].sort().join()).slice(0,2),result=winner.result;
  result.itemDecisions=result.final.map((id,i)=>{
   const cov=coverage([id],data,result.profile),needs=result.context.priorities.filter(n=>(cov[n.key]||0)>.25).slice(0,2),change=result.changes.find(c=>c.to===id);

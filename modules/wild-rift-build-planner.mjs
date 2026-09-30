@@ -1,8 +1,8 @@
-import {traits,CONDITIONS} from './wild-rift-knowledge.mjs?v=20260930-workspace2';
-import {itemAvailability,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-workspace2';
-import {guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260930-workspace2';
-import {ITEM_ROLES,itemFacts,itemConflicts,itemFamily,BOOTS,SUPPORT_ITEMS,NEED_LABELS,rulesUsable,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20260930-workspace2';
-import {championProfile,combatFacts,application,incompatibleItem,buildFit} from './wild-rift-build-fit.mjs?v=20260930-workspace2';
+import {traits,CONDITIONS} from './wild-rift-knowledge.mjs?v=20260930-evidence1';
+import {itemAvailability,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-evidence1';
+import {guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260930-evidence1';
+import {ITEM_ROLES,itemFacts,itemConflicts,itemFamily,BOOTS,SUPPORT_ITEMS,NEED_LABELS,rulesUsable,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20260930-evidence1';
+import {championProfile,combatFacts,application,incompatibleItem,buildFit} from './wild-rift-build-fit.mjs?v=20260930-evidence1';
 const ENCHANTERS=new Set('janna karma lulu milio nami sona soraka yuumi'.split(' '));
 const STRONG_HEAL=new Set('aatrox dr-mundo kayn soraka swain vladimir warwick yuumi'.split(' '));
 const STRONG_SHIELD=new Set('janna karma lulu sett shen'.split(' '));
@@ -31,6 +31,7 @@ export function buildContext(data,draft,scenarios){
   keys.critical=stats.crit>0?Math.min(1.5,stats.crit/25):0;
   keys.armor=Math.min(1.8,stats.armor/70+Math.max(0,(native?.atLevel.armor||0)-60)/130);
   keys.magicResist=Math.min(1.8,stats.magicResist/50+Math.max(0,(native?.atLevel.magicResist||0)-45)/80);
+  keys.heal=Math.max(keys.heal,native?.mechanics.heal?.65:0);keys.shield=Math.max(keys.shield,native?.mechanics.shield?.65:0);keys.cc=Math.max(keys.cc,native?.mechanics.control?1:0);
   const applied={};
   for(const assignment of draft.teamAssignments||[])if(assignment.target===id&&Object.values(draft.blue).includes(assignment.ally)&&assignment.ally!==draft.blue[draft.role]){
    const ally=data.champions.find(c=>c.id===assignment.ally),role=Object.keys(draft.blue).find(k=>draft.blue[k]===assignment.ally),guide=ally?.builds?.find(b=>b.role===role);

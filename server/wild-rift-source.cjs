@@ -29,7 +29,7 @@ async function fetchText(url) {
   const text = await response.text();
   if (text.length > 10000000) throw new Error('Kaynak boyutu beklenenden büyük.');
   const etag=response.headers.get('etag'),modified=response.headers.get('last-modified');
-  if(etag||modified){try{await fs.mkdir(directory,{recursive:true});await fs.writeFile(file,JSON.stringify({url,etag,modified,text}));}catch{/* Cache failure must not stop a validated refresh. */}}
+  {try{await fs.mkdir(directory,{recursive:true});await fs.writeFile(file,JSON.stringify({url,etag,modified,text}));}catch{/* Cache failure must not stop a validated refresh. */}}
   return text;
 }
 function parseStats(html) {
@@ -96,7 +96,29 @@ function parseChampionFacts(html,champion){
  if(/evolve upon fully upgrading an item/i.test(abilities))mechanics.completedItemEvolution=true;
  if(/resets? (?:his |her |their |the )?(?:basic |normal )?attack timer/i.test(abilities))mechanics.attackReset=true;
  if(/can exceed the Attack Speed cap/i.test(abilities))mechanics.attackSpeedCapException=true;
- return {patch,checkedAt:new Date().toISOString(),source:champion.guide,stats,usesMana:!!stats.mana,trueDamage:/\btrue damage\b/i.test(abilities),mechanics};
+ const abilityFacts=[];
+ $('.statsBlock.abilities .statsBlock__block').each((_,e)=>{
+  const n=$(e),slot=n.find('.name > span').text().trim(),name=n.find('.name').clone().children().remove().end().text().trim(),text=n.find('.lower').text().replace(/\s+/g,' ');
+  if(!['P','1','2','3','4'].includes(slot)||!name||!text)return;
+  const flags={};
+  if(/\b(?:stun(?:s|ning)?|charm(?:s|ing)?|root(?:s|ing)?|taunt(?:s|ing)?|fear(?:s|ing)?|silenc(?:es|ing)|suppress(?:es|ing)?|immobiliz(?:es|ing))\s+(?:the |an? |all |nearby |enemy|enemies|target|them|for)|\bknocks? (?:them |enemies |the target )?(?:up|back)/i.test(text))flags.control=true;
+  if(flags.control&&/\b(?:stun(?:s|ning)?|charm(?:s|ing)?|root(?:s|ing)?|taunt(?:s|ing)?|fear(?:s|ing)?|silenc(?:es|ing))\s+(?:the |an? |all |nearby |enemy|enemies|target|them|for)/i.test(text))flags.cleanseableControl=true;
+  if(/\bheals?\s+(?:for|himself|herself|themselves|her|him|them|allies|an? |nearby|the |his |your )|\brestore(?:s)? (?:his |her |their |your )?(?:own )?health\b/i.test(text))flags.heal=true;
+  if(/\b(?:gains?|grants?|receive(?:s)?|generates?)\b.{0,90}\bshield\b/i.test(text))flags.shield=true;
+  if(/\b(?:dash(?:es)?|blinks?|leaps?)\b/i.test(text))flags.mobility=true;
+  if(/(?:basic attacks|attacks) deal.{0,90}(?:bonus )?magic damage/i.test(text))flags.magicOnAttack=true;
+  if(/\b(?:on.hit|on hit effects)\b/i.test(text))flags.onHit=true;
+  const damageTypes=['physical','magic','true'].filter(type=>new RegExp('\\b'+type+' damage\\b','i').test(text));
+  const cooldown=n.find('.cooldown > span').map((_,x)=>Number($(x).text().trim())).get().filter(v=>Number.isFinite(v)&&v>0&&v<=300);
+  abilityFacts.push({slot,name,flags,damageTypes,...(cooldown.length&&cooldown.length<=4?{baseCooldown:cooldown}:{})});
+ });
+ if(abilityFacts.some(a=>a.flags.onHit))mechanics.onHit=true;
+ if(abilityFacts.some(a=>a.flags.heal))mechanics.heal=true;
+ if(abilityFacts.some(a=>a.flags.shield))mechanics.shield=true;
+ if(abilityFacts.some(a=>a.flags.control))mechanics.control=true;
+ const declaredRange=$('.wf-champion__about').text().match(/\b(Melee|Ranged) champion\b/i)?.[1];
+ if(declaredRange)mechanics.rangeMode=declaredRange.toLowerCase();
+ return {patch,checkedAt:new Date().toISOString(),source:champion.guide,provenance:{patchScope:'champion-ability-panel',sourcePatch:patch},abilityFacts,stats,usesMana:!!stats.mana,trueDamage:/\btrue damage\b/i.test(abilities),mechanics};
 }
 function parseGuide(html,champion) {
   const $=load(html), patch=normalizePatch($('#patch').val());
@@ -134,7 +156,7 @@ function parseGuide(html,champion) {
   if (!builds.length) throw new Error('Şampiyon rehberi eksik.');
   const tags=$('.wf-champion__about__tags').first().find('span').map((_,x)=>$(x).text().trim()).get();
   let combatFacts;try{combatFacts=parseChampionFacts(html,champion);}catch{}
-  return {builds,items,tags,combatFacts,contentHash:hash(JSON.stringify({builds,items,tags})),fetchedAt:new Date().toISOString()};
+  return {builds,items,tags,combatFacts,contentHash:hash(JSON.stringify({builds,items,tags,combatFacts:combatFacts?{...combatFacts,checkedAt:undefined}:null})),fetchedAt:new Date().toISOString()};
 }
 function parseItemCatalog(html){
   const $=load(html),patch=$('title').text().match(/Patch (\d+\.\d+[a-z]?)/)?.[1],entries=new Map();
@@ -177,7 +199,13 @@ function parseItemDetails(html,entry){
     const value=$(e).find('span').first().text().trim(),label=$(e).clone().children().remove().end().text().trim(),key=keys[label];
     if(key&&/^\+?\d+(?:\.\d+)?%?$/.test(value)){const n=Number(value.replace(/[+%]/g,''));if(n>=0&&n<=2000)stats[key]=n;}
   });
-  const text=$('.tt__info').text().replace(/\s+/g,' ');
-  return {cost,stats,...parseEffectText(text),costSource:BASE+`/ajax/tooltip?relation_type=Item&relation_id=${entry.sourceId}&lang=en`};
+  const text=$('.tt__info').text().replace(/\s+/g,' '),passives=[];
+  $('.tt__info__uniques > span').each((_,e)=>{
+    const text=$(e).text().replace(/\s+/g,' ').trim(),title=text.match(/^UNIQUE(?: -)? ([^:]+):/i)?.[1];
+    if(!title)return;
+    const facts=parseEffectText(text),duration=Number(text.match(/\bfor (\d+(?:\.\d+)?) seconds\b/i)?.[1]),stacks=Number(text.match(/\bstacks?[^.]{0,30}up to (\d+)\b/i)?.[1]),cooldown=Number(text.match(/\((\d+(?:\.\d+)?)s Cooldown\)|\bCooldown: (\d+(?:\.\d+)?)s\b/i)?.slice(1).find(Boolean));
+    passives.push({key:slug(title),effects:facts.effects,mechanics:facts.mechanics,...(duration>0&&duration<=120?{duration}:{}),...(stacks>1&&stacks<=100?{maxStacks:stacks}:{}),...(cooldown>0&&cooldown<=300?{cooldown}:{})});
+  });
+  return {cost,stats,passives,...parseEffectText(text),costSource:BASE+`/ajax/tooltip?relation_type=Item&relation_id=${entry.sourceId}&lang=en`};
 }
 module.exports={BASE,PATCH_URL,fetchText,parseStats,parseCatalog,parsePatch,parseGuide,parseChampionFacts,parseItemCatalog,parseItemDetails,parseEffectText,comparePatch,hash};

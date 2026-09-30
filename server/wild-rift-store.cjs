@@ -46,6 +46,7 @@ function validateSnapshot(data) {
     if(!/^[a-z0-9-]+$/.test(c.id)||!Array.isArray(c.roles)||!c.roles.length||c.roles.some(r=>!roles.has(r)))throw new Error('Şampiyon rolleri doğrulanamadı.');
     if(!c.refreshFailed&&c.roles.some(role=>!c.builds?.some(b=>b.role===role)))throw new Error(`${c.name}: rol rehberi eksik.`);
     if(new Set(c.builds?.map(b=>b.role+':'+b.guideId)).size!==c.builds?.length)throw new Error(`${c.name}: aynı rehber tekrarlanıyor.`);
+    for(const b of c.sourceBuilds||[])if(data.qualityAudit&&require('./wild-rift-audit.cjs').extraBuildProblem(data,c,b))throw new Error(c.name+': ek kaynak dizilimi doğrulanamadı.');
     for (const b of c.builds||[]) {
     if (!c.roles.includes(b.role) || b.final.length!==6 || new Set(b.final).size!==b.final.length || b.final.some(id=>!data.items[id])) throw new Error(`${c.name}: dizilim doğrulaması başarısız.`);
     for(const key of ['starting','core','boots','counters','synergies','situational','runes','spells','skillOrder'])if(!Array.isArray(b[key]))throw new Error(`${c.name}: rehber alanları eksik.`);
@@ -103,14 +104,15 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
     const changed=champions.filter(c=>c.contentHash!==old?.champions.find(x=>x.id===c.id)?.contentHash).map(c=>c.id);
     let itemCatalog;
     try{itemCatalog=await enrichItems(items,{previous:old?.items,onProgress:(n,total)=>Object.assign(status,{phase:'Eşya fiyatları',completed:n,total})});}
-    catch{itemCatalog={...(old?.itemCatalog||{}),refreshFailed:true};for(const [id,item] of Object.entries(items))if(old?.items[id]?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats','statsPatch','statsCheckedAt','effects','effectsPatch','effectsCheckedAt','effectsSource','mechanics','mechanicsPatch','mechanicsCheckedAt','coreFacts'])item[key]=old.items[id][key];}
+    catch{itemCatalog={...(old?.itemCatalog||{}),refreshFailed:true};for(const [id,item] of Object.entries(items))if(old?.items[id]?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats','statsPatch','statsCheckedAt','effects','effectsPatch','effectsCheckedAt','effectsSource','mechanics','mechanicsPatch','mechanicsCheckedAt','coreFacts','passives','passivesPatch','passivesCheckedAt'])item[key]=old.items[id][key];}
     const data={schema:1,checkedAt,latestPatch,stats,champions,items,itemCatalog,changes:changed,failures,source:source.BASE,methodologyVersion:2};
     for(const [id,item] of Object.entries(items)){if(old?.items[id]?.official)item.official=old.items[id].official;if(old?.items[id]?.removedIn)item.removedIn=old.items[id].removedIn;}
-    await collectEvidence(data,{previous:old?.evidence,onProgress:(n,total)=>{Object.assign(status,{phase:'Ek kaynak kontrolü',completed:n,total});onProgress(n,total,'ek-kaynaklar');}});
+    await collectEvidence(data,{previous:old?.evidence,savedChampions:old?.champions,onProgress:(n,total)=>{Object.assign(status,{phase:'Ek kaynak kontrolü',completed:n,total});onProgress(n,total,'ek-kaynaklar');}});
     await require('./wild-rift-counter-sources.cjs').collectCounterSources(data,{previous:old?.counterSources,onProgress:(n,total)=>Object.assign(status,{phase:'Karşı seçim kanıtları',completed:n,total})});
     await require('./wild-rift-build-sources.cjs').collectBuildSources(data,{previous:old,onProgress:(n,total)=>Object.assign(status,{phase:'Ek meta dizilimleri',completed:n,total})});
     data.itemRegistry=require('./wild-rift-registry.cjs').buildRegistry(data);
-    data.methodologyVersion=4;data.localRevisionAt=new Date().toISOString();
+    require('./wild-rift-audit.cjs').auditSnapshot(data);
+    data.methodologyVersion=5;data.localRevisionAt=new Date().toISOString();
     validateSnapshot(data);
     await fs.mkdir(path.dirname(DATA_FILE),{recursive:true});
     const temp=DATA_FILE+'.tmp';await fs.writeFile(temp,JSON.stringify(data));

@@ -1,10 +1,11 @@
-import {evaluateMatchup,mechanicalContext,duoContext} from './wild-rift-counters.mjs?v=20260930-workspace2';
-import {planBuild} from './wild-rift-build-planner.mjs?v=20260930-workspace2';
-import {selectMetaBuild} from './wild-rift-meta-builds.mjs?v=20260930-workspace2';
-import {PHASES,BUILD_PRIORITIES} from './wild-rift-item-rules.mjs?v=20260930-workspace2';
-import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260930-workspace2';
-import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260930-workspace2';
-import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-workspace2';
+import {combatFacts} from './wild-rift-build-fit.mjs?v=20260930-evidence1';
+import {evaluateMatchup,mechanicalContext,duoContext} from './wild-rift-counters.mjs?v=20260930-evidence1';
+import {planBuild} from './wild-rift-build-planner.mjs?v=20260930-evidence1';
+import {selectMetaBuild} from './wild-rift-meta-builds.mjs?v=20260930-evidence1';
+import {PHASES,BUILD_PRIORITIES} from './wild-rift-item-rules.mjs?v=20260930-evidence1';
+import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260930-evidence1';
+import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260930-evidence1';
+import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-evidence1';
 export {ROLES};
 export const SORT_MODES={balanced:'Dengeli öneri',lane:'Koridor eşleşmesi',team:'Takım uyumu',safe:'Güvenli seçim'};
 export const emptyDraft=()=>({blue:{},red:{},role:'mid',rank:'diamond',bans:[],pool:[],fed:'',targetEnemy:'',locked:[],tab:'counters',uncertain:[],comfort:{},sort:'balanced',overrides:{},compare:[],gold:0,owned:[],enemyItems:{},variant:'',phase:'draft',buildPriority:'balanced',teamCoverage:{heal:false,shield:false},teamAssignments:[],enemyLevels:{},purchaseTarget:'',ownState:'even',adaptation:'standard'});
@@ -163,6 +164,22 @@ export function coaching(data,draft){
 export function matchupPlan(data,draft){
   const own=data.champions.find(c=>c.id===draft.blue[draft.role]);if(!own)return [];
   const scenarios=laneScenarios(data,draft),sections=[];
+  const abilityLines=[];
+  for(const enemy of scenarios.opponents.filter(Boolean)){
+    const facts=combatFacts(data,enemy);if(!facts)continue;
+    const important=(facts.abilityFacts||[]).filter(a=>a.flags.control||a.flags.mobility||a.damageTypes.includes('true')).slice(0,3);
+    for(const a of important){
+      const slot=a.slot==='4'?'ultisi':a.slot==='P'?'pasifi':a.slot+'. yeteneği',features=[a.flags.control?'kontrol etkisi':null,a.flags.mobility?'hareket seçeneği':null,a.damageTypes.includes('true')?'gerçek hasar':null].filter(Boolean);
+      const cd=a.baseCooldown?.length?' Kaynakta temel bekleme '+Math.min(...a.baseCooldown)+'–'+Math.max(...a.baseCooldown)+' sn; yetenek rütbesine göre değişir.':'';
+      abilityLines.push(enemy.name+' '+slot+': '+features.join(', ')+'. '+(a.flags.control?'Bu yetenek boşa çıktığında takas penceresini değerlendir.':a.flags.mobility?'Kaçış hazırken uzun takip zorlamak yerine çıkış yolunu koru.':'Zırh ve büyü direncinin bu hasarı azaltacağını varsayma.')+cd);
+    }
+  }
+  if(abilityLines.length)sections.push({title:'Kaynak yeteneklerine göre takas pencereleri',basis:'Güncel WildRiftFire yetenek paneli. Temel süreler yetenek hızını ve özel sıfırlamaları içermez; canlı sayaç değildir.',lines:abilityLines});
+  const ownFacts=combatFacts(data,own),ownGuide=buildFor(own,draft.role,draft.variant),powerLines=[];
+  if(ownFacts?.abilityFacts?.some(a=>a.slot==='4'))powerLines.push('Kaynak yetenek sırası ilk ultiyi '+((ownGuide?.skillOrder.indexOf(4)??-1)+1)+'. seviyede açıyor. Rakibin ulti durumu bilinmiyorsa tek başına bu seviyeyi kesin düello üstünlüğü sayma.');
+  if(ownFacts?.mechanics.attackReset||ownFacts?.mechanics.onHit)powerLines.push('Kaynakta normal saldırı etkileşimi var. Ana eşya etkini uygulayabildiğin kısa takasları tercih et; yalnızca eşya puanına bakarak tam hasar uygulanacağını varsayma.');
+  if(ownFacts?.mechanics.heal)powerLines.push('Kaynakta yetenekle iyileşme var; güvenli takas sonrası toparlanma fırsatını değerlendir. Rakibin iyileşme azaltması bu katkıyı sınırlayabilir.');
+  if(powerLines.length)sections.push({title:'Kendi güçlenme pencerelerin',basis:'Şampiyon yetenek paneli ve seçili rol rehberindeki sıra birlikte değerlendirilir.',lines:powerLines});
   const knowledge=scenarios.opponents.filter(Boolean).filter(c=>CHAMPION_TIPS[c.id]);
   if(knowledge.length)sections.push({title:'Rakibin oyun planını tanı',basis:scenarios.uncertain?'Olası koridor rakipleri; eşleşme henüz kesin değil.':'Elle tanımlanmış şampiyon ilkeleri; yetenek bekleme süreleri canlı okunmaz.',lines:knowledge.map(c=>`${c.name}: ${CHAMPION_TIPS[c.id]}`)});
   if(draft.role==='duo'||draft.role==='support'){
@@ -171,7 +188,7 @@ export function matchupPlan(data,draft){
     if(!partner)lines.push('Kendi koridor partnerini de seç; tek şampiyon üzerinden ikiye iki koridor üstünlüğü çıkarılamaz.');
     else{
       const ownGuide=buildFor(own,draft.role,draft.variant),partnerGuide=buildFor(partner,partnerRole);
-      const synergy=guideQuality(data,own,draft.role).usable&&ownGuide?.synergies.includes(partner.id)||guideQuality(data,partner,partnerRole).usable&&partnerGuide?.synergies.includes(own.id);
+      const synergy=relationshipEvidence(data,own.id,partner.id,draft.role,'synergy').length||relationshipEvidence(data,partner.id,own.id,partnerRole,'synergy').length;
       lines.push(synergy?`${own.name} ve ${partner.name} arasında güncel kaynak rehberde uyum belirtiliyor. Bu, karşı ikiliye karşı kazanma oranı değildir.`:`${partner.name} ile bu ikili için doğrudan kaynak uyum kaydı bulunamadı. Yeteneklerini aynı takas penceresine denk getir.`);
     }
     if(enemies.some(c=>traits(c).engage))lines.push('Rakip ikilinin giriş yeteneği hazırken partnerinden kopma. Yakalanan oyuncuyu takip edip ikinci kaybı vermeden önce takasın kazanılıp kazanılamayacağını değerlendir.');

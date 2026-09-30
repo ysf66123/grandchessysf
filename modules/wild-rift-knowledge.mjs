@@ -29,6 +29,7 @@ export function traits(c){
   return t;
 }
 export const CONDITIONS={
+  'Source alternative':{key:'manual',label:'Kaynağın diğer eşya alternatifi'},
   'Active item alternative':{key:'manual',label:'Aktif eşya alternatifi (aynı yuvayı kullanır)'},
   'vs Shielding (Build 3rd)':{key:'shield',label:'Kalkanlara karşı; üçüncü eşya seçeneği'},
   'vs AP / CC':{key:'magic',label:'Büyü hasarı ve kontrol etkilerine karşı'},
