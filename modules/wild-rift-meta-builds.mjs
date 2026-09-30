@@ -1,12 +1,12 @@
-import {sourceConditionFit,loadoutAdvice,bootUpgradeAdvice} from './wild-rift-loadout.mjs?v=20261001-auto1';
-import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20261001-auto1';
-import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-auto1';
-import {planBuild,buildContext,coverage,contextUtility,robustAssessment} from './wild-rift-build-planner.mjs?v=20261001-auto1';
-import {decisionConditions} from './wild-rift-decision-conditions.mjs?v=20261001-auto1';
-import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20261001-auto1';
-import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20261001-auto1';
-import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20261001-auto1';
-import {traits} from './wild-rift-knowledge.mjs?v=20261001-auto1';
+import {sourceConditionFit,loadoutAdvice,bootUpgradeAdvice} from './wild-rift-loadout.mjs?v=20261001-interactions1';
+import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20261001-interactions1';
+import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-interactions1';
+import {planBuild,buildContext,coverage,contextUtility,robustAssessment} from './wild-rift-build-planner.mjs?v=20261001-interactions1';
+import {decisionConditions} from './wild-rift-decision-conditions.mjs?v=20261001-interactions1';
+import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20261001-interactions1';
+import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20261001-interactions1';
+import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20261001-interactions1';
+import {traits} from './wild-rift-knowledge.mjs?v=20261001-interactions1';
 
 // Compare complete, attributed templates against one stable champion/role
 // reference. A candidate must not grade its own lost damage as zero.
@@ -34,14 +34,14 @@ export function selectMetaBuild(data,draft,champion,reference,scenarios){
   // an explicit transition cost instead of judging a tank solely by lost AP.
   const fitProfile=nativeAlternative&&styleChanged?candidateProfile:profile;
   const finalFit=buildFit(data,r.final,fitProfile),changed=primary.final.filter(id=>!r.final.includes(id)&&!BOOTS.includes(id)).length;
-  const cov=coverage(r.final,data,candidateProfile),pressure=r.context.pressure;
+  const cov=coverage(r.final,data,candidateProfile,r.context),pressure=r.context.pressure;
   const metaPenalty=(guide.sourceId==='wildriftcore'?.65:0)+(r.quality.normalized?.65:0)+(r.quality.reviewed?.25:0)+(r.quality.editorialBeforePatch?.65:0);
   const allies=Object.entries(draft.blue).filter(([,id])=>id!==champion.id).map(([role,id])=>{const c=data.champions.find(c=>c.id===id),b=c?.builds.find(b=>b.role===role);return b?championProfile(data,c,b):null;}).filter(Boolean);
   const supportBonus=profile.support&&['janna','karma','lulu','milio','nami','senna','sona','soraka','yuumi'].includes(champion.id)&&r.final.includes('ardent-censer')&&allies.some(p=>p.attack)?.5:0;
   let parts=[...(draft.owned||[])],credited=0;
   for(const id of r.final){const detail=completionCost(data,id,parts);if(!detail.exact)continue;credited+=detail.used.reduce((sum,i)=>sum+(itemCost(data,parts[i])||0),0);parts=parts.filter((_,i)=>!detail.used.includes(i));}
   const investmentBonus=Math.min(.8,credited/1500);
-  const defensiveItems=r.final.filter(id=>{const v=coverage([id],data,candidateProfile);return (v.magic||0)+(v.physical||0)+(v.burst||0)>=.6;}).length;
+  const defensiveItems=r.final.filter(id=>{const v=coverage([id],data,candidateProfile,r.context);return (v.magic||0)+(v.physical||0)+(v.burst||0)>=.6;}).length;
   const overDefense=!candidateProfile.tank&&!candidateProfile.support&&defensiveItems>2?(defensiveItems-2)*1.4:0;
   const sourceFit=sourceConditionFit(guide,r.context,draft,candidateProfile);
   const robust=robustAssessment(r.context,cov,draft);
@@ -61,7 +61,7 @@ export function selectMetaBuild(data,draft,champion,reference,scenarios){
  winner.result.loadoutAdvice=loadoutAdvice(winner.result.base,winner.result.context,draft);
  const alternatives=evaluated.filter(c=>c!==winner&&[...c.final].sort().join()!==[...winner.final].sort().join()).slice(0,2),result=winner.result;
  result.itemDecisions=result.final.map((id,i)=>{
-  const cov=coverage([id],data,result.profile),needs=result.context.priorities.filter(n=>(cov[n.key]||0)>.25).slice(0,2),change=result.changes.find(c=>c.to===id);
+  const cov=coverage([id],data,result.profile,result.context),needs=result.context.priorities.filter(n=>(cov[n.key]||0)>.25).slice(0,2),change=result.changes.find(c=>c.to===id);
   return {id,targets:[...new Set(needs.flatMap(n=>n.targets))],needs:needs.map(n=>n.label),basis:change?'Maça özel kaynak alternatifi':result.base.core.includes(id)?'Kaynağın ana eşya düzeni':BOOTS.includes(id)?'Hareket ve bot nitelikleri':'Tam kaynak diziliminin parçası',tradeoff:change?.tradeoff||null,source:change?.source||result.base.source,slot:i+1};
  });
  result.metaSelection={mode:draft.variant?'manual':'automatic',evaluated:evaluated.length,excluded:excluded.length,selected:describe(winner),alternatives:alternatives.map(describe),reference:primary.final,

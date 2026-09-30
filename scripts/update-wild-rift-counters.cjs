@@ -5,11 +5,11 @@ const {validateSnapshot}=require('../server/wild-rift-store.cjs');
 (async()=>{
  const file=process.env.WR_DATA_FILE||path.join(__dirname,'../data/wild-rift.json');
  await withUpdateLock(file,async()=>{
-  const data=JSON.parse(await fs.readFile(file,'utf8'));
+  const data=JSON.parse(await fs.readFile(file,'utf8')),previous=structuredClone(data);
   const reparsed=await reparseCachedMeta(data);console.log(`${reparsed} önbellek rehberi özgün kontrol tarihiyle yeniden işlendi.`);
   await collectCounterSources(data,{onProgress:(n,total)=>{if(n%12===0)console.log(`${n}/${total} karşı seçim kaynağı kontrol edildi.`);}});
   data.localRevisionAt=new Date().toISOString();validateSnapshot(data);
-  await fs.writeFile(file+'.tmp',JSON.stringify(data));await fs.copyFile(file,file+'.previous');await fs.rename(file+'.tmp',file);
+  await require('../server/wild-rift-update-guard.cjs').publishSnapshot(file,previous,data);
   if(!process.argv.includes('--no-sync'))await syncSnapshot(file);
   console.log(JSON.stringify({count:data.counterSources.count,fetched:data.counterSources.fetched,retryAfter:data.counterSources.retryAfter}));
  });

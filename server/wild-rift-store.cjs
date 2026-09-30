@@ -107,25 +107,26 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
     catch{itemCatalog={...(old?.itemCatalog||{}),refreshFailed:true};for(const [id,item] of Object.entries(items))if(old?.items[id]?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats','statsPatch','statsCheckedAt','effects','effectsPatch','effectsCheckedAt','effectsSource','mechanics','mechanicsPatch','mechanicsCheckedAt','coreFacts','passives','passivesPatch','passivesCheckedAt'])item[key]=old.items[id][key];}
     const data={schema:1,checkedAt,latestPatch,stats,champions,items,itemCatalog,changes:changed,failures,source:source.BASE,methodologyVersion:2};
     for(const [id,item] of Object.entries(items)){if(old?.items[id]?.official)item.official=old.items[id].official;if(old?.items[id]?.removedIn)item.removedIn=old.items[id].removedIn;}
+    data.attackRules=old?.attackRules;data.advancedEvidence=old?.advancedEvidence;
+    for(const c of champions){const prior=old?.champions.find(p=>p.id===c.id);if(prior?.rangeEvidence)c.rangeEvidence=prior.rangeEvidence;}
     await collectEvidence(data,{previous:old?.evidence,savedChampions:old?.champions,onProgress:(n,total)=>{Object.assign(status,{phase:'Ek kaynak kontrolü',completed:n,total});onProgress(n,total,'ek-kaynaklar');}});
     await require('./wild-rift-counter-sources.cjs').collectCounterSources(data,{previous:old?.counterSources,onProgress:(n,total)=>Object.assign(status,{phase:'Karşı seçim kanıtları',completed:n,total})});
     await require('./wild-rift-build-sources.cjs').collectBuildSources(data,{previous:old,onProgress:(n,total)=>Object.assign(status,{phase:'Ek meta dizilimleri',completed:n,total})});
     await require('./wild-rift-model-update.cjs').refreshModelEvidence(data,source.fetchText);
     data.itemRegistry=require('./wild-rift-registry.cjs').buildRegistry(data);
     require('./wild-rift-audit.cjs').auditSnapshot(data);
-    data.methodologyVersion=7;data.localRevisionAt=new Date().toISOString();
+    await require('./wild-rift-advanced-source.cjs').collectAdvancedEvidence(data,source.fetchText,{onProgress:(n,total)=>Object.assign(status,{phase:'Menzil kanıtları',completed:n,total})});
+    data.methodologyVersion=8;data.localRevisionAt=new Date().toISOString();
     validateSnapshot(data);
     await fs.mkdir(path.dirname(DATA_FILE),{recursive:true});
-    const temp=DATA_FILE+'.tmp';await fs.writeFile(temp,JSON.stringify(data));
-    if(old) await fs.copyFile(DATA_FILE,DATA_FILE+'.previous').catch(()=>{});
-    await fs.rename(temp,DATA_FILE);current=data;
+    await require('./wild-rift-update-guard.cjs').publishSnapshot(DATA_FILE,old,data);current=data;
     Object.assign(status,{phase:"GitHub veri gönderimi"});
     await syncSnapshot(DATA_FILE).catch(e=>console.error("[Wild Rift gönderim]",e.message));
     const done=Date.now();status={...status,running:false,finishedAt:done,lastSuccessAt:done,phase:'Tamamlandı',error:null,events:[{at:done,ok:true,patch:latestPatch.version,failedGuides:failures.length},...(status.events||[])].slice(0,10)};
     await saveStatus().catch(e=>console.error('[Wild Rift durum kaydı]',e.message));
     return data;
     }catch(error){
-      const done=Date.now();status={...status,running:false,finishedAt:done,phase:'Kontrol başarısız',error:'Kaynak güncellenemedi; son doğrulanmış veri korundu.',events:[{at:done,ok:false},...(status.events||[])].slice(0,10)};
+      const done=Date.now();status={...status,running:false,finishedAt:done,phase:'Kontrol başarısız',error:error.code==='WR_UPDATE_REGRESSION'?error.message:'Kaynak güncellenemedi; son doğrulanmış veri korundu.',events:[{at:done,ok:false},...(status.events||[])].slice(0,10)};
       await saveStatus().catch(e=>console.error('[Wild Rift durum kaydı]',e.message));throw error;
     }
   }).finally(()=>{inFlight=null;});

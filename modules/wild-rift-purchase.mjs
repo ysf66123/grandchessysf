@@ -1,8 +1,8 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20261001-auto1';
-import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20261001-auto1';
-import {itemFacts,itemFamily,BOOTS,SUPPORT_ITEMS,TRANSFORM_FROM,rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-auto1';
-import {coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20261001-auto1';
-import {application} from './wild-rift-build-fit.mjs?v=20261001-auto1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20261001-interactions1';
+import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20261001-interactions1';
+import {itemFacts,itemFamily,BOOTS,SUPPORT_ITEMS,TRANSFORM_FROM,rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-interactions1';
+import {coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20261001-interactions1';
+import {application} from './wild-rift-build-fit.mjs?v=20261001-interactions1';
 export function itemCost(data,id,now=Date.now()){
   return priceEvidence(data,id,now).cost;
 }
@@ -51,7 +51,7 @@ export function purchasePlan(data,draft,result,now=Date.now()){
   const anchors=new Set([income,...core.slice(0,2),boot]);
   if(result.current&&result.context?.rows.length){
    const flexible=order.filter(id=>!anchors.has(id));
-   const ranked=flexible.map((id,i)=>({id,score:contextUtility(result.context.pressure,coverage([id],data,result.profile),draft)-i*.65})).sort((a,b)=>b.score-a.score);
+   const ranked=flexible.map((id,i)=>({id,score:contextUtility(result.context.pressure,coverage([id],data,result.profile,result.context),draft)-i*.65})).sort((a,b)=>b.score-a.score);
    let cursor=0;order=order.map(id=>anchors.has(id)?id:ranked[cursor++].id);
   }
   let remaining=order.filter(id=>!completed.has(id));

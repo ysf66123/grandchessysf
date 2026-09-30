@@ -50,7 +50,9 @@ async function collectCounterSources(data,{previous=data.counterSources,fetchPag
   if(blocked||fetched>=limit||(page?.parserVersion===2&&page?.patch===data.latestPatch.version&&Date.now()-Date.parse(page.checkedAt)<6*3600000)){rows.push(...saved);continue;}
   if(!urls[c.id]){rows.push(...saved);pages[c.id]={...page,status:'unavailable',lastAttemptAt:checkedAt,reason:'Kaynağın şampiyon dizininde adres bulunamadı.'};continue;}
   fetched++;
-  try{const html=await fetchPage(urls[c.id]);failures=0;const parsed=parseCoreCounters(html,c,data,checkedAt,urls[c.id]).map(r=>({...r,owner:c.id}));rows.push(...parsed);pages[c.id]={patch:data.latestPatch.version,checkedAt,status:'available',count:parsed.length,parserVersion:2,url:urls[c.id]};}
+  try{const html=await fetchPage(urls[c.id]);failures=0;const parsed=parseCoreCounters(html,c,data,checkedAt,urls[c.id]).map(r=>({...r,owner:c.id}));rows.push(...parsed);pages[c.id]={patch:data.latestPatch.version,checkedAt,status:'available',count:parsed.length,parserVersion:2,url:urls[c.id]};
+   try{c.rangeEvidence=require('./wild-rift-advanced-source.cjs').parseRange(html,c,data.latestPatch.version,urls[c.id],checkedAt);}catch{/* A valid counter page need not contain a verified range chip. */}
+  }
   catch(e){rows.push(...saved);pages[c.id]={...page,status:'unavailable',lastAttemptAt:checkedAt,reason:/429|403/.test(e.message)?'Kaynak erişimi sınırladı.':'Yanıt veya eşleşme kartları doğrulanamadı.'};if(/Kaynak yanıtı|bağlanılamadı|HTTP/.test(e.message))failures++;if(/429|403/.test(e.message)||failures>=3)blocked=true;}
   onProgress(fetched,Math.min(limit,ordered.length));if(delay)await new Promise(r=>setTimeout(r,delay));
  }

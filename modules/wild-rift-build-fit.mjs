@@ -1,7 +1,8 @@
-import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-auto1';
-import {traits} from './wild-rift-knowledge.mjs?v=20261001-auto1';
-import {ageInDays} from './wild-rift-quality.mjs?v=20261001-auto1';
-import {abilityProfile} from './wild-rift-ability-profile.mjs?v=20261001-auto1';
+import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-interactions1';
+import {traits} from './wild-rift-knowledge.mjs?v=20261001-interactions1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20261001-interactions1';
+import {abilityProfile} from './wild-rift-ability-profile.mjs?v=20261001-interactions1';
+import {attackModel} from './wild-rift-attack-model.mjs?v=20261001-interactions1';
 export function itemTotals(data,ids){
  const totals={},unknown=[],uncertainStats=new Set();
  for(const id of ids){const f=itemFacts(data,id);if(!f.known||f.conflicts.length)unknown.push(id);if(!f.known)uncertainStats.add('*');for(const key of f.conflicts)uncertainStats.add(key);for(const [k,n] of Object.entries(f.stats))if(Number.isFinite(n))totals[k]=(totals[k]||0)+n;}
@@ -30,7 +31,7 @@ export function championProfile(data,champion,base){
  const coreFacts=core.map(id=>itemFacts(data,id)),sustained=coreFacts.some(f=>f.mechanics.healthDamage)||onHit;
  const style=native.fixedAttackRate?'fixedAttack':support?kind:tank?'tank':kind==='crit'?'crit':onHit?'onHit':damage==='magic'?(sustained?'sustainedMage':'burstMage'):'adCaster';
  const styleLabels={fixedAttack:'Sabit saldırı ritmi',support:'Koruyucu destek',supportTank:'Ön saf desteği',tank:'Dayanıklı ön saf',crit:'Kritik vuruş',onHit:'Vuruş etkisi',sustainedMage:'Sürekli büyü hasarı',burstMage:'Yetenek ve ani büyü hasarı',adCaster:'Fiziksel yetenek / dövüşçü'};
- return {kind,label:styleLabels[style]||labels[kind],style,damage,threatDamage:ability.damage|| (t.mixed?'mixed':damage),ability,attack,support,tank,spellblade,onHit,sustained,native,scalingCrit:total.scalingCrit,usesMana:combat?.usesMana??null,stats:s,unknown:total.unknown,champion,
+ return {kind,label:styleLabels[style]||labels[kind],style,damage,threatDamage:ability.damage|| (t.mixed?'mixed':damage),ability,attack,support,tank,spellblade,onHit,sustained,native,attackModel:attackModel(data,champion,s,base.final),scalingCrit:total.scalingCrit,usesMana:combat?.usesMana??null,stats:s,unknown:total.unknown,champion,
   signature:core.filter(id=>itemFacts(data,id).mechanics.spellblade||['guinsoos-rageblade','nashors-tooth'].includes(id)),evidence:combat?.source||base.source};
 }
 export function application(data,id,profile,need){
@@ -59,7 +60,7 @@ export function buildFit(data,items,profile){
  const current=itemTotals(data,items),s=current.stats,b=profile.stats,weights={};
  if(profile.damage==='magic'||profile.kind==='hybrid')weights.ap=3;
  if(profile.damage==='physical'||profile.kind==='hybrid')weights.ad=3;
- if(profile.attack)weights.attackSpeed=profile.native?.fixedAttackRate?.7:1.4;
+ if(profile.attack)weights.attackSpeed=profile.native?.fixedAttackRate?.7:1.4*Math.max(.65,Math.min(1.3,(profile.attackModel?.ratio||.65)/.65));
  if(profile.kind==='crit')weights.crit=1.8;
  if(profile.tank){weights.health=1.3;weights.armor=.7;weights.magicResist=.7;}
  if(profile.support)weights.haste=.9;else weights.haste=.45;
@@ -80,11 +81,16 @@ export function buildFit(data,items,profile){
  if(rulesUsable(data)){
   if(profile.native?.attackReset&&profile.spellblade&&!items.some(id=>itemFacts(data,id).mechanics.spellblade)){penalty+=.5;warnings.push('Kaynakta saldırı sıfırlama var; güçlendirilmiş saldırı düzeninin kaybı ek maliyet taşıyor.');}
   if(profile.native?.completedItemEvolution&&profile.champion?.id==='kaisa'&&profile.signature.some(id=>!items.includes(id))){penalty+=.5;warnings.push('Tam eşya ile yetenek gelişimi düzeni değişiyor; kaynak ana eşyalarını ve tamamlama zamanını koru.');}
-  if(profile.ability?.forms.length>1&&!profile.ability.form)warnings.push('Şampiyonun biçimi kesinleşmedi; iki biçimin yetenekleri birlikte değerlendiriliyor. Kaynak setinden biçimini seç.');
+  if(profile.ability?.forms.length>1&&!profile.ability.form)warnings.push('Şampiyonun biçimi kesinleşmedi; farklı biçimler kesin toplam hasara eklenmez. Kaynak seti ve olası biçimler ayrı değerlendirilir.');
   if(profile.spellblade&&!items.some(id=>['trinity-force','divine-sunderer','iceborn-gauntlet','lich-bane'].includes(id))){penalty+=1.5;warnings.push('Ana rehberin güçlendirilmiş saldırı eşyası kayboluyor.');}
   if(profile.onHit&&!items.some(id=>['guinsoos-rageblade','nashors-tooth','blade-of-the-ruined-king','kraken-slayer'].includes(id))){penalty+=1.5;warnings.push('Ana rehberin vuruş etkisi düzeni kayboluyor.');}
   if(profile.native?.fixedAttackRate&&items.some(id=>['guinsoos-rageblade','nashors-tooth','terminus'].includes(id))){penalty+=2;warnings.push('Sabit saldırı ritmi, çok sayıda saldırı gerektiren pasifleri daha yavaş çalıştırır.');}
   if(!['yasuo','yone'].includes(profile.champion?.id)&&(s.crit||0)+current.scalingCrit>100){penalty+=((s.crit||0)+current.scalingCrit-100)/25;warnings.push('Birikim tamamlandığında kritik ihtimali sınırını aşan yatırım var.');}
  }
+ const model=attackModel(data,profile.champion,s,items);
+ if(model.attackConflict)warnings.push('Resmî belgede bu şampiyonun saldırı hızı değerleri çelişiyor; kesin hız hesabı ve sınır cezası kullanılmıyor.');
+ if(profile.attack&&model.capped&&!model.excessConversion){penalty+=Math.min(.8,(model.raw-model.speed)/model.cap);warnings.push('Referans aşamada saldırı hızı sınırını aşan yatırım var; fazlası ek saldırı olarak sayılmıyor.');}
+ if(model.capped&&model.excessConversion)warnings.push('Kaynakta sınırı aşan saldırı hızı için saldırı gücü dönüşümü var; bu yatırım tamamen boşa sayılmıyor.');
+ if(profile.attack&&profile.attackModel?.potential&&model.potential){const lost=Math.max(0,1-model.potential/profile.attackModel.potential);penalty+=Math.min(.7,lost);}
  return {penalty,losses,warnings,stats:s,scalingCrit:current.scalingCrit,unknown:current.unknown,label:penalty<.55?'Ana düzen korunuyor':penalty<1.2?'Ölçülü ödünleşim':'Belirgin eşya ödünleşimi'};
 }

@@ -1,7 +1,23 @@
-import {purchasePlan,affordableComponents,itemCost} from './wild-rift-purchase.mjs?v=20261001-auto1';
-import {combatFacts,incompatibleItem} from './wild-rift-build-fit.mjs?v=20261001-auto1';
-import {itemFacts,BOOTS} from './wild-rift-item-rules.mjs?v=20261001-auto1';
-import {itemAvailability,finalItemAvailable} from './wild-rift-evidence.mjs?v=20261001-auto1';
+import {purchasePlan,affordableComponents,itemCost} from './wild-rift-purchase.mjs?v=20261001-interactions1';
+import {combatFacts,incompatibleItem} from './wild-rift-build-fit.mjs?v=20261001-interactions1';
+import {itemFacts,BOOTS} from './wild-rift-item-rules.mjs?v=20261001-interactions1';
+import {itemAvailability,finalItemAvailable} from './wild-rift-evidence.mjs?v=20261001-interactions1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20261001-interactions1';
+export function tradeWindow(data,own,ownFacts,enemy){
+ const abilities=enemy?.native?.abilityFacts||[],active=abilities.filter(a=>a.slot!=='P'),danger=active.slice().sort((a,b)=>Number(!!b.flags.control)-Number(!!a.flags.control)||Number(b.damageTypes.includes('true'))-Number(a.damageTypes.includes('true'))||Number(b.slot==='4')-Number(a.slot==='4'))[0];
+ if(!danger)return null;
+ const slot=a=>a.slot==='4'?'ultisi':a.slot+'. yeteneği',ownControl=ownFacts?.abilityFacts.find(a=>a.slot!=='P'&&a.flags.control),ownEscape=ownFacts?.abilityFacts.find(a=>a.slot!=='P'&&a.flags.mobility),immunity=active.find(a=>a.flags.immunity||(ownControl&&a.flags.controlImmunity)),escape=active.find(a=>a.flags.mobility);
+ const incoming=danger.flags.targeted?'Hedefe yöneltiliyor; yana kaçmanın isabeti engellediği varsayılmaz. Erişim mesafesinde gereksiz kalma.':danger.flags.collision?'Kaynakta ilk hedefe çarpma koşulu var; aranda uygun bir minyon tut. Alan veya takip hasarını bununla çözmüş sayma.':danger.flags.projectile?'Atış hattından yana çık; minyonların yeteneği durdurduğu doğrulanmadı.':danger.flags.control?'Kontrol etkisi hazırken kaçışını tüketme; minyonu kesin engel sayma.':danger.damageTypes.includes('true')?'Gerçek hasar verebilir; direncin bu kanalı azaltacağını varsayma.':'Ana hasarını kullandığını görmeden uzun takası zorlama.';
+ const ready=enemy.name+' '+slot(danger)+' kullanıldıktan sonra'+(immunity?' '+enemy.name+' '+slot(immunity)+(immunity.flags.immunity?' dokunulmazlığı':' kontrol bağışıklığı')+' da bittiyse':'')+(escape?' ve '+enemy.name+' '+slot(escape)+' kaçışıyla arayı açamıyorsa':'');
+ let window=ready+', '+(ownControl?own.name+' '+slot(ownControl)+' ile kısa takas ara.':'güvenli kısa takas ara.');
+ if(ownEscape)window+=' '+own.name+' '+slot(ownEscape)+' çıkışını gereksiz takip için harcama.';
+ const other=data.champions.find(c=>c.id===enemy.id),a=own.rangeEvidence,b=other?.rangeEvidence;
+ if(a?.patch===data.latestPatch.version&&b?.patch===data.latestPatch.version&&ageInDays(a.checkedAt)<=7&&ageInDays(b.checkedAt)<=7&&!a.variable&&!b.variable){
+  const diff=a.value-b.value;if(diff!==0)window+=' Kaynak temel saldırı menzilin '+Math.abs(diff)+' birim '+(diff>0?'uzun; normal saldırı aralığını koru.':'kısa; bedelsiz normal saldırı takası varsayma.');
+ }
+ if(danger.baseCooldown?.length)window+=' Kaynak temel süresi '+Math.min(...danger.baseCooldown)+'–'+Math.max(...danger.baseCooldown)+' sn; canlı sayaç değildir.';
+ return {danger,avoid:enemy.name+' '+slot(danger)+': '+incoming,window,source:enemy.native.source};
+}
 
 // These are prepared routes, not assertions about the player's wallet or state.
 export function shoppingRoutes(data,draft,result){
@@ -24,13 +40,11 @@ export function quickMatchPlan(data,draft,result){
  if(result.missing)return null;
  const own=result.champion,ownFacts=combatFacts(data,own),rows=result.context.rows;
  const enemy=rows.filter(r=>r.lane).sort((a,b)=>Number(b.native?.mechanics.control)-Number(a.native?.mechanics.control)||b.weight-a.weight)[0]||rows.find(r=>r.role==='jungle')||rows[0];
- const abilities=enemy?.native?.abilityFacts||[],danger=abilities.filter(a=>a.slot!=='P').sort((a,b)=>Number(!!b.flags.control)-Number(!!a.flags.control)||Number(b.damageTypes.includes('true'))-Number(a.damageTypes.includes('true')))[0];
- const slot=a=>a.slot==='4'?'ultisi':a.slot+'. yeteneği';
- const ownWindow=ownFacts?.abilityFacts.find(a=>a.slot!=='P'&&(a.flags.control||a.flags.mobility));
+ const trade=enemy?tradeWindow(data,own,ownFacts,enemy):null;
  const target=rows.slice().sort((a,b)=>(b.fed?10:0)+(['duo','mid'].includes(b.role)?3:0)+(b.keys.heal||0)+(b.keys.shield||0)-(b.keys.tank||0)*2-((a.fed?10:0)+(['duo','mid'].includes(a.role)?3:0)+(a.keys.heal||0)+(a.keys.shield||0)-(a.keys.tank||0)*2))[0];
  const tips=[
-  danger?{title:'Kaçın',text:enemy.name+' '+slot(danger)+' '+(danger.flags.control?'kontrol etkisi taşıyor. Hazır olduğunu gördüğünde kaçışını sakla.':danger.damageTypes.includes('true')?'gerçek hasar verebilir. Dirence güvenmek yerine yetenekten kaçın.':'hasar kanalını kullanıyor. Boşa çıktığını görmeden uzun takası zorlama.'),source:enemy?.native?.source}:null,
-  danger?{title:'Takas fırsatı',text:enemy.name+' '+slot(danger)+' boşa çıktıktan sonra '+(ownWindow?own.name+' '+slot(ownWindow)+' ile kısa takası değerlendir.':'kısa takas ara; kaçışın hazır değilse takip etme.')+(danger.baseCooldown?.length?' Kaynak temel süresi '+Math.min(...danger.baseCooldown)+'–'+Math.max(...danger.baseCooldown)+' sn; canlı sayaç değildir.':''),source:enemy?.native?.source}:null,
+  trade?{title:'Kaçın',text:trade.avoid,source:trade.source}:null,
+  trade?{title:'Takas fırsatı',text:trade.window,source:trade.source}:null,
   {title:'Takım savaşı',text:target?(result.profile.support||result.profile.tank?'Taşıyıcını '+target.name+' tehdidine karşı koru; takımın takip edemiyorsa giriş yapma.':target.name+' güvenli erişim varsa öncelikli baskı adayı. Ona ulaşmak için görüşsüz alana girme; erişemiyorsan en yakın güvenli hedefe vur.'):'Rakip seçimleri tamamlanınca öncelikli tehdit belirlenecek.',source:result.base.source}
  ];
  for(let i=0;i<2;i++)if(!tips[i])tips[i]={title:i===0?'Kaçın':'Takas fırsatı',text:i===0?'Doğrulanmış rakip yeteneği henüz yok. Görüşsüz bölgede kaçış yeteneğini tüketme.':'Rakibin ana yeteneğinin boşa çıktığını gördüğünde kısa takas ara; güvenli geliri bırakma.',source:null};

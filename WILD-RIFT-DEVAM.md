@@ -1,3 +1,19 @@
+## Eşya etkileşimleri ve güvenli güncelleme — 1 Ekim 2026
+
+20261001-interactions1: Kullanıcının onayladığı yedi madde uygulandı. Yönetici görünürlüğü korunur. Yeni zorunlu manuel alan yok; ayrıntılar katlanabilir panellerdedir.
+
+1. Riot 7.3 saldırı hızı tablosundan 141/142 şampiyon için kayıt alındı; 7.3a belgesi de incelendi. Seviye büyümesi doğrusal değildir: her artışta 0.7 + 0.04 × önceki seviye. Sabit Jhin ritmi için sayı veya sıradan kritik DPS üretilmez. Ashe yavaşlatması, Graves saçmaları, Yasuo/Yone çift kritik ve fazla kritik dönüşümü, Zeri hız sınırı ve dönüşümü kaynak bilgilerine göre ayrılır. Kritik 200%, Infinity Edge 230% resmî/kaynak kayıtlarına bağlıdır; Yun Tal birikimi kendiliğinden tamamlanmış sayılmaz. Caitlyn ve Xayah belgenin ana bölümü ile ek tablosunda çelişir: kesin hız/sınır cezası kapalı. Hwei için tablo kaydı yoktur.
+2. 7.2 → 7.3a bütün resmî zinciri incelendi; tarif kapsamı 58 → 65 oldu. Kaynak kontrolü 19 şampiyonda sayısal temel saldırı menzilini doğruladı. Erişim sınırlaması nedeniyle kalanlarda değer üretilmedi; bir saat geri çekilme ve sonraki yerel güncelleme yeniden denemesi var. Başarılı karşı seçim sayfası kontrolü menzili aynı yanıt içinden alır; fazladan istek gerektirmez. Sayısal menzilden yakın/uzak sınıfı çıkarılmaz. Ionia botunun hatalı 100 altın topluluk fiyatı, resmî 1000 altın fiyatıyla uzlaştırıldı; 3. aşama 1000 altın ek bedel doğru kalır.
+3. Ölümcül hasarda pasif dirilme, elle staz, kendine/takım arkadaşına arındırma ve sonraki yeteneğe pasif kalkan ayrıldı. CC türleri, kaynaktaki kaldırma istisnaları ve tehdit ağırlığı hesaba katılır; karma kontrol grubunun tamamı çözülmüş sayılmaz. Kullanım açıklaması yalnızca seçili setteki savunmaları gösterir.
+4. Kısa takas planı: hedefe yöneltilmiş yeteneğe yana kaçmayı kesin çözüm saymaz; minyon engeli yalnızca çarpma kanıtında kullanılır, delip geçen yeteneklerde kullanılamaz. Kendi kontrol/kaçış yeteneği, rakibin dokunulmazlık/kontrol bağışıklığı ve kaçışı birlikte ele alınır. Doğrulanmış, değişmeyen sayısal menzil farkı belirtilir. Beklemeler canlı sayaç değildir.
+5. Tek eşya değişikliğinde rakip ihtiyaç katkısı, ana düzen maliyeti, değişiklik eşiği ve gerçek nitelik kaybı aynı set üzerinden hesaplanır. Arındırma uygulanabilirliği tüm kapsama ve satın alma sırasına yansır. Puanlar hasar ya da kazanma yüzdesi değildir.
+6. En fazla üç karşı olasılık: rakibin kaynakta bulunan direnç eşyası, öne çıkan tehdit, takım savaşına geçiş. Aynı tam set motoru ayrı kopyalarda gerçekten çalışır; değişen/korunan set gösterilir. Ana taslak ve gerçek gözlemler değişmez, alınan eşya korunur, ağ isteği yok. Sonuçlar sınırlı bellek ve beş dakikalık anahtarla önbelleğe alınır.
+7. Ana ve beş hedefli veri güncelleme yazıcısı kapsam/hasar kaydı/tarif/pasif kaybı, tarif toplamı/döngüsü ve açıklanamayan toplu fiyat değişikliğini yazmadan denetler. Başarısız veri diske ve GitHub gönderimine geçmez. Başarılı yazma son sağlam kopyayı korur; kontrol raporu veri paketinde yer alır. Denetim hata nedeni yerel sunucu durumunda açıklanır. Kaynak tarihleri başarısız kontrolle yenilenmez.
+
+Son güncellemeler sekmesinde yedi yeni avantaj kartı; önceki dokuz madde ayrı geçmiş panelinde korunur. Rün/büyü/yetenek sırası son eşya setinin hemen altında kalır. Hızlı maç satın alınmış üçüncü aşama botunu aynı yuvada doğru adla gösterir.
+
+Yerel güncelleyici bu çalışma sırasında sürekli izleme modunda başlatılmadı. Kaynak kapsamı ve kaynak çelişkileri arayüzde açıkça gösterilir. Yöntem sürümü 8, resmî kontrol yaması 7.3a.
+
 ## Otomatik maç yardımcısı — 1 Ekim 2026
 
 20261001-auto1: Kullanıcının onayladığı az elle giriş isteyen dokuz madde ve ayrı “Son güncellemeler” sekmesi uygulandı. Yönetici erişimi korunur. Yeni zorunlu alan yoktur.
@@ -187,3 +203,7 @@ GitHub iş açıklaması: “The job was not started because your account is loc
 
 
 Canlı yayın doğrulandı: 8ecdd85a3ef9309a534d8dbabcd79c141c78dace. Pages işi https://github.com/ysf66123/grandchessysf/actions/runs/36729227057 başarılı. Canlı 15 dosya (index, uygulama, CSS, yeni motor/arayüz modülleri ve JSON veri paketi) yerelle SHA-256 eşleşti. Bu sonuç yerel devam notudur.
+
+Canlı yayın doğrulaması — 20261001-auto1: cfe68aae3fc776113b1e9c63c368f183e1714910. Pages işi https://github.com/ysf66123/grandchessysf/actions/runs/36781568548 başarılı. Canlı 14 dosya (iki yeni sekme modülü ve JSON dahil) yerel SHA-256 ile eşleşti. Son Pages paketi entegrasyonu geçti. Veri 142 şampiyon / 684 sayısal yetenek paketi / 93 pasif eşya; 3.207.362 bayt ham, 205.397 bayt gzip. Bu satır yayın sonrası yerel devam kanıtıdır.
+
+20261001-interactions1 doğrulaması: 209 birim/HTTP testi, genişletilmiş Wild Rift tarayıcı testi ve gerçek .pages-dist uygulama entegrasyonu geçti. Mobil/masaüstü senaryo ve güncelleme kartları görsel olarak incelendi. Seçimler yeni veri isteği üretmiyor; yönetici erişimi, rün paneli yerleşimi ve çıkış temizliği korundu.

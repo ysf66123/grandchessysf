@@ -5,7 +5,7 @@ const source=require('../server/wild-rift-source.cjs');
 const {withUpdateLock,syncSnapshot}=require('../server/wild-rift-local-sync.cjs');
 const file=process.env.WR_DATA_FILE||path.join(__dirname,'../data/wild-rift.json');
 withUpdateLock(file,async()=>{
- const data=JSON.parse(await fs.readFile(file,'utf8')),cache=new Map(),root=path.join(__dirname,'../.wr-source-cache');
+ const data=JSON.parse(await fs.readFile(file,'utf8')),previous=structuredClone(data),cache=new Map(),root=path.join(__dirname,'../.wr-source-cache');
  for(const name of await fs.readdir(root))if(name.endsWith('.json'))try{const row=JSON.parse(await fs.readFile(path.join(root,name),'utf8'));if(row.url?.startsWith('https://wr-meta.com/')||row.url?.startsWith('https://www.wildriftfire.com/guide/'))cache.set(row.url,row.text);}catch{}
  const provider=data.evidence.providers.find(p=>p.id==='wrmeta'),meta=require('../server/wild-rift-meta-source.cjs');
  for(const c of data.champions){
@@ -20,11 +20,12 @@ withUpdateLock(file,async()=>{
  if(!process.argv.includes('--native-only')&&!process.argv.includes('--cached-meta-only')&&!process.argv.includes('--cached-native-only'))data.itemCatalog=await require('../server/wild-rift-items.cjs').enrichItems(data.items,{previous:structuredClone(data.items)});
  await require('../server/wild-rift-model-update.cjs').refreshModelEvidence(data,source.fetchText);
  data.itemRegistry=require('../server/wild-rift-registry.cjs').buildRegistry(data);
- data.methodologyVersion=7;data.localRevisionAt=new Date().toISOString();
+ await require('../server/wild-rift-advanced-source.cjs').collectAdvancedEvidence(data,source.fetchText);
+ data.methodologyVersion=8;data.localRevisionAt=new Date().toISOString();
  provider.buildFailures=Object.entries(provider.pages).filter(([,p])=>p.buildFailure||p.status==='failed').map(([id])=>id);
  require('../server/wild-rift-audit.cjs').auditSnapshot(data);
  require('../server/wild-rift-store.cjs').validateSnapshot(data);
- await fs.writeFile(file+'.tmp',JSON.stringify(data));await fs.rename(file+'.tmp',file);
+ await require('../server/wild-rift-update-guard.cjs').publishSnapshot(file,previous,data);
  console.log(JSON.stringify({audit:data.qualityAudit,nativeFailures:failures},null,2));
  await syncSnapshot(file);
 }).catch(e=>{console.error(e.message);process.exitCode=1;});

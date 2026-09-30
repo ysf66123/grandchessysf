@@ -25,7 +25,8 @@ function auditSnapshot(data){
  }
  const provider=data.evidence?.providers.find(p=>p.id==='wrmeta');if(provider){provider.builds=sources.wrmeta;provider.buildChampions=data.champions.filter(c=>c.sourceBuilds.some(b=>b.sourceId==='wrmeta')).length;}
  data.qualityAudit={schema:1,checkedAt:new Date().toISOString(),patch:data.latestPatch.version,sources,excluded,
-  abilityChampions:data.champions.filter(c=>c.combatFacts?.abilityFacts?.length).length,damagePacketChampions:data.champions.filter(c=>c.combatFacts?.abilityFacts?.some(a=>a.damagePackets?.some(p=>p.parsed))).length,damagePackets:data.champions.reduce((n,c)=>n+(c.combatFacts?.abilityFacts||[]).flatMap(a=>a.damagePackets||[]).filter(p=>p.parsed).length,0),passiveItems:Object.values(data.items).filter(i=>i.passives?.length).length};
+  abilityChampions:data.champions.filter(c=>c.combatFacts?.abilityFacts?.length).length,damagePacketChampions:data.champions.filter(c=>c.combatFacts?.abilityFacts?.some(a=>a.damagePackets?.some(p=>p.parsed))).length,damagePackets:data.champions.reduce((n,c)=>n+(c.combatFacts?.abilityFacts||[]).flatMap(a=>a.damagePackets||[]).filter(p=>p.parsed).length,0),passiveItems:Object.values(data.items).filter(i=>i.passives?.length).length,
+  officialRecipes:Object.values(data.items).filter(i=>i.official?.recipe).length,attackChampions:Object.keys(data.attackRules?.byChampion||{}).length,rangeChampions:data.champions.filter(c=>c.rangeEvidence?.patch===data.latestPatch.version).length};
  return data.qualityAudit;
 }
 module.exports={extraBuildProblem,auditSnapshot};

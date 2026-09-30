@@ -1,11 +1,12 @@
-import {combatFacts} from './wild-rift-build-fit.mjs?v=20261001-auto1';
-import {evaluateMatchup,mechanicalContext,duoContext} from './wild-rift-counters.mjs?v=20261001-auto1';
-import {planBuild} from './wild-rift-build-planner.mjs?v=20261001-auto1';
-import {selectMetaBuild} from './wild-rift-meta-builds.mjs?v=20261001-auto1';
-import {PHASES,BUILD_PRIORITIES,rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-auto1';
-import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20261001-auto1';
-import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20261001-auto1';
-import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-auto1';
+import {combatFacts} from './wild-rift-build-fit.mjs?v=20261001-interactions1';
+import {evaluateMatchup,mechanicalContext,duoContext} from './wild-rift-counters.mjs?v=20261001-interactions1';
+import {planBuild} from './wild-rift-build-planner.mjs?v=20261001-interactions1';
+import {selectMetaBuild} from './wild-rift-meta-builds.mjs?v=20261001-interactions1';
+import {buildCounterfactuals} from './wild-rift-counterfactuals.mjs?v=20261001-interactions1';
+import {PHASES,BUILD_PRIORITIES,rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-interactions1';
+import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20261001-interactions1';
+import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20261001-interactions1';
+import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-interactions1';
 export {ROLES};
 export const SORT_MODES={balanced:'Dengeli öneri',lane:'Koridor eşleşmesi',team:'Takım uyumu',safe:'Güvenli seçim'};
 export const emptyDraft=()=>({blue:{},red:{},role:'mid',rank:'diamond',bans:[],pool:[],fed:'',targetEnemy:'',locked:[],tab:'counters',uncertain:[],comfort:{},sort:'balanced',overrides:{},compare:[],gold:0,owned:[],enemyItems:{},variant:'',phase:'draft',buildPriority:'balanced',teamCoverage:{heal:false,shield:false},teamAssignments:[],enemyLevels:{},enemyVariants:{},matchMinutes:null,upgradedBoot:'',purchaseTarget:'',ownState:'even',adaptation:'standard'});
@@ -141,13 +142,15 @@ export function recommendations(data,draft){
   }).sort((a,b)=>b.score-a.score||a.champion.name.localeCompare(b.champion.name,'tr'));
   return ranked.map((r,i)=>({...r,stability:{distance:ranked[0].score-r.score,closeToLead:ranked.length>1&&ranked[0].score-r.score<=3,leadGap:ranked.length>1?ranked[0].score-ranked[1].score:null,label:r.confidence!=='supported'?'Kaynak veya koridor belirsizliği var':ranked.length>1&&ranked[0].score-r.score<=3&&ranked[0].score-ranked[1].score<=3?'Öndeki adaylar birbirine yakın':i===0?'Kurallar içinde öne çıkan aday':'Takım ve koridor katkısıyla karşılaştır'}}));
 }
-export function recommendBuild(data,draft){
+export function recommendBuild(data,draft,{counterfactual=true}={}){
   const c=data.champions.find(c=>c.id===draft.blue[draft.role]);let base=buildFor(c,draft.role,draft.variant),sourceFallback=false;
   if(!base)return {champion:c,missing:true};
   let invalidItems=invalidFinalItems(data,base.final);
   if(invalidItems.length&&!draft.variant){const other=championBuilds(c).find(b=>b.role===draft.role&&finalBuildAvailable(data,b.final)&&guideQuality(data,c,draft.role,Date.now(),b.guideId).usable);if(other){base=other;invalidItems=[];sourceFallback=true;}}
   if(invalidItems.length)return {champion:c,missing:true,invalidItems};
-  return {...selectMetaBuild(data,draft,c,base,laneScenarios(data,draft)),sourceFallback,threat:threats(data,draft)};
+  const result={...selectMetaBuild(data,draft,c,base,laneScenarios(data,draft)),sourceFallback,threat:threats(data,draft)};
+  if(counterfactual)result.counterfactuals=buildCounterfactuals(data,draft,result,next=>recommendBuild(data,next,{counterfactual:false}));
+  return result;
 }
 export function coaching(data,draft){
   const c=data.champions.find(c=>c.id===draft.blue[draft.role]),enemy=data.champions.find(c=>c.id===draft.red[draft.role]);

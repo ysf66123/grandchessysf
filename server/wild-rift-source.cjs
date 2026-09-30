@@ -96,23 +96,37 @@ function parseChampionFacts(html,champion){
  if(/evolve upon fully upgrading an item/i.test(abilities))mechanics.completedItemEvolution=true;
  if(/resets? (?:his |her |their |the )?(?:basic |normal )?attack timer/i.test(abilities))mechanics.attackReset=true;
  if(/can exceed the Attack Speed cap/i.test(abilities))mechanics.attackSpeedCapException=true;
+ const capped=abilities.match(/Attack Speed is capped at (\d+(?:\.\d+)?) attacks per second/i);if(capped)mechanics.attackSpeedCap=Number(capped[1]);
+ const excess=abilities.match(/(\d+)% of (?:the )?Attack Speed in excess[^.]{0,90}(?:bonus Attack Damage|bonus AD)/i);if(excess)mechanics.excessAttackSpeedConversion=Number(excess[1])/100;
+ if(/Critical Rate is doubled/i.test(abilities))mechanics.criticalChanceMultiplier=2;
+ const overflow=abilities.match(/converts Critical Rate above 100% into Attack Damage at a rate of (\d+(?:\.\d+)?) Attack Damage per 1%/i);if(overflow)mechanics.criticalOverflowAD=Number(overflow[1]);
+ if(/Critical Strikes deal no extra damage/i.test(abilities))mechanics.criticalMode='slow';
+ if(/shotgun|Attacks fire \d+ bullets/i.test(abilities))mechanics.criticalMode='pellets';
+ if(mechanics.fixedAttackRate)mechanics.criticalMode='fixedShots';
  const abilityFacts=[];
  $('.statsBlock.abilities .statsBlock__block').each((_,e)=>{
   const n=$(e),slot=n.find('.name > span').text().trim(),name=n.find('.name').clone().children().remove().end().text().trim(),text=n.find('.lower').text().replace(/\s+/g,' ');
   if(!['P','1','2','3','4'].includes(slot)||!name||!text)return;
   const flags={};
-  if(/\b(?:stun(?:s|ning)?|charm(?:s|ing)?|root(?:s|ing)?|taunt(?:s|ing)?|fear(?:s|ing)?|silenc(?:es|ing)|suppress(?:es|ing)?|immobiliz(?:es|ing))\s+(?:the |an? |all |nearby |enemy|enemies|target|them|for)|\bknocks? (?:them |enemies |the target )?(?:up|back)/i.test(text))flags.control=true;
+  if(/\b(?:stun(?:s|ning)?|charm(?:s|ing)?|root(?:s|ing)?|taunt(?:s|ing)?|fear(?:s|ing)?|silenc(?:es|ing)|suppress(?:es|ing)?|immobiliz(?:es|ing)|polymorph(?:s|ing)?)\s+(?:the |an? |all |nearby |enemy|enemies|target|them|for)|\bknock(?:s|ing)? (?:them |enemies |the target |nearby enemies )?(?:up|back|into the air)/i.test(text))flags.control=true;
   if(flags.control&&/\b(?:stun(?:s|ning)?|charm(?:s|ing)?|root(?:s|ing)?|taunt(?:s|ing)?|fear(?:s|ing)?|silenc(?:es|ing))\s+(?:the |an? |all |nearby |enemy|enemies|target|them|for)/i.test(text))flags.cleanseableControl=true;
   if(/\bheals?\s+(?:for|himself|herself|themselves|her|him|them|allies|an? |nearby|the |his |your )|\brestore(?:s)? (?:his |her |their |your )?(?:own )?health\b/i.test(text))flags.heal=true;
   if(/\b(?:gains?|grants?|receive(?:s)?|generates?)\b.{0,90}\bshield\b/i.test(text))flags.shield=true;
   if(/\b(?:dash(?:es)?|blinks?|leaps?)\b/i.test(text))flags.mobility=true;
   if(/(?:basic attacks|attacks) deal.{0,90}(?:bonus )?magic damage/i.test(text))flags.magicOnAttack=true;
   if(/\b(?:on.hit|on hit effects)\b/i.test(text))flags.onHit=true;
+  if(/cannot pass through enemy units/i.test(text)||(/first enemy hit|first unit hit|collid(?:es|ing) with/i.test(text)&&!/pierc(?:es|ing)|enemies hit after|subsequent (?:enemies|targets)|other enemies|pass(?:es|ing)? through/i.test(text)))flags.collision=true;
+  if(/knock(?:s|ing)? (?:them|enemies|the enemy|nearby enemies) (?:airborne|into the air)/i.test(text))flags.control=true;
+  if(/\b(?:fires?|launches?|throws?|sends?)\b.{0,100}\b(?:orb|projectile|bolt|missile|arrow|wave|shot)\b/i.test(text))flags.projectile=true;
+  if(/\b(?:targets?|targeted)\s+(?:an? |the )?enemy|\bto an enemy\b|\bthe targeted enemy\b/i.test(text))flags.targeted=true;
+  if(/becomes? untargetable|becomes? immune to (?:all )?damage|gains? immunity to (?:all )?damage|becomes? invulnerable/i.test(text))flags.immunity=true;
+  if(/immune to (?:all )?(?:crowd control|control effects)|immunity to (?:all )?(?:crowd control|control effects)/i.test(text))flags.controlImmunity=true;
+  const controlTypes=[];for(const [key,re] of Object.entries({stun:/\bstun(?:s|ning)?\b/i,root:/\broot(?:s|ing)?\b/i,charm:/\bcharm(?:s|ing)?\b/i,fear:/\bfear(?:s|ing)?\b/i,taunt:/\btaunt(?:s|ing)?\b/i,silence:/\bsilenc(?:es|ing)\b/i,polymorph:/\bpolymorph(?:s|ing)?\b/i,suppression:/\bsuppress(?:es|ing|ion)?\b/i,airborne:/knock.{0,30}(?:up|back|into the air)|airborne/i}))if(flags.control&&re.test(text))controlTypes.push(key);
   const damageTypes=['physical','magic','true'].filter(type=>new RegExp('\\b'+type+' damage\\b','i').test(text));
   const cooldown=n.find('.cooldown > span').map((_,x)=>Number($(x).text().trim())).get().filter(v=>Number.isFinite(v)&&v>0&&v<=300);
   const formTitle=n.closest('.statsBlock.abilities').parent().find('.statsBlock.champion h2').first().text();
   const form=/Shadow Assassin/i.test(formTitle)?'shadow':/Rhaast/i.test(formTitle)?'darkin':null;
-  abilityFacts.push({slot,name,flags,damageTypes,damagePackets:require('./wild-rift-semantics.cjs').damagePackets(text),...(form?{form}:{}),...(cooldown.length&&cooldown.length<=4?{baseCooldown:cooldown}:{})});
+  abilityFacts.push({slot,name,flags,controlTypes,damageTypes,damagePackets:require('./wild-rift-semantics.cjs').damagePackets(text),...(form?{form}:{}),...(cooldown.length&&cooldown.length<=4?{baseCooldown:cooldown}:{})});
  });
  if(abilityFacts.some(a=>a.flags.onHit))mechanics.onHit=true;
  if(abilityFacts.some(a=>a.flags.heal))mechanics.heal=true;
@@ -180,6 +194,11 @@ function parseEffectText(text){
   const effects={},mechanics={};
   const patterns={antiHeal:/\bGrievous Wounds\b/i,antiShield:/shield reduction|reduces? (?:any |all |their )?shields?/i,stasis:/\bstasis\b/i,revive:/\bresurrect|\brevive/i,spellShield:/spell shield|blocks? the next (?:hostile |enemy )?ability/i,cleanse:/removes? (?:all )?(?:crowd control|immobilizing)/i,critReduction:/Critical Strikes deal \d+% less damage/i,attackReduction:/Basic attacks from champions deal \d+% reduced damage/i,sustain:/\b(?:Physical Vamp|Omnivamp|Lifesteal|Life Steal)\b/i,shield:/\b(?:gain|grants?|generates?|receive)(?:\s+\w+){0,8}\s+(?:a\s+)?shield\b/i};
   for(const [key,pattern] of Object.entries(patterns))if(pattern.test(text))effects[key]=true;
+  if(effects.revive){delete effects.stasis;mechanics.defense={kind:'revive',activation:'lethal',recipient:'self'};}
+  else if(effects.stasis&&/become immune to damage|untargetable/i.test(text))mechanics.defense={kind:'stasis',activation:'manual',recipient:'self'};
+  else if(effects.cleanse){mechanics.defense={kind:'cleanse',activation:'manual',recipient:/target champion/i.test(text)?'ally':'self',excluded:[]};if(/except suppression/i.test(text))mechanics.defense.excluded.push('suppression');if(/except.{0,40}(?:airborne|knock)/i.test(text))mechanics.defense.excluded.push('airborne');}
+  else if(effects.spellShield)mechanics.defense={kind:'spellShield',activation:'nextAbility',recipient:'self'};
+  const critical=text.match(/Critical strike damage increased from \d+% to (\d+)%/i);if(critical)mechanics.criticalMultiplier=Number(critical[1])/100;
   if(effects.antiHeal)mechanics.antiHeal=/physical damage (?:dealt|to)|dealing physical damage/i.test(text)?'physicalDamage':/dealing magic damage/i.test(text)?'magicDamage':/when struck.*or dealing damage/i.test(text)?'damageOrIncomingAttack':/when (?:struck|hit) by (?:a |an )?(?:basic |normal )?attack/i.test(text)?'incomingAttack':/dealing damage|damage dealt/i.test(text)?'damage':'unknown';
   if(effects.antiShield)mechanics.antiShield=/dealing ability damage/i.test(text)?'abilityDamage':/dealing damage|when you damage/i.test(text)?'damage':'unknown';
   if(/(?:enemy|target).{0,20}max(?:imum)? Health/i.test(text))mechanics.healthDamage='maximum';
@@ -209,7 +228,7 @@ function parseItemDetails(html,entry){
     const raw=$(e).html().replace(/<br\s*\/?\s*>/gi,'\n');
     const plain=load('<div>'+raw+'</div>')('div').first().text();
     for(const text of plain.split(/\n\s*\n(?=[A-Z][\w ’'-]{1,45}:)/)){
-     const title=text.trim().match(/^(?:UNIQUE(?: -)? )?([^:]{1,55}):/i)?.[1];if(!title)continue;
+     const title=text.trim().match(/^(?:UNIQUE(?: -)? )?([^:]{1,55}?)(?::|\s-\s)/i)?.[1];if(!title)continue;
      const facts=parseEffectText(text);
      passives.push({key:title.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-'),effects:facts.effects,mechanics:facts.mechanics,...require('./wild-rift-semantics.cjs').passiveFacts(text)});
     }

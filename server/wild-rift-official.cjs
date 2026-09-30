@@ -3,7 +3,7 @@ const {normalizePatch}=require('./wild-rift-patch.cjs');
 const normalize=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const ALIASES={atwitsend:'wits-end',staffofflowingwaters:'staff-of-flowing-water',lorddominiksregards:'lord-dominiks-regard',steraksgage:'steraks-gage',yordletrap:'yordle-trap',bfsword:'bf-sword',vampiricscepterscepter:'vampiric-scepter'};
 function resolver(items){const index=new Map(Object.values(items).flatMap(i=>[[normalize(i.name),i.id],[normalize(i.id),i.id]]));return name=>index.get(normalize(name))||ALIASES[normalize(name)]||String(name).toLowerCase().replace(/[’']/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');}
-function parseOfficialItems(html,items,patch,url,checkedAt=new Date().toISOString()){
+function parseOfficialItems(html,items,patch,url,checkedAt=new Date().toISOString(),{allowSparse=false}={}){
   const $=load(html),resolve=resolver(items),facts={},removed=[];
   const declared=normalizePatch($('h1').first().text().match(/Patch Notes (\d+\.\d+[a-z]?)/i)?.[1]);
   if(declared!==patch)throw Error('Resmî eşya yaması doğrulanamadı.');
@@ -29,7 +29,7 @@ function parseOfficialItems(html,items,patch,url,checkedAt=new Date().toISOStrin
     for(const line of lines){const match=line.match(/^(\[Removed\]\s*)?(?:\[New\]\s*)?([^:]+):\s*(.*)$/);if(!match||!keys[match[2]])continue;const value=match[3].split('→').pop().trim();if(match[1])fact.stats[keys[match[2]]]=0;else if(/^\d+(?:\.\d+)?%?$/.test(value))fact.stats[keys[match[2]]]=Number(value.replace('%',''));}
     if(fact.cost||fact.recipe||patch==='7.3a')facts[id]=fact;
   }
-  if(Object.keys(facts).length<(patch==='7.3a'?4:3))throw Error('Resmî eşya değişiklikleri okunamadı.');
+  if(!allowSparse&&Object.keys(facts).length<(patch==='7.3a'?4:3))throw Error('Resmî eşya değişiklikleri okunamadı.');
   return {patch,source:url,checkedAt,items:facts,removed:[...new Set(removed)]};
 }
 function applyOfficial(data,official){

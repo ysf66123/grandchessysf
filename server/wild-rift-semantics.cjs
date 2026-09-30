@@ -18,7 +18,7 @@ function damagePackets(text){
   // A bonus-stat ratio describes scaling, not an activation condition.
   const triggerClause=clause.replace(/\([^)]*\)/g,''),conditional=/\b(?:if|when|only|every|additional|bonus|critically|out of combat|against isolated|empowered|next (?:basic )?attack)\b/i.test(triggerClause);
   const repeats=scope.match(/\b(\d+) (?:times|hits|strikes|bolts)|(?:each|per) (?:second|hit|strike)/i);
-  const crit=scope.match(/(?:critically strike|critical strikes?).{0,45}?(\d+(?:\.\d+)?)%/i);
+  const crit=scope.match(/(?:critically strikes? for|critical strikes? (?:deal|dealing))\s*(\d+(?:\.\d+)?)%\s*(?:damage|AD|Attack Damage)/i);
   packets.push({type:match[1].toLowerCase(),...(bases.length&&bases.length<=5?{baseValues:bases,baseUnit:percent?'percent':'flat'}:{}),scalings,...(healthBasis?{healthBasis}:{}),attackTriggered:/\b(?:basic attacks?|attacks?) (?:deal|inflict)/i.test(clause),conditional,...(repeats?{repeated:true,...(repeats[1]?{maxHits:Number(repeats[1])}:{}),unit:/second/i.test(repeats[0])?'perSecond':'perHit'}:{}),...(crit?{criticalMultiplier:Number(crit[1])/100}:{}),parsed:!!formula});
  }
  return packets;
