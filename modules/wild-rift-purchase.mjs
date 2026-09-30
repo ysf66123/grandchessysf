@@ -1,8 +1,8 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20260930-studio1';
-import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260930-studio1';
-import {itemFacts,itemFamily,BOOTS,SUPPORT_ITEMS,TRANSFORM_FROM,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-studio1';
-import {coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20260930-studio1';
-import {application} from './wild-rift-build-fit.mjs?v=20260930-studio1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260930-workspace2';
+import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260930-workspace2';
+import {itemFacts,itemFamily,BOOTS,SUPPORT_ITEMS,TRANSFORM_FROM,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-workspace2';
+import {coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20260930-workspace2';
+import {application} from './wild-rift-build-fit.mjs?v=20260930-workspace2';
 export function itemCost(data,id,now=Date.now()){
   return priceEvidence(data,id,now).cost;
 }

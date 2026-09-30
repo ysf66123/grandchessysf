@@ -1,6 +1,6 @@
-import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-studio1';
-import {traits} from './wild-rift-knowledge.mjs?v=20260930-studio1';
-import {ageInDays} from './wild-rift-quality.mjs?v=20260930-studio1';
+import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-workspace2';
+import {traits} from './wild-rift-knowledge.mjs?v=20260930-workspace2';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260930-workspace2';
 export function itemTotals(data,ids){
  const totals={},unknown=[],uncertainStats=new Set();
  for(const id of ids){const f=itemFacts(data,id);if(!f.known||f.conflicts.length)unknown.push(id);if(!f.known)uncertainStats.add('*');for(const key of f.conflicts)uncertainStats.add(key);for(const [k,n] of Object.entries(f.stats))if(Number.isFinite(n))totals[k]=(totals[k]||0)+n;}

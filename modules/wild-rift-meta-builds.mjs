@@ -1,10 +1,10 @@
-import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260930-studio1';
-import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-studio1';
-import {planBuild,coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20260930-studio1';
-import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20260930-studio1';
-import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20260930-studio1';
-import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20260930-studio1';
-import {traits} from './wild-rift-knowledge.mjs?v=20260930-studio1';
+import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260930-workspace2';
+import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-workspace2';
+import {planBuild,coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20260930-workspace2';
+import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20260930-workspace2';
+import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20260930-workspace2';
+import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20260930-workspace2';
+import {traits} from './wild-rift-knowledge.mjs?v=20260930-workspace2';
 
 // Compare complete, attributed templates against one stable champion/role
 // reference. A candidate must not grade its own lost damage as zero.

@@ -1,8 +1,16 @@
+## Baştan kurulan çalışma alanı — 30 Eylül 2026
+
+20260930-workspace2: Önceki renk/kart tasarımının ötesinde içerik yerleşimi yeniden kuruldu. Masaüstünde 360 px seçim rayı ve yanında analiz tuvali var; rol/lig/şampiyon, iki takım ve seçim araçları aynı panelde. Uzun panel kendi içinde kayar. Mobilde panel daraltılabilir; DOM ve seçimler korunur. Bölüm menüsü analiz alanının üstündedir.
+
+Karşı seçim ekranı ilk adayı iki bölümlü geniş karar kartında, diğerlerini iki kartta sunar. Eşya sayfası şampiyon özeti, altı yuvalı envanter ve mevcut alışveriş kararıyla başlar; altın/parça girişi hemen ardından gelir. Kaynak setleri açılır panele taşındı; gelişmiş maç ayarları ve gerekçe incelemesi aşağıdadır. Eşya görevi kart içinde açılabilir, nitelik/satın alma erişimi korunur. Boş eşya ekranında şampiyon seçme çağrısı var. Koçluk, tehditler, kaynaklar ve seçim pencereleri yeni çalışma alanına göre yeniden düzenlendi. Başlık küçültüldü; büyük dekoratif alan kaldırıldı.
+
+Yeni tarayıcı kontrolleri yan panelin masaüstünde analizin yanında olduğunu, son setin gelişmiş kontrollerden önce geldiğini, daraltmanın seçimleri koruduğunu ve bozuk görselde simgelerin kart içinde kaldığını doğrular. Tüm sekmelerin 360 px taşma denetimi, mevcut admin/çıkış, envanter/saklama/alışveriş işlemleri ve gerçek statik uygulama entegrasyonu geçti. Görseller incelendi. Canlı yayın kontrolü bekleniyor.
+
 ## Seçim stüdyosu tasarımı — 30 Eylül 2026
 
 20260930-studio1: Wild Rift arayüzü lacivert/turkuaz/altın temayla yenilendi. Geniş masaüstünde iki takım beş koridorlu panoda, bölüm menüsü solda; mobilde iki takım yan yana, eşya kartları tek sütun, yatay bölüm menüsü kaydırılabilir ve yapışkan. Seçim sayıları gerçek dolu yuvalardan gösterilir. Kontrol edilen koridor vurgulanır; ilk öneri, kaynak seti ve alışveriş kararı görsel hiyerarşi kazanır. Kaynak/şampiyon pencereleri, form alanları ve dokunma hedefleri düzenlendi.
 
-Önerilere geç düğmesi aktif analiz bölümüne kaydırır ve klavye odağını taşır; azaltılmış hareket tercihini gözetir. Ek harici yazı tipi/görsel veya seçim ağı isteği yok. 360 px mobilde bütün sekmeler taşma denetimini geçti; gerçek statik uygulama entegrasyonu, admin/çıkış, seçim saklama, eşya işlemleri, yeni geçiş odağı kontrolü başarılı. Masaüstü ve mobil görseller incelendi. Yayın kontrolü bekleniyor.
+Önerilere geç düğmesi aktif analiz bölümüne kaydırır ve klavye odağını taşır; azaltılmış hareket tercihini gözetir. Ek harici yazı tipi/görsel veya seçim ağı isteği yok. 360 px mobilde bütün sekmeler taşma denetimini geçti; gerçek statik uygulama entegrasyonu, admin/çıkış, seçim saklama, eşya işlemleri, yeni geçiş odağı kontrolü başarılı. Masaüstü ve mobil görseller incelendi. Canlı yayın doğrulandı: f90fe116cbcdad416b3875a3b37e1175f0d81f12; Pages işi https://github.com/ysf66123/grandchessysf/actions/runs/36656353708 başarılı. Canlı CSS, index, app-v2, admin erişimi ve UI dosyaları yerelle SHA-256 eşleşti. Bu sonuç yerel devam notudur.
 
 ## İki ek kritik düzeltme — 30 Eylül 2026
 
