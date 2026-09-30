@@ -1,3 +1,20 @@
+## Yetenek, eşya ve karar modeli — 30 Eylül 2026
+
+20260930-model1: Onaylanan sekiz madde ve istenen yerleşim uygulandı. Rünler, sihirdar büyüleri ve 1–15 yetenek sırası, son altı yuvalı eşya setinin hemen altında bir kez gösterilir.
+
+1. 142 şampiyonun güncel WildRiftFire yetenek panelinden taban hasar, fiziksel/büyü/gerçek hasar kanalları, AP/AD ve diğer doğrulanabilen ölçekler ayrıştırılır. Yetenek iyileşme ölçekleri hasar ölçeği sayılmaz. Motor bu kayıtları kaynak eşya profiliyle birleştirir; birleşik DPS veya gerçek maç hasarı iddiası yoktur. Eksik/koşullu kayıtlar kesin hasar olarak doldurulmaz.
+2. Adlandırılmış normal pasifler de ayrıştırılır; tetikleyici, birikim sınırı, bekleme, süre, yakınlık, can eşiği ve aynı hedef koşulları tutulur. Saldırıyla biriken pasifler, bu düzene uygun olmayan şampiyonlarda tam katkı sayılmaz. Şampiyona gerçek uygulanmayan etki hedefe sürekli uygulanmış kabul edilmez.
+3. Kayn’ın Gölge Suikastçı ve Rhaast panelleri ayrılır; kaynak seti/biçimi seçilince ilgili yetenekler kullanılır. Saldırı sıfırlama, sabit saldırı ritmi, manasızlık ve Kai’Sa tam eşya gelişimi ana düzen/güçlenme zamanı kurallarıyla korunur. Bilinmeyen menzil sınıfı tahmin edilmez.
+4. Rakibin aynı roldeki güncel, geçerli tam kaynak setleri; görülen eşya örtüşmesi ve farklı hasar/oynanış düzeni açısından karşılaştırılır. En fazla üç farklı senaryo ve elle kaynak seçimi vardır. Olası setler alınmış eşya değildir; kritik, can ve direnç yatırımı sadece görülen eşyadan gelir. Senaryo profilleri önbelleklidir; tam set karşılaştırmaları tek tehdit bağlamını paylaşır.
+5. Yedi üçüncü aşama botun fiyat/tarif/nitelik zinciri Riot 7.2, 7.2a–e, 7.3 ve 7.3a belgeleriyle kontrol edilir. 7.2e belgesinin gerçek URL'si patch-notes-72e şeklindedir. 10. dakika ve ana bot sahipliği gerekir; aynı yuva içinde yükseltilir. Ana eşya hemen tamamlanabiliyorsa önceliklidir. Bot harcamasının ana eşya rotasına bedeli gösterilir. Alınan yükseltme aynı kartta görünür; tekrar aldırılmaz. Eski/eksik/yeni yama zinciri otomatik yükseltmeyi kapatır.
+6. Resmî son yamanın şampiyon/eşya etki listesi ve içerik hash'i tutulur. Eski içerik tarihli etkilenmiş rehber otomatik seçimden çıkarılır; sayfa başlığının yeni olması tek başına yeniden doğrulama değildir. Durum kaynak tablosunda görünür. Etki kapsamı okunamazsa sayfa başlığı temelli rehber otomatik kabul edilmez.
+7. Kaynak ve beklenen sınır içeren sürümlü kalite senaryoları tests/fixtures/wild-rift-quality-scenarios.json dosyasında bulunur. Yoğun büyü, kalkanlı takım, gerçek/bilinmeyen kritik yatırımı, Kai’Sa, Jhin ve destek geliri senaryoları; ayrıca eski rehber karantinası, biçimler ve bot zaman/bütçe/yuva kontrolleri eklendi. Oyun sonucuna ait uydurma doğruluk yüzdesi üretilmez.
+8. “Bu karar hangi bilgilerle değişebilir?” alanı; rakip biçimi, gerçek direnç satın alımı, önde olan rakip, satın alınmış eşya, maç aşaması ve bot açılma koşullarını açıklar. Koşullar kesin bir sonraki satın alma tahmini değildir.
+
+Doğrulama: 187 birim/HTTP testi, genişletilmiş tarayıcı akışı (aynı yuvada bot yükseltmesi, son set altında tek rün/yetenek paneli, 360 px görünüm, ek seçim ağı isteği yok) ve gerçek Pages paketi entegrasyonu geçti. Mobil rün/yetenek paneli görsel olarak incelendi. Veri: 142 şampiyon, 684 sayısal yetenek hasar kaydı, 93 eşyada yapılandırılmış pasif; 7 bot gelişimi. Paket yaklaşık 3,21 MB ham / 204 KB gzip.
+
+Güncelleyicinin normal bilgisayar akışı ve hedefli yeniden ayrıştırma aynı modeli kullanır; önceki verinin gerçek kontrol tarihleri korunur. GitHub Pages yayın düzeni ve yönetici erişimi korunur. Sayısal veriler kaynak gösterilir; kaynak metinleri topluca kopyalanmaz.
+
 ## Kanıt, tam set ve yetenek paketi — 30 Eylül 2026
 
 20260930-evidence1: Onaylanan dokuz başlık uygulandı. Fire istatistikleri 30 Eylül / 7.3a olarak gerçekten yenilendi. WR-META açık rehberleri: 139/142 şampiyonda 175 doğrulanmış altı yuvalı set; 171 setin kendi rünleri ve 170 setin kendi yetenek sırası var. Diğerleri Fire rehberine açık kaynak atfıyla döner. Amumu/Nunu kaynak setindeki Searing Crown ve Twisted Fate setindeki Magnetic Blaster güncel kataloğa alınmadı; bu üç şampiyonda üçüncü tam set kaynağı kapalıdır. Mevcut diğer rehberler kullanılabilir. WR-META karşı seçim kartlarının kapsamı ayrı olarak 142/142'dir.
@@ -10,7 +27,7 @@
 
 Güncelleyicinin normal akışı üçüncü tam set kaynağını korur; Core yenilemesi Meta setlerini silmez. Hatalı rol, URL, yuva, çakışan pasif, bilinmeyen/kaldırılmış eşya veya tekrarlı ek rehber yayın öncesinde dışlanır. Önbellek yeniden ayrıştırılınca özgün kontrol tarihi korunur. Ham kamuya açık kaynak önbelleği, sunucu zaman damgası yokken de sonraki ayrıştırma için tutulur; ağ hatası başarılı kontrol sayılmaz. İçerik hash'i kontrol saatinden etkilenmez. Veri yaklaşık 3,03 MB ham / 188 KB gzip; seçimlerde ek veri isteği yok.
 
-Doğrulama: 172 birim/HTTP testi, üçüncü set seçimi ve Türkçe rünler, 360 px açık veri kartı taşma denetimi dahil tarayıcı akışı, gerçek Pages paketi entegrasyonu geçti. Admin/çıkış, satın alınan eşya, eski veri, hatalı kaynak, bütçe, koridor ve statik yenileme kontrolleri korunur. Yayın sonucu aşağıda tamamlanacaktır.
+Doğrulama: 172 birim/HTTP testi, üçüncü set seçimi ve Türkçe rünler, 360 px açık veri kartı taşma denetimi dahil tarayıcı akışı, gerçek Pages paketi entegrasyonu geçti. Admin/çıkış, satın alınan eşya, eski veri, hatalı kaynak, bütçe, koridor ve statik yenileme kontrolleri korunur. Canlı yayın doğrulandı: fd17e823007eedeff604163b8e9303408fd9c4d3. Pages işi https://github.com/ysf66123/grandchessysf/actions/runs/36719641186 başarılı. Canlı index, app-v2, admin erişimi, ana UI, yeni rün/bot modülü, kaynak arayüzü, kalite kuralları ve JSON veri paketi yerelle SHA-256 eşleşti. Bu doğrulama sonucu yerel devam notudur.
 
 ## Baştan kurulan çalışma alanı — 30 Eylül 2026
 
@@ -149,3 +166,4 @@ Yayın sonucu son kullanıcı mesajında ve GitHub Actions geçmişinde doğrula
 Kod `28ccf78` commit'iyle GitHub main dalına gönderildi. Pages yayın kaynağı başarıyla `workflow` yapıldı. İlk yayın işi: https://github.com/ysf66123/grandchessysf/actions/runs/35859364706
 
 GitHub iş açıklaması: “The job was not started because your account is locked due to a billing issue.” Bu hesap kilidi çözülmeden Actions dağıtımı ve zamanlanmış tarama çalışmaz. Kullanıcının GitHub faturalandırma engelini çözmesi gerekir; ödeme veya hesap ayarı değiştirilmedi. Engel kalkınca Actions → Site yayını ve Wild Rift verileri → Run workflow ile tarama ve yayın birlikte başlatılır. Eski canlı yayının güncellendiği iddia edilmemelidir.
+

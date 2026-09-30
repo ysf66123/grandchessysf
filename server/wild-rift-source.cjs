@@ -110,7 +110,9 @@ function parseChampionFacts(html,champion){
   if(/\b(?:on.hit|on hit effects)\b/i.test(text))flags.onHit=true;
   const damageTypes=['physical','magic','true'].filter(type=>new RegExp('\\b'+type+' damage\\b','i').test(text));
   const cooldown=n.find('.cooldown > span').map((_,x)=>Number($(x).text().trim())).get().filter(v=>Number.isFinite(v)&&v>0&&v<=300);
-  abilityFacts.push({slot,name,flags,damageTypes,...(cooldown.length&&cooldown.length<=4?{baseCooldown:cooldown}:{})});
+  const formTitle=n.closest('.statsBlock.abilities').parent().find('.statsBlock.champion h2').first().text();
+  const form=/Shadow Assassin/i.test(formTitle)?'shadow':/Rhaast/i.test(formTitle)?'darkin':null;
+  abilityFacts.push({slot,name,flags,damageTypes,damagePackets:require('./wild-rift-semantics.cjs').damagePackets(text),...(form?{form}:{}),...(cooldown.length&&cooldown.length<=4?{baseCooldown:cooldown}:{})});
  });
  if(abilityFacts.some(a=>a.flags.onHit))mechanics.onHit=true;
  if(abilityFacts.some(a=>a.flags.heal))mechanics.heal=true;
@@ -159,7 +161,7 @@ function parseGuide(html,champion) {
   return {builds,items,tags,combatFacts,contentHash:hash(JSON.stringify({builds,items,tags,combatFacts:combatFacts?{...combatFacts,checkedAt:undefined}:null})),fetchedAt:new Date().toISOString()};
 }
 function parseItemCatalog(html){
-  const $=load(html),patch=$('title').text().match(/Patch (\d+\.\d+[a-z]?)/)?.[1],entries=new Map();
+  const $=load(html),patch=normalizePatch($('title').text().match(/Patch (\d+\.\d+[a-z]?)/i)?.[1]),entries=new Map();
   if(!patch)throw Error('Eşya kataloğunun yaması bulunamadı.');
   $('.ico-holder[data-id]').each((_,e)=>{
     const src=$(e).find('img[src*="/items/"]').first().attr('src'),sourceId=Number($(e).attr('data-id'));
@@ -201,10 +203,13 @@ function parseItemDetails(html,entry){
   });
   const text=$('.tt__info').text().replace(/\s+/g,' '),passives=[];
   $('.tt__info__uniques > span').each((_,e)=>{
-    const text=$(e).text().replace(/\s+/g,' ').trim(),title=text.match(/^UNIQUE(?: -)? ([^:]+):/i)?.[1];
-    if(!title)return;
-    const facts=parseEffectText(text),duration=Number(text.match(/\bfor (\d+(?:\.\d+)?) seconds\b/i)?.[1]),stacks=Number(text.match(/\bstacks?[^.]{0,30}up to (\d+)\b/i)?.[1]),cooldown=Number(text.match(/\((\d+(?:\.\d+)?)s Cooldown\)|\bCooldown: (\d+(?:\.\d+)?)s\b/i)?.slice(1).find(Boolean));
-    passives.push({key:slug(title),effects:facts.effects,mechanics:facts.mechanics,...(duration>0&&duration<=120?{duration}:{}),...(stacks>1&&stacks<=100?{maxStacks:stacks}:{}),...(cooldown>0&&cooldown<=300?{cooldown}:{})});
+    const raw=$(e).html().replace(/<br\s*\/?\s*>/gi,'\n');
+    const plain=load('<div>'+raw+'</div>')('div').first().text();
+    for(const text of plain.split(/\n\s*\n(?=[A-Z][\w ’'-]{1,45}:)/)){
+     const title=text.trim().match(/^(?:UNIQUE(?: -)? )?([^:]{1,55}):/i)?.[1];if(!title)continue;
+     const facts=parseEffectText(text);
+     passives.push({key:title.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-'),effects:facts.effects,mechanics:facts.mechanics,...require('./wild-rift-semantics.cjs').passiveFacts(text)});
+    }
   });
   return {cost,stats,passives,...parseEffectText(text),costSource:BASE+`/ajax/tooltip?relation_type=Item&relation_id=${entry.sourceId}&lang=en`};
 }

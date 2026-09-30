@@ -1,8 +1,9 @@
-import {traits,CONDITIONS} from './wild-rift-knowledge.mjs?v=20260930-evidence1';
-import {itemAvailability,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-evidence1';
-import {guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260930-evidence1';
-import {ITEM_ROLES,itemFacts,itemConflicts,itemFamily,BOOTS,SUPPORT_ITEMS,NEED_LABELS,rulesUsable,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20260930-evidence1';
-import {championProfile,combatFacts,application,incompatibleItem,buildFit} from './wild-rift-build-fit.mjs?v=20260930-evidence1';
+import {traits,CONDITIONS} from './wild-rift-knowledge.mjs?v=20260930-model1';
+import {itemAvailability,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-model1';
+import {guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260930-model1';
+import {ITEM_ROLES,itemFacts,itemConflicts,itemFamily,BOOTS,SUPPORT_ITEMS,NEED_LABELS,rulesUsable,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20260930-model1';
+import {championProfile,combatFacts,application,incompatibleItem,buildFit} from './wild-rift-build-fit.mjs?v=20260930-model1';
+import {enemyBuildScenarios} from './wild-rift-enemy-scenarios.mjs?v=20260930-model1';
 const ENCHANTERS=new Set('janna karma lulu milio nami sona soraka yuumi'.split(' '));
 const STRONG_HEAL=new Set('aatrox dr-mundo kayn soraka swain vladimir warwick yuumi'.split(' '));
 const STRONG_SHIELD=new Set('janna karma lulu sett shen'.split(' '));
@@ -17,8 +18,8 @@ export function buildContext(data,draft,scenarios){
   const keys={},gear=(draft.enemyItems?.[id]||[]).filter(i=>itemAvailability(data,i)),stats={armor:0,magicResist:0,crit:0,ad:0,ap:0,health:0,attackSpeed:0},effects={},unknown=[];
   for(const item of gear){const fact=itemFacts(data,item);for(const k of Object.keys(stats))stats[k]+=fact.stats[k]||0;Object.assign(effects,fact.effects);if(!fact.known||fact.conflicts.length)unknown.push(item);}
   const native=combatFacts(data,c,draft.enemyLevels?.[id]);
-  const enemyGuide=c.builds.find(b=>b.role===role),enemyProfile=enemyGuide?championProfile(data,c,enemyGuide):null;
-  const damage=enemyProfile?.threatDamage||enemyProfile?.damage||(t.magic?'magic':t.mixed?'mixed':t.attack?'physical':'unknown');
+  const buildScenarios=enemyBuildScenarios(data,c,role,gear,draft.enemyVariants?.[id]),enemyProfile=buildScenarios.scenarios[0]?.profile;
+  const damage=buildScenarios.possibleDamage.length>1?'mixed':enemyProfile?.threatDamage||enemyProfile?.damage||(t.magic?'magic':t.mixed?'mixed':t.attack?'physical':'unknown');
   const supportDamage=role==='support'&&ENCHANTERS.has(id)?.35:1;
   // Observed substantial AP/AD investment can qualify the usual damage profile.
   const magic=damage==='magic'?1:damage==='mixed'?.5:0,physical=damage==='physical'?1:damage==='mixed'?.5:0;
@@ -27,6 +28,7 @@ export function buildContext(data,draft,scenarios){
   keys.attack=Math.max(keys.attack,Math.min(1.5,stats.attackSpeed/60));
   keys.health=Math.min(1.8,stats.health/700);keys.trueDamage=native?.trueDamage?1:0;
   keys.heal=Math.max(t.heal?(STRONG_HEAL.has(id)?1.4:1):0,effects.sustain?.8:0);
+  if(id==='kayn'&&enemyProfile?.ability.form==='shadow')keys.heal=Math.max(.35,effects.sustain?.8:0);
   keys.shield=Math.max(t.shield?(STRONG_SHIELD.has(id)?1.25:.75):0,effects.shield?.9:0);
   keys.critical=stats.crit>0?Math.min(1.5,stats.crit/25):0;
   keys.armor=Math.min(1.8,stats.armor/70+Math.max(0,(native?.atLevel.armor||0)-60)/130);
@@ -42,7 +44,7 @@ export function buildContext(data,draft,scenarios){
   for(const need of ['heal','shield'])keys[need]*=1-(applied[need]||0);
   const targetWeight=draft.targetEnemy===id?1.35:1;
   for(const k of Object.keys(pressure))pressure[k]+=keys[k]*weight*(['health','armor','magicResist','heal','shield'].includes(k)?targetWeight:1);
-  rows.push({id,name:c.name,role,lane,uncertain,fed:draft.fed===id,target:draft.targetEnemy===id,weight,keys,gear,stats,native,unknown,damage,inventoryKnown:gear.length>0});
+  rows.push({id,name:c.name,role,lane,uncertain,fed:draft.fed===id,target:draft.targetEnemy===id,weight,keys,gear,stats,native,unknown,damage,buildScenarios,inventoryKnown:gear.length>0});
  }
  const coverage=draft.teamCoverage||{};
  const own=data.champions.find(c=>c.id===draft.blue[draft.role]),native=combatFacts(data,own)?.mechanics;
@@ -59,6 +61,10 @@ function cover(id,data,profile){
  if(facts.effects.antiShield)result.shield=application(data,id,profile,'shield').factor;
  if(facts.mechanics.healthDamage)result.health=facts.mechanics.onHit&&!profile.attack?.45:1;
  if(facts.mechanics.requiresAttacks&&profile.native?.fixedAttackRate)for(const k of ['health','tank','armor','magicResist'])if(result[k])result[k]*=.5;
+ for(const passive of facts.passives){
+  if(passive.trigger==='attack'&&passive.maxStacks&&!profile.attack)for(const key of ['health','tank','armor','magicResist'])if(result[key])result[key]*=.6;
+  if(passive.conditions?.includes('sameTarget')&&passive.maxStacks)for(const key of ['armor','magicResist'])if(result[key])result[key]*=.8;
+ }
  return result;
 }
 export function coverage(items,data,profile){
@@ -77,9 +83,9 @@ export function contextUtility(pressure,cov,draft){
   return sum+value*(cov[key]||0)*FACTOR[key]*mode*state;
  },0);
 }
-export function planBuild(data,draft,champion,base,scenarios){
+export function planBuild(data,draft,champion,base,scenarios,sharedContext=null){
  const quality=guideQuality(data,champion,draft.role,Date.now(),base.guideId),current=quality.usable,rulesCurrent=rulesUsable(data);
- const context=buildContext(data,draft,scenarios),profile=championProfile(data,champion,base),p=context.pressure,protectedCore=new Set(base.core.slice(0,2).map(itemFamily)),alternatives=[],rejected=[];
+ const context=sharedContext||buildContext(data,draft,scenarios),profile=championProfile(data,champion,base),p=context.pressure,protectedCore=new Set(base.core.slice(0,2).map(itemFamily)),alternatives=[],rejected=[];
  const maxChanges=draft.adaptation==='extended'?3:2;
  const boot=base.final.find(id=>BOOTS.includes(id));
  function add(from,to,condition,kind='guide',source=base.source){

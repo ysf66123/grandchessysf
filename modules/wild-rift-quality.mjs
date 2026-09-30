@@ -16,8 +16,14 @@ export function guideQuality(data,champion,role,now=Date.now(),variant=''){
   if(editorialBeforePatch)issues.push('Yama etiketi sayfa başlığından alındı; rehberin yayımlanan düzenleme tarihi son yamadan önce.');
   const normalized=build?.sourceSlotCount===7||build?.situational?.some(s=>s.condition==='Active item alternative');
   if(normalized)issues.push('Kaynak yedi eşya verdi; altı yuvalı dizilime dönüştürüldü. Son yuva ayrıca kontrol edilmeli.');
-  const usable=!!build&&(build.patch===data.latestPatch?.version||reviewed)&&!failed&&ageInDays(fetchedAt,now)<=7;
-  return {usable,normalized,reviewed,editorialBeforePatch,issues,level:!usable?'old':normalized||reviewed||editorialBeforePatch?'limited':'current',label:!usable?'Doğrulama bekliyor':normalized?'Kaynakta tutarsızlık var':reviewed?'Ara yama uyumluluğu kontrol edildi':editorialBeforePatch?'İçerik tarihi ile yama etiketi ayrı':'Yama ve tarih uyumlu'};
+  const impact=data.patchImpact,affected=impact?.patch===data.latestPatch.version&&impact.scopeVerified&&((impact.champions||[]).includes(champion?.id)||build?.final.some(id=>(impact.items||[]).includes(id)));
+  const editTime=Date.parse(build?.updatedAt),patchTime=Date.parse(data.latestPatch?.publishedAt);
+  const quarantined=!!affected&&Number.isFinite(patchTime)&&(Number.isFinite(editTime)?editTime<patchTime:build?.provenance?.patchScope==='page-header');
+  const impactUnknown=build?.provenance?.patchScope==='page-header'&&impact?.scopeVerified===false;
+  if(quarantined)issues.push('Şampiyon veya setin eşyası son yamada değişti; içerik tarihi eski olduğundan yeniden doğrulanana kadar otomatik öneri dışında.');
+  if(impactUnknown)issues.push('Resmî yamanın etki kapsamı okunamadı; sayfa başlığı tek başına yeterli doğrulama değil.');
+  const usable=!!build&&(build.patch===data.latestPatch?.version||reviewed)&&!failed&&!quarantined&&!impactUnknown&&ageInDays(fetchedAt,now)<=7;
+  return {usable,quarantined,affected,impactUnknown,normalized,reviewed,editorialBeforePatch,issues,level:!usable?'old':normalized||reviewed||editorialBeforePatch?'limited':'current',label:quarantined?'Yama değişikliği için yeniden doğrulama bekliyor':!usable?'Doğrulama bekliyor':normalized?'Kaynakta tutarsızlık var':reviewed?'Ara yama uyumluluğu kontrol edildi':editorialBeforePatch?'İçerik tarihi ile yama etiketi ayrı':'Yama ve tarih uyumlu'};
 }
 export function championBuilds(champion){return [...(champion?.builds||[]),...(champion?.sourceBuilds||[])];}
 export function dataQuality(data,now=Date.now()){

@@ -18,8 +18,9 @@ withUpdateLock(file,async()=>{
  if(!process.argv.includes('--cached-meta-only'))await Promise.all([worker(),worker()]);
  console.log('Eşya pasifleri kontrol ediliyor');
  if(!process.argv.includes('--native-only')&&!process.argv.includes('--cached-meta-only')&&!process.argv.includes('--cached-native-only'))data.itemCatalog=await require('../server/wild-rift-items.cjs').enrichItems(data.items,{previous:structuredClone(data.items)});
+ await require('../server/wild-rift-model-update.cjs').refreshModelEvidence(data,source.fetchText);
  data.itemRegistry=require('../server/wild-rift-registry.cjs').buildRegistry(data);
- data.methodologyVersion=5;data.localRevisionAt=new Date().toISOString();
+ data.methodologyVersion=6;data.localRevisionAt=new Date().toISOString();
  provider.buildFailures=Object.entries(provider.pages).filter(([,p])=>p.buildFailure||p.status==='failed').map(([id])=>id);
  require('../server/wild-rift-audit.cjs').auditSnapshot(data);
  require('../server/wild-rift-store.cjs').validateSnapshot(data);

@@ -1,14 +1,14 @@
-import {combatFacts} from './wild-rift-build-fit.mjs?v=20260930-evidence1';
-import {evaluateMatchup,mechanicalContext,duoContext} from './wild-rift-counters.mjs?v=20260930-evidence1';
-import {planBuild} from './wild-rift-build-planner.mjs?v=20260930-evidence1';
-import {selectMetaBuild} from './wild-rift-meta-builds.mjs?v=20260930-evidence1';
-import {PHASES,BUILD_PRIORITIES} from './wild-rift-item-rules.mjs?v=20260930-evidence1';
-import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260930-evidence1';
-import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260930-evidence1';
-import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-evidence1';
+import {combatFacts} from './wild-rift-build-fit.mjs?v=20260930-model1';
+import {evaluateMatchup,mechanicalContext,duoContext} from './wild-rift-counters.mjs?v=20260930-model1';
+import {planBuild} from './wild-rift-build-planner.mjs?v=20260930-model1';
+import {selectMetaBuild} from './wild-rift-meta-builds.mjs?v=20260930-model1';
+import {PHASES,BUILD_PRIORITIES} from './wild-rift-item-rules.mjs?v=20260930-model1';
+import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260930-model1';
+import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260930-model1';
+import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-model1';
 export {ROLES};
 export const SORT_MODES={balanced:'Dengeli öneri',lane:'Koridor eşleşmesi',team:'Takım uyumu',safe:'Güvenli seçim'};
-export const emptyDraft=()=>({blue:{},red:{},role:'mid',rank:'diamond',bans:[],pool:[],fed:'',targetEnemy:'',locked:[],tab:'counters',uncertain:[],comfort:{},sort:'balanced',overrides:{},compare:[],gold:0,owned:[],enemyItems:{},variant:'',phase:'draft',buildPriority:'balanced',teamCoverage:{heal:false,shield:false},teamAssignments:[],enemyLevels:{},purchaseTarget:'',ownState:'even',adaptation:'standard'});
+export const emptyDraft=()=>({blue:{},red:{},role:'mid',rank:'diamond',bans:[],pool:[],fed:'',targetEnemy:'',locked:[],tab:'counters',uncertain:[],comfort:{},sort:'balanced',overrides:{},compare:[],gold:0,owned:[],enemyItems:{},variant:'',phase:'draft',buildPriority:'balanced',teamCoverage:{heal:false,shield:false},teamAssignments:[],enemyLevels:{},enemyVariants:{},matchMinutes:null,upgradedBoot:'',purchaseTarget:'',ownState:'even',adaptation:'standard'});
 export function sanitizeDraft(value,data){
   const d=emptyDraft(),ids=new Set(data.champions.map(c=>c.id));
   if(!value || typeof value!=='object')return d;
@@ -36,6 +36,9 @@ export function sanitizeDraft(value,data){
   if(['standard','extended'].includes(value.adaptation))d.adaptation=value.adaptation;
   if(itemAvailability(data,value.purchaseTarget))d.purchaseTarget=value.purchaseTarget;
   for(const id of Object.values(d.red))if(Number.isInteger(value.enemyLevels?.[id])&&value.enemyLevels[id]>=1&&value.enemyLevels[id]<=15)d.enemyLevels[id]=value.enemyLevels[id];
+  for(const [role,id] of Object.entries(d.red))if(championBuilds(data.champions.find(c=>c.id===id)).some(b=>b.role===role&&b.guideId===value.enemyVariants?.[id]))d.enemyVariants[id]=value.enemyVariants[id];
+  if(Number.isFinite(value.matchMinutes)&&value.matchMinutes>=0&&value.matchMinutes<=120)d.matchMinutes=value.matchMinutes;
+  if(data.bootUpgrades?.byParent[value.upgradedBoot]&&(d.locked.includes(value.upgradedBoot)||d.owned.includes(value.upgradedBoot)))d.upgradedBoot=value.upgradedBoot;
   d.teamAssignments=(Array.isArray(value.teamAssignments)?value.teamAssignments:[]).filter(a=>Object.values(d.blue).includes(a.ally)&&a.ally!==d.blue[d.role]&&itemAvailability(data,a.item)&&Object.values(d.red).includes(a.target)).slice(0,10).map(a=>({ally:a.ally,item:a.item,target:a.target}));
   const own=data.champions.find(c=>c.id===d.blue[d.role]);
   if(championBuilds(own).some(b=>b.role===d.role&&b.guideId===value.variant))d.variant=value.variant;

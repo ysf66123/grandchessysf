@@ -1,11 +1,12 @@
-import {sourceConditionFit,loadoutAdvice,bootUpgradeAdvice} from './wild-rift-loadout.mjs?v=20260930-evidence1';
-import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260930-evidence1';
-import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-evidence1';
-import {planBuild,coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20260930-evidence1';
-import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20260930-evidence1';
-import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20260930-evidence1';
-import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20260930-evidence1';
-import {traits} from './wild-rift-knowledge.mjs?v=20260930-evidence1';
+import {sourceConditionFit,loadoutAdvice,bootUpgradeAdvice} from './wild-rift-loadout.mjs?v=20260930-model1';
+import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260930-model1';
+import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-model1';
+import {planBuild,buildContext,coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20260930-model1';
+import {decisionConditions} from './wild-rift-decision-conditions.mjs?v=20260930-model1';
+import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20260930-model1';
+import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20260930-model1';
+import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20260930-model1';
+import {traits} from './wild-rift-knowledge.mjs?v=20260930-model1';
 
 // Compare complete, attributed templates against one stable champion/role
 // reference. A candidate must not grade its own lost damage as zero.
@@ -13,7 +14,7 @@ export function selectMetaBuild(data,draft,champion,reference,scenarios){
  const fallback=()=>planBuild(data,draft,champion,reference,scenarios);
  if(!rulesUsable(data))return fallback();
  const primary=champion.builds.find(b=>b.role===draft.role&&guideQuality(data,champion,b.role,Date.now(),b.guideId).usable&&finalBuildAvailable(data,b.final))||reference;
- const profile=championProfile(data,champion,primary),seen=new Set(),evaluated=[],excluded=[],native=traits(champion);
+ const profile=championProfile(data,champion,primary),seen=new Set(),evaluated=[],excluded=[],native=traits(champion),context=buildContext(data,draft,scenarios);
  const guides=championBuilds(champion).filter(b=>b.role===draft.role&&guideQuality(data,champion,b.role,Date.now(),b.guideId).usable&&finalBuildAvailable(data,b.final));
  for(const guide of guides.slice(0,16)){
   const identity=[...guide.final].sort().join('|')+'|'+(guide.usageConditions||[]).map(c=>c.key).join(',');if(seen.has(identity)&&guide.guideId!==draft.variant)continue;seen.add(identity);
@@ -26,7 +27,7 @@ export function selectMetaBuild(data,draft,champion,reference,scenarios){
    (!nativeAlternative&&profile.kind==='crit'&&(candidateProfile.stats.crit||0)+candidateProfile.scalingCrit<((profile.stats.crit||0)+profile.scalingCrit)*.6)||
    (profile.kind==='onHit'&&!candidateProfile.attack);
   if(wrongStyle&&guide.guideId!==draft.variant){excluded.push({guideId:guide.guideId,reason:'Şampiyonun bu roldeki hasar veya takım görevi değişiyor.'});continue;}
-  const r=planBuild(data,draft,champion,guide,scenarios);
+  const r=planBuild(data,draft,champion,guide,scenarios,context);
   if(r.missing){excluded.push({guideId:guide.guideId,reason:'Satın aldığın eşyalar bu kaynak setine yerleştirilemiyor.'});continue;}
   const styleChanged=candidateProfile.style!==profile.style;
   // An attributed alternative native play style has its own stat goals. Charge
@@ -66,6 +67,7 @@ export function selectMetaBuild(data,draft,champion,reference,scenarios){
   reason:draft.variant?'Seçtiğin kaynak seti korunarak rakiplere uyarlandı.':winner.guideId===primary.guideId?'Ana meta seti, rakip ihtiyaçları ve vazgeçilen eşya katkısı birlikte değerlendirilince korundu.':'Güncel kaynak setleri karşılaştırıldı; bu set koridor ve takım ihtiyaçlarına daha uygun bulundu.',
   basis:'Bu sıralama kaynak rehberleri ve açıklanabilir eşya kurallarıdır; ölçülmüş kazanma oranı veya hasar simülasyonu değildir.'};
  if(alternatives.length&&Math.abs(winner.score-alternatives[0].score)<.8&&result.confidence.level!=='limited')result.confidence={...result.confidence,level:'close',label:'Tam setler arasında yakın tercih'};
+ result.decisionConditions=decisionConditions(result,draft);
  return result;
 }
 function describe(c){const {result,score,...publicData}=c;return publicData;}

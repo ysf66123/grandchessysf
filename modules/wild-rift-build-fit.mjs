@@ -1,6 +1,7 @@
-import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-evidence1';
-import {traits} from './wild-rift-knowledge.mjs?v=20260930-evidence1';
-import {ageInDays} from './wild-rift-quality.mjs?v=20260930-evidence1';
+import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-model1';
+import {traits} from './wild-rift-knowledge.mjs?v=20260930-model1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260930-model1';
+import {abilityProfile} from './wild-rift-ability-profile.mjs?v=20260930-model1';
 export function itemTotals(data,ids){
  const totals={},unknown=[],uncertainStats=new Set();
  for(const id of ids){const f=itemFacts(data,id);if(!f.known||f.conflicts.length)unknown.push(id);if(!f.known)uncertainStats.add('*');for(const key of f.conflicts)uncertainStats.add(key);for(const [k,n] of Object.entries(f.stats))if(Number.isFinite(n))totals[k]=(totals[k]||0)+n;}
@@ -16,7 +17,8 @@ export function championProfile(data,champion,base){
  const total=itemTotals(data,base.final.filter(id=>!BOOTS.includes(id))),s=total.stats,t=traits(champion),combat=combatFacts(data,champion);
  const native=combat?.mechanics||{},ap=s.ap||0,ad=s.ad||0,attack=!!native.magicOnAttack||(s.attackSpeed||0)>=35||(s.crit||0)>=40||base.core.some(id=>['blade-of-the-ruined-king','guinsoos-rageblade','nashors-tooth','kraken-slayer'].includes(id));
  const mixed=ap>=70&&ad>=50;
- const damage=mixed?'mixed':ap>ad*1.25&&ap>=70?'magic':ad>=50?'physical':t.magic?'magic':t.mixed?'mixed':t.attack?'physical':'unknown';
+ const ability=abilityProfile(combat,s,attack,base);
+ const damage=ability.damage||(mixed?'mixed':ap>ad*1.25&&ap>=70?'magic':ad>=50?'physical':t.magic?'magic':t.mixed?'mixed':t.attack?'physical':'unknown');
  const support=base.role==='support'&&base.final.some(id=>SUPPORT_ITEMS.includes(id));
  const tank=(s.armor||0)+(s.magicResist||0)>=100&&ad<110&&ap<140;
  const kind=support?(tank?'supportTank':'support'):tank?'tank':mixed?'hybrid':damage==='magic'?(attack?'onHitMage':'mage'):attack?((s.crit||0)+total.scalingCrit>=50?'crit':'onHit'):'fighter';
@@ -26,7 +28,7 @@ export function championProfile(data,champion,base){
  const coreFacts=core.map(id=>itemFacts(data,id)),sustained=coreFacts.some(f=>f.mechanics.healthDamage)||onHit;
  const style=native.fixedAttackRate?'fixedAttack':support?kind:tank?'tank':kind==='crit'?'crit':onHit?'onHit':damage==='magic'?(sustained?'sustainedMage':'burstMage'):'adCaster';
  const styleLabels={fixedAttack:'Sabit saldırı ritmi',support:'Koruyucu destek',supportTank:'Ön saf desteği',tank:'Dayanıklı ön saf',crit:'Kritik vuruş',onHit:'Vuruş etkisi',sustainedMage:'Sürekli büyü hasarı',burstMage:'Yetenek ve ani büyü hasarı',adCaster:'Fiziksel yetenek / dövüşçü'};
- return {kind,label:styleLabels[style]||labels[kind],style,damage,threatDamage:t.mixed?'mixed':damage,attack,support,tank,spellblade,onHit,sustained,native,scalingCrit:total.scalingCrit,usesMana:combat?.usesMana??null,stats:s,unknown:total.unknown,champion,
+ return {kind,label:styleLabels[style]||labels[kind],style,damage,threatDamage:ability.damage|| (t.mixed?'mixed':damage),ability,attack,support,tank,spellblade,onHit,sustained,native,scalingCrit:total.scalingCrit,usesMana:combat?.usesMana??null,stats:s,unknown:total.unknown,champion,
   signature:core.filter(id=>itemFacts(data,id).mechanics.spellblade||['guinsoos-rageblade','nashors-tooth'].includes(id)),evidence:combat?.source||base.source};
 }
 export function application(data,id,profile,need){
@@ -74,6 +76,9 @@ export function buildFit(data,items,profile){
  if(profile.usesMana===false&&(s.mana||0)>(b.mana||0))penalty+=.8;
  const warnings=uncertainStats.length?['Yeni sette '+uncertainStats.join(', ')+' toplamı doğrulanamadı; katkı kaybı kesin sayı olarak gösterilmiyor.']:[];
  if(rulesUsable(data)){
+  if(profile.native?.attackReset&&profile.spellblade&&!items.some(id=>itemFacts(data,id).mechanics.spellblade)){penalty+=.5;warnings.push('Kaynakta saldırı sıfırlama var; güçlendirilmiş saldırı düzeninin kaybı ek maliyet taşıyor.');}
+  if(profile.native?.completedItemEvolution&&profile.champion?.id==='kaisa'&&profile.signature.some(id=>!items.includes(id))){penalty+=.5;warnings.push('Tam eşya ile yetenek gelişimi düzeni değişiyor; kaynak ana eşyalarını ve tamamlama zamanını koru.');}
+  if(profile.ability?.forms.length>1&&!profile.ability.form)warnings.push('Şampiyonun biçimi kesinleşmedi; iki biçimin yetenekleri birlikte değerlendiriliyor. Kaynak setinden biçimini seç.');
   if(profile.spellblade&&!items.some(id=>['trinity-force','divine-sunderer','iceborn-gauntlet','lich-bane'].includes(id))){penalty+=1.5;warnings.push('Ana rehberin güçlendirilmiş saldırı eşyası kayboluyor.');}
   if(profile.onHit&&!items.some(id=>['guinsoos-rageblade','nashors-tooth','blade-of-the-ruined-king','kraken-slayer'].includes(id))){penalty+=1.5;warnings.push('Ana rehberin vuruş etkisi düzeni kayboluyor.');}
   if(profile.native?.fixedAttackRate&&items.some(id=>['guinsoos-rageblade','nashors-tooth','terminus'].includes(id))){penalty+=2;warnings.push('Sabit saldırı ritmi, çok sayıda saldırı gerektiren pasifleri daha yavaş çalıştırır.');}

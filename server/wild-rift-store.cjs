@@ -110,9 +110,10 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
     await collectEvidence(data,{previous:old?.evidence,savedChampions:old?.champions,onProgress:(n,total)=>{Object.assign(status,{phase:'Ek kaynak kontrolü',completed:n,total});onProgress(n,total,'ek-kaynaklar');}});
     await require('./wild-rift-counter-sources.cjs').collectCounterSources(data,{previous:old?.counterSources,onProgress:(n,total)=>Object.assign(status,{phase:'Karşı seçim kanıtları',completed:n,total})});
     await require('./wild-rift-build-sources.cjs').collectBuildSources(data,{previous:old,onProgress:(n,total)=>Object.assign(status,{phase:'Ek meta dizilimleri',completed:n,total})});
+    await require('./wild-rift-model-update.cjs').refreshModelEvidence(data,source.fetchText);
     data.itemRegistry=require('./wild-rift-registry.cjs').buildRegistry(data);
     require('./wild-rift-audit.cjs').auditSnapshot(data);
-    data.methodologyVersion=5;data.localRevisionAt=new Date().toISOString();
+    data.methodologyVersion=6;data.localRevisionAt=new Date().toISOString();
     validateSnapshot(data);
     await fs.mkdir(path.dirname(DATA_FILE),{recursive:true});
     const temp=DATA_FILE+'.tmp';await fs.writeFile(temp,JSON.stringify(data));

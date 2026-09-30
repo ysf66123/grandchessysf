@@ -1,8 +1,8 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20260930-evidence1';
-import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260930-evidence1';
-import {itemFacts,itemFamily,BOOTS,SUPPORT_ITEMS,TRANSFORM_FROM,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-evidence1';
-import {coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20260930-evidence1';
-import {application} from './wild-rift-build-fit.mjs?v=20260930-evidence1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260930-model1';
+import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20260930-model1';
+import {itemFacts,itemFamily,BOOTS,SUPPORT_ITEMS,TRANSFORM_FROM,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-model1';
+import {coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20260930-model1';
+import {application} from './wild-rift-build-fit.mjs?v=20260930-model1';
 export function itemCost(data,id,now=Date.now()){
   return priceEvidence(data,id,now).cost;
 }
@@ -95,7 +95,14 @@ export function purchasePlan(data,draft,result,now=Date.now()){
   components.sort((a,b)=>value(b.id)-value(a.id)||b.cost-a.cost);components.splice(4);
   early.sort((a,b)=>b.priority-a.priority||a.cost-b.cost);
   const next=rows[0],earlyChoice=early.find(e=>e.affordable),component=components[0];
-  const action=!next?{kind:'complete',text:'Son dizilim tamamlandı.'}:next.affordable?{kind:'complete-item',id:next.id,cost:next.completion,text:'Altının yetiyor: sıradaki eşyayı tamamla. Ana güçlenme anını parçalarla geciktirme.'}:earlyChoice&&!draft.purchaseTarget?{kind:'counter-component',id:earlyChoice.id,cost:earlyChoice.cost,returnTo:next.id,text:earlyChoice.reason+' Bu parçadan sonra ana eşya rotasına dön; tam karşı eşyayı hemen bitirmek zorunda değilsin.'}:component?{kind:'component',id:component.id,cost:component.cost,text:'Ana eşyanın doğrulanmış tarifinden, şampiyonunun düzenine ve koridor baskısına uygun parça.'}:{kind:'save',id:next.id,text:!next.room?'Envanter dolu; uygun parçaların birleşmesini bekle.':next.exact?'Bütçene uygun doğrulanmış tarif parçası yok; sıradaki eşya için altın biriktir.':'Tarif veya fiyat eksik; tamamlama bedelini oyun mağazasında doğrula.'};
+  let action=!next?{kind:'complete',text:'Son dizilim tamamlandı.'}:next.affordable?{kind:'complete-item',id:next.id,cost:next.completion,text:'Altının yetiyor: sıradaki eşyayı tamamla. Ana güçlenme anını parçalarla geciktirme.'}:earlyChoice&&!draft.purchaseTarget?{kind:'counter-component',id:earlyChoice.id,cost:earlyChoice.cost,returnTo:next.id,text:earlyChoice.reason+' Bu parçadan sonra ana eşya rotasına dön; tam karşı eşyayı hemen bitirmek zorunda değilsin.'}:component?{kind:'component',id:component.id,cost:component.cost,text:'Ana eşyanın doğrulanmış tarifinden, şampiyonunun düzenine ve koridor baskısına uygun parça.'}:{kind:'save',id:next.id,text:!next.room?'Envanter dolu; uygun parçaların birleşmesini bekle.':next.exact?'Bütçene uygun doğrulanmış tarif parçası yok; sıradaki eşya için altın biriktir.':'Tarif veya fiyat eksik; tamamlama bedelini oyun mağazasında doğrula.'};
+  const upgrade=result.bootUpgrade,bootUpgrade=upgrade?.verified&&itemAvailability(data,upgrade.id)?{...upgrade,owned:draft.upgradedBoot===boot&&completed.has(boot),unlocked:Number.isFinite(draft.matchMinutes)&&draft.matchMinutes>=upgrade.unlockMinutes,parentOwned:completed.has(boot),reason:''}:null;
+  if(bootUpgrade){
+   const urgent=(boot==='mercurys-treads'&&(result.context.pressure.magic||0)>=3||boot==='plated-steelcaps'&&(result.context.pressure.physical||0)>=3)&&draft.ownState==='behind';
+   const coreReady=core.slice(0,2).every(id=>completed.has(id));
+   bootUpgrade.reason=bootUpgrade.owned?'Yükseltildi olarak işaretledin; tekrar satın alınmaz.':!bootUpgrade.parentOwned?'Önce ana botu al.':!bootUpgrade.unlocked?'Maç dakikasını gir; yükseltme 10. dakikadan önce alınamaz.':next?.affordable?'Ana eşyayı şimdi tamamlayabiliyorsun; bot yükseltmesi sonraya bırakıldı.':urgent?'Görülen baskı ve geride olman savunma botunu öne çıkarıyor.':!coreReady?'İlk iki ana eşyanın güçlenme zamanını koru.':'Ana eşyalar tamamlandı; bot yükseltmesi değerlendirilebilir.';
+   if(result.current&&bootUpgrade.parentOwned&&bootUpgrade.unlocked&&!bootUpgrade.owned&&draft.gold>=bootUpgrade.fee&&!draft.purchaseTarget&&!next?.affordable&&!earlyChoice&&(urgent||coreReady||!next))action={kind:'boot-upgrade',id:upgrade.id,cost:upgrade.fee,returnTo:next?.id,text:bootUpgrade.reason+' Aynı yuvada yükselt; ana eşya rotasına '+upgrade.fee+' altın daha geç dönersin.'};
+  }
   const spikes=[];
   if(rulesUsable(data)&&result.final.includes('yun-tal-wildarrows'))spikes.push('Yun Tal alındığı anda %0 kritik ihtimali verir; normal saldırılarla kalıcı olarak en fazla %25 biriktirir. Birikmiş güç, ilk satın alma gücü sayılmaz.');
   if(rulesUsable(data)&&result.champion.id==='kaisa')spikes.push("Kai’Sa, Wild Rift’te tam eşya yükseltmesiyle yetenek geliştirir. İlk tam eşyayı gereksiz ara alışverişlerle geciktirme; PC sürümündeki nitelik eşikleri kullanılmaz.");
@@ -104,7 +111,7 @@ export function purchasePlan(data,draft,result,now=Date.now()){
   if(result.profile.native?.fixedAttackRate)spikes.push('Saldırı hızı bu şampiyonda saldırı ritmini doğrudan hızlandırmaz; kaynak yeteneğindeki dönüşüm dikkate alınır. Çok vuruş isteyen pasifler aynı değerde sayılmaz.');
   if(result.context?.nativeAntiHeal)spikes.push('Yeteneklerinde iyileşme azaltma var. Ek eşyanın önceliği düşürüldü; yeteneğin her hedefte sürekli uygulanacağı varsayılmadı.');
   return {rows,next:rows[0]||null,early:early.slice(0,2),hasComponents,total:costs.every(c=>c!==null)?costs.reduce((a,b)=>a+b,0):null,
-    action,spikes,components,
+    action,bootUpgrade,spikes,components,
     totalCompletion:rows.every(r=>r.exact&&r.completion!==null)?rows.reduce((n,r)=>n+r.completion,0):null,starters,slots,
     transformations:result.final.filter(id=>transform[id]).map(id=>({from:transform[id],to:id,owned:completed.has(id)})),
     orderReason:draft.purchaseTarget&&remaining[0]===draft.purchaseTarget?'Seçtiğin alışveriş hedefi öne alındı.':defensiveBoot?'Geride olduğun koridorda savunma botu öne alındı; ilk ana eşyanın tamamlanması gecikir.':'Kaynağın ana eşyaları ve bot zamanlaması korunur; sonraki esnek eşyalar mevcut koridor/takım ihtiyaçlarına göre sıralanır. Altı yuvalı son görünüm satın alma sırası değildir.',

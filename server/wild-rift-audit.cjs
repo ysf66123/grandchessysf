@@ -7,7 +7,7 @@ function extraBuildProblem(data,c,b){
  if(!c.roles.includes(b.role)||!c.builds.some(p=>p.role===b.role))return 'invalid-role';
  if(!normalizePatch(b.patch)||!Number.isFinite(Date.parse(b.fetchedAt))||Date.parse(b.fetchedAt)>Date.now()+300000)return 'invalid-provenance';
  if(!Array.isArray(b.final)||b.final.length!==6||new Set(b.final).size!==6)return 'invalid-slots';
- if(b.final.some(id=>data.itemRegistry.items[id]?.status!=='available'||data.itemRegistry.items[id]?.kind==='component'))return 'unavailable-item';
+ if(b.final.some(id=>data.itemRegistry.items[id]?.status!=='available'||!['complete','boots'].includes(data.itemRegistry.items[id]?.kind)))return 'unavailable-item';
  if(groups.some(group=>b.final.filter(id=>group.split(' ').includes(id)).length>1))return 'conflicting-items';
  for(const key of ['core','starting','boots','situational','runes','spells','skillOrder'])if(!Array.isArray(b[key]))return 'missing-fields';
  if(b.runes.length!==5||b.spells.length!==2||b.skillOrder.length!==15)return 'invalid-loadout';
@@ -25,7 +25,7 @@ function auditSnapshot(data){
  }
  const provider=data.evidence?.providers.find(p=>p.id==='wrmeta');if(provider){provider.builds=sources.wrmeta;provider.buildChampions=data.champions.filter(c=>c.sourceBuilds.some(b=>b.sourceId==='wrmeta')).length;}
  data.qualityAudit={schema:1,checkedAt:new Date().toISOString(),patch:data.latestPatch.version,sources,excluded,
-  abilityChampions:data.champions.filter(c=>c.combatFacts?.abilityFacts?.length).length,passiveItems:Object.values(data.items).filter(i=>i.passives?.length).length};
+  abilityChampions:data.champions.filter(c=>c.combatFacts?.abilityFacts?.length).length,damagePacketChampions:data.champions.filter(c=>c.combatFacts?.abilityFacts?.some(a=>a.damagePackets?.some(p=>p.parsed))).length,damagePackets:data.champions.reduce((n,c)=>n+(c.combatFacts?.abilityFacts||[]).flatMap(a=>a.damagePackets||[]).filter(p=>p.parsed).length,0),passiveItems:Object.values(data.items).filter(i=>i.passives?.length).length};
  return data.qualityAudit;
 }
 module.exports={extraBuildProblem,auditSnapshot};

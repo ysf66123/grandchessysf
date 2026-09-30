@@ -1,6 +1,6 @@
-import {PHASES,BUILD_PRIORITIES,itemFacts} from './wild-rift-item-rules.mjs?v=20260930-evidence1';
-import {itemName,termName} from './wild-rift-tr.mjs?v=20260930-evidence1';
-import {itemAvailability} from './wild-rift-evidence.mjs?v=20260930-evidence1';
+import {PHASES,BUILD_PRIORITIES,itemFacts} from './wild-rift-item-rules.mjs?v=20260930-model1';
+import {itemName,termName} from './wild-rift-tr.mjs?v=20260930-model1';
+import {itemAvailability} from './wild-rift-evidence.mjs?v=20260930-model1';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const options=(values,selected)=>Object.entries(values).map(([id,name])=>`<option value="${id}" ${selected===id?'selected':''}>${name}</option>`).join('');
 export function metaSelectionView(result){
@@ -16,6 +16,15 @@ export function itemFactView(data,id){
  if(mechanics.rangeDependent)conditions.push('Yakın ve uzak dövüş etkileri farklıdır.');
  if(mechanics.areaDependent)conditions.push('Alan ve tek hedef etkileri farklıdır.');
  if(mechanics.requiresAttacks)conditions.push('Tam katkı için normal saldırı birikimi gerekir.');
+ if(mechanics.damageShield)conditions.push((mechanics.damageShield.type==='magic'?'Büyü':'Fiziksel')+' hasarı alınca kalkan: seviyeye göre '+mechanics.damageShield.baseByLevel.join('–')+' + azami canının %'+Math.round(mechanics.damageShield.maxHealthRatio*100)+'; '+mechanics.damageShield.cooldown+' sn bekleme. Sürekli direnç gibi sayılmaz.');
+ if(mechanics.movementProc)conditions.push('Tetiklenince hareket hızı: yakın dövüş %'+mechanics.movementProc.melee+', uzak dövüş %'+mechanics.movementProc.ranged+'; '+mechanics.movementProc.duration+' sn.');
+ if(mechanics.minionTrueDamage)conditions.push('Minyonlara ek '+mechanics.minionTrueDamage+' gerçek hasar; şampiyon hasarı sayılmaz.');
+ for(const p of passives){
+  if(p.trigger==='attack'&&p.maxStacks)conditions.push('Birikim normal saldırıyla oluşur; eşya alınır alınmaz tam birikim varsayılmaz.');
+  if(p.conditions?.includes('sameTarget'))conditions.push('Tam katkı aynı hedef üzerinde sürdürülmelidir; hedef değişince katkı azalabilir.');
+  if(p.conditions?.includes('proximity'))conditions.push('Yakınlık koşulu var; ulaşamadığın rakibe sürekli uygulanmış sayılmaz.');
+  if(p.conditions?.includes('healthThreshold'))conditions.push('Pasif can eşiğine bağlıdır; her can düzeyinde tam etkili değildir.');
+ }
  for(const p of passives){const parts=[p.maxStacks?'En fazla '+p.maxStacks+' birikim':null,p.duration?'Kaynakta etki süresi '+p.duration+' sn':null,p.cooldown?'Temel bekleme '+p.cooldown+' sn':null].filter(Boolean);if(parts.length)conditions.push(parts.join(' · '));}
  const rows=Object.entries(labels).filter(([k])=>Number.isFinite(stats[k])&&stats[k]>0);
  const tags=Object.entries(effectLabels).filter(([k])=>effects[k]);
@@ -36,6 +45,7 @@ export function advancedStrategy(data,result,draft){
  return `<div class="wr-decision-banner"><div><small>ŞAMPİYONUN EŞYA DÜZENİ</small><strong>${esc(result.profile.label)}</strong></div><div><small>KARAR DURUMU</small><strong>${esc(result.confidence.label)}</strong></div></div>
  <div class="wr-strategy-controls"><label>Maçtaki durumum<select id="wr-own-state">${options({even:'Dengede / bilinmiyor',ahead:'Öndeyim',behind:'Gerideyim'},draft.ownState)}</select></label><label>Uyarlama sınırı<select id="wr-adaptation">${options({standard:'Meta düzenini koru · en fazla 2 değişiklik',extended:'Daha esnek · en fazla 3 değişiklik'},draft.adaptation)}</select></label></div>
  <p class="wr-muted">${esc(result.fit.label)}. Bu değerlendirme eşya nitelikleri ve uygulama koşullarına dayanır; hasar yüzdesi veya kazanma ihtimali değildir.</p>
+ ${result.profile.ability?.packets?`<p class="wr-muted">${result.profile.ability.packets} sayısal yetenek hasar kaydı bu profile katkı sağlıyor. ${esc(result.profile.ability.basis)}${result.profile.ability.form?' · Seçilen biçim: '+(result.profile.ability.form==='darkin'?'Rhaast':'Gölge Suikastçı'):''}</p>`:''}
  ${(result.fit.warnings||[]).map(n=>`<p class="wr-risk">${esc(n)}</p>`).join('')}${result.fit.losses.length?`<details class="wr-details"><summary>Değişikliklerin eşya niteliklerine bedeli</summary><p>${result.fit.losses.map(x=>`${esc(x.label)}: −${x.value.toLocaleString('tr-TR')}`).join(' · ')}</p><p class="wr-muted">Kaynak dizilimine göre yalnızca doğrulanmış eşya nitelikleri karşılaştırılır; şampiyonun toplam hasarı değildir.</p></details>`:''}
  <details class="wr-details"><summary>Takımda karşı etkiyi kim uyguluyor?</summary><p>Gördüğün eşyayı alan arkadaşını ve savaşta ulaşabildiği rakibi belirt. Etkinin o rakibe uygulanabildiğini sen doğrularsın.</p>
  ${allies.length&&enemies.length?`<div class="wr-assignment-controls"><label>Takım arkadaşım<select id="wr-coverage-ally">${allies.map(id=>`<option value="${id}">${esc(name(id))}</option>`).join('')}</select></label><label>Aldığı karşı eşya<select id="wr-coverage-item">${counterItems.map(id=>`<option value="${id}">${esc(itemName(id))}</option>`).join('')}</select></label><label>Ulaşabildiği rakip<select id="wr-coverage-target">${enemies.map(id=>`<option value="${id}">${esc(name(id))}</option>`).join('')}</select></label><button class="secondary" data-action="add-coverage">Görevi ekle</button></div>`:'<p>Önce bir takım arkadaşını ve rakibi seç.</p>'}

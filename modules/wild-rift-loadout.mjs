@@ -1,6 +1,7 @@
-import {traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20260930-evidence1';
-import {rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-evidence1';
-import {termName} from './wild-rift-tr.mjs?v=20260930-evidence1';
+import {traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20260930-model1';
+import {rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-model1';
+import {termName} from './wild-rift-tr.mjs?v=20260930-model1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20260930-model1';
 // These are guide suitability signals, not independent match statistics.
 export function sourceConditionFit(guide,context,draft,profile){
  const conditions=guide.usageConditions||[],matched=[],unmatched=[];
@@ -34,5 +35,6 @@ export function bootUpgradeAdvice(data,result){
  if(!rulesUsable(data))return null;
  const parent=result.final.find(id=>BOOT_UPGRADES[id]);if(!parent)return null;
  const c=result.context,reason=parent==='mercurys-treads'&&c.pressure.magic>0?'Büyü hasarına karşı seçilen botun gelişim yolu.':parent==='plated-steelcaps'&&c.pressure.physical>0?'Fiziksel ve normal saldırı baskısına karşı seçilen botun gelişim yolu.':'Seçilen meta setindeki botun gelişim yolu.';
- return {parent,name:BOOT_UPGRADES[parent],reason,unlockMinutes:10,source:'https://wildrift.leagueoflegends.com/tr-tr/news/game-updates/wild-rift-patch-notes-7-2/',basis:'Riot 7.2 ile gelen üçüncü aşama sistemi; mevcut 7.3/7.3a kurallarıyla gösterilir.',tradeoff:'Ana eşyanın tamamlanmasını geciktirebilir; geliştirme fiyatı güncel pakette doğrulanmadığı için alışveriş hesabına eklenmez.'};
+ const evidence=data.bootUpgrades,verified=evidence?.patch===data.latestPatch.version&&ageInDays(evidence.checkedAt)<=7&&evidence.byParent?.[parent];
+ return {parent,name:BOOT_UPGRADES[parent],reason,unlockMinutes:10,source:'https://wildrift.leagueoflegends.com/tr-tr/news/game-updates/wild-rift-patch-notes-7-2/',verified:!!verified,id:verified?.id,cost:verified?.cost,fee:verified?.fee,stats:verified?.stats,basis:verified?'Riot yama zinciri '+evidence.reviewedPatches.join(' → ')+' kontrol edildi.':'Riot 7.2 ile gelen üçüncü aşama sistemi; fiyat doğrulanmayı bekliyor.',tradeoff:verified?'Aynı bot yuvasını kullanır. '+verified.fee+' altın yükseltme, ana eşyanın tamamlanmasını geciktirebilir.':'Ana eşyanın tamamlanmasını geciktirebilir; geliştirme fiyatı güncel pakette doğrulanmadığı için alışveriş hesabına eklenmez.'};
 }

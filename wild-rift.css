@@ -104,3 +104,7 @@ body[data-active-view="view-wild-rift"] .app-container{max-width:1440px}
 
 .wr-featured>.wr-details{align-self:start}
 @media(min-width:1100px){.wr-draft-panel{max-height:calc(100vh - 24px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:#456579 #121f2e}}
+.wr-final-set+.wr-detail-grid{margin:18px 0 24px;padding:20px;background:#132435;border:1px solid #68dded26;border-radius:14px;gap:24px}
+.wr-enemy-scenario,.wr-boot-shopping{margin:14px 0;padding:16px;background:#152131;border:1px solid #b3cce224;border-radius:12px;min-width:0;overflow-wrap:anywhere}
+.wr-enemy-scenario label{display:grid;gap:8px}.wr-enemy-scenario select{width:100%;min-width:0}.wr-boot-shopping .wr-check{align-self:center}
+@media(max-width:640px){.wr-final-set+.wr-detail-grid{padding:14px;gap:18px}.wr-enemy-scenario,.wr-boot-shopping{padding:12px}}

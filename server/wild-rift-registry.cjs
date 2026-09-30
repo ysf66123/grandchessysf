@@ -17,7 +17,7 @@ function buildRegistry(data,now=Date.now()){
   // silently become a full-build replacement just because they have a price.
   const full=fire.has(id)||(finals.has(id)&&(official||core))||(core&&official&&!!item.official.recipe&&!components.has(id));
   const available=full||(official&&components.has(id))||(official&&!!item.official.cost);
-  items[id]={status:available?'available':'unverified',kind:full?(BOOTS.has(id)?'boots':'complete'):'component',sources,
+  items[id]={status:available?'available':'unverified',kind:item.upgradeParent?'boot-upgrade':full?(BOOTS.has(id)?'boots':'complete'):'component',sources,
    checkedAt:official?item.official.checkedAt:fire.has(id)?catalog.checkedAt:core?item.coreFacts.checkedAt:null};
  }
  return {game:'wild-rift',patch,checkedAt:new Date(now).toISOString(),items};
