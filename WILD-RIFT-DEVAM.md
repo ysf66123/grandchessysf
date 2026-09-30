@@ -1,8 +1,14 @@
+## Seçim stüdyosu tasarımı — 30 Eylül 2026
+
+20260930-studio1: Wild Rift arayüzü lacivert/turkuaz/altın temayla yenilendi. Geniş masaüstünde iki takım beş koridorlu panoda, bölüm menüsü solda; mobilde iki takım yan yana, eşya kartları tek sütun, yatay bölüm menüsü kaydırılabilir ve yapışkan. Seçim sayıları gerçek dolu yuvalardan gösterilir. Kontrol edilen koridor vurgulanır; ilk öneri, kaynak seti ve alışveriş kararı görsel hiyerarşi kazanır. Kaynak/şampiyon pencereleri, form alanları ve dokunma hedefleri düzenlendi.
+
+Önerilere geç düğmesi aktif analiz bölümüne kaydırır ve klavye odağını taşır; azaltılmış hareket tercihini gözetir. Ek harici yazı tipi/görsel veya seçim ağı isteği yok. 360 px mobilde bütün sekmeler taşma denetimini geçti; gerçek statik uygulama entegrasyonu, admin/çıkış, seçim saklama, eşya işlemleri, yeni geçiş odağı kontrolü başarılı. Masaüstü ve mobil görseller incelendi. Yayın kontrolü bekleniyor.
+
 ## İki ek kritik düzeltme — 30 Eylül 2026
 
 20260930-critical2: Dizilim uyumunda tamamen kaybolan AD/AP/kritik vb. nitelikler artık atlanmaz; bilinen sıfırın tam maliyeti hesaplanır. Eksik veri ve kaynak çelişkisi nitelik bazında belirsizlik maliyeti/açıklaması verir; uydurma sayısal kayıp gösterilmez. Bir nitelikte çelişki diğer doğrulanmış niteliklerin kaybını gizlemez.
 
-Alışveriş tarifinde her fiziksel parça bir kez tüketilir. Aynı parçadan iki tane gereken Phantom Dancer gibi tariflerde tek parçaya sahip olmak ikinci parçanın önerilmesini engellemez. Alternatif alışverişte parça indirim indeksleri gerçek envantere bağlanır; eski iç tarifler yeni parça rotası oluşturamaz. 158 birim/HTTP testi, gerçek Phantom Dancer senaryosu, mobil tarayıcı ve statik uygulama entegrasyonu geçti. Canlı yayın kontrolü bekleniyor.
+Alışveriş tarifinde her fiziksel parça bir kez tüketilir. Aynı parçadan iki tane gereken Phantom Dancer gibi tariflerde tek parçaya sahip olmak ikinci parçanın önerilmesini engellemez. Alternatif alışverişte parça indirim indeksleri gerçek envantere bağlanır; eski iç tarifler yeni parça rotası oluşturamaz. 158 birim/HTTP testi, gerçek Phantom Dancer senaryosu, mobil tarayıcı ve statik uygulama entegrasyonu geçti. Canlı yayın doğrulandı: 9ce1701f1e830bc22d66fbe899133df714826cf2; Pages işi https://github.com/ysf66123/grandchessysf/actions/runs/36645833268 başarılı. Canlı index, app-v2, uyum/alışveriş/meta motorları ve ana arayüz yerelle SHA-256 eşleşti. Bu sonuç yerel devam notudur.
 
 ## Kritik şampiyon ve eşya paketi — 30 Eylül 2026
 

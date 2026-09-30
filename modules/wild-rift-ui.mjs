@@ -1,14 +1,14 @@
-import {counterSummary,counterProof,counterCoverage} from './wild-rift-counter-ui.mjs?v=20260930-critical2';
-import {strategyView,adaptationView,itemFactView,advancedStrategy,metaSelectionView} from './wild-rift-build-ui.mjs?v=20260930-critical2';
-import {sourcesView,priceProof} from './wild-rift-source-ui.mjs?v=20260930-critical2';
-import {staticMode,publishedSnapshot} from './wild-rift-static.mjs?v=20260930-critical2';
-import {itemAvailability,priceEvidence,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-critical2';
-import {emptyDraft,sanitizeDraft,recommendations,recommendBuild,coaching,matchupPlan,threats,freshness,laneScenarios,movePick,SORT_MODES,ROLES} from './wild-rift-engine.mjs?v=20260930-critical2';
-import {dataQuality,championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260930-critical2';
-import {createHistory,readWorkspace,writeWorkspace} from './wild-rift-workspace.mjs?v=20260930-critical2';
-import {purchasePlan,itemCost} from './wild-rift-purchase.mjs?v=20260930-critical2';
-import {RANKS,traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20260930-critical2';
-import {itemName,termName} from './wild-rift-tr.mjs?v=20260930-critical2';
+import {counterSummary,counterProof,counterCoverage} from './wild-rift-counter-ui.mjs?v=20260930-studio1';
+import {strategyView,adaptationView,itemFactView,advancedStrategy,metaSelectionView} from './wild-rift-build-ui.mjs?v=20260930-studio1';
+import {sourcesView,priceProof} from './wild-rift-source-ui.mjs?v=20260930-studio1';
+import {staticMode,publishedSnapshot} from './wild-rift-static.mjs?v=20260930-studio1';
+import {itemAvailability,priceEvidence,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-studio1';
+import {emptyDraft,sanitizeDraft,recommendations,recommendBuild,coaching,matchupPlan,threats,freshness,laneScenarios,movePick,SORT_MODES,ROLES} from './wild-rift-engine.mjs?v=20260930-studio1';
+import {dataQuality,championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260930-studio1';
+import {createHistory,readWorkspace,writeWorkspace} from './wild-rift-workspace.mjs?v=20260930-studio1';
+import {purchasePlan,itemCost} from './wild-rift-purchase.mjs?v=20260930-studio1';
+import {RANKS,traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20260930-studio1';
+import {itemName,termName} from './wild-rift-tr.mjs?v=20260930-studio1';
 let data=null,draft=emptyDraft(),root=null,picker=null,queryTimer=null,controller=null,updating=false,pollTimer=null,pollResolve=null,owner=null;
 const history=createHistory();
 let lastBuildDecision=null,decisionNotice='';
@@ -51,7 +51,7 @@ export async function mount(){
   if(!window.isSiteAdmin?.())return;
   owner=window.currentUser.uid;
   controller?.abort();controller=new AbortController();root=document.getElementById('wr-root');
-  if(!document.getElementById('wr-css')){const link=document.createElement('link');link.id='wr-css';link.rel='stylesheet';link.href=new URL('../wild-rift.css?v=20260930-critical2',import.meta.url).href;document.head.append(link);}
+  if(!document.getElementById('wr-css')){const link=document.createElement('link');link.id='wr-css';link.rel='stylesheet';link.href=new URL('../wild-rift.css?v=20260930-studio1',import.meta.url).href;document.head.append(link);}
   root.innerHTML='<div class="wr-empty" role="status">Wild Rift verileri hazırlanıyor…</div>';
   if(!data){
     try{accept(await (staticMode()?publishedSnapshot(controller.signal):api()));}
@@ -69,14 +69,14 @@ export async function mount(){
 }
 function header(){
   const status=freshness(data),own=champ(draft.blue[draft.role]);
-  return `<header class="wr-hero"><div><span class="wr-eyebrow">YÖNETİCİ ÖNİZLEMESİ · WILD RIFT</span><h1>Seçimini avantaja çevir.</h1><p>Rakibi seç. Takımını tamamla. Maç planını hazırla.</p></div><button class="secondary" data-action="back">← Ana sayfa</button></header>
+  return `<header class="wr-hero"><div><span class="wr-eyebrow">WILD RIFT · SEÇİM STÜDYOSU <span class="wr-admin-badge">Yönetici</span></span><h1>Bir adım önde başla.</h1><p>Koridorunu oku. Doğru şampiyonu bul. Maçına uygun dizilimi hazırla.</p><div class="wr-hero-flow"><span><b>01</b> Takımları seç</span><span><b>02</b> Karşı seçimleri incele</span><span><b>03</b> Maç planını hazırla</span></div><button class="wr-analysis-jump" data-action="analysis-jump">Önerilere geç <span aria-hidden="true">↓</span></button></div><div class="wr-hero-side"><span class="wr-hero-emblem" aria-hidden="true">◇</span><button class="secondary" data-action="back">← Ana sayfa</button></div></header>
     <div class="wr-status"><span><i class="wr-dot ${status.stale?'wr-warn':''}"></i> Resmî yama <b>${esc(data.latestPatch.version)}</b></span><span>İstatistik: ${esc(data.stats.asOf)} · Çin sunucusu</span><button class="secondary" data-action="refresh" ${updating?'disabled':''}>${updating?'Veriler güncelleniyor…':'↻ Güncel verileri kontrol et'}</button></div>
     ${status.stale||!status.statsCurrent?'<div class="wr-notice">Verilerin bir bölümü eski olabilir. Yama ve kaynak tarihlerini kontrol et; eski veriler güncel kazanma oranı olarak puanlanmaz.</div>':''}
     <div id="wr-update-message" role="status" aria-live="polite"></div>
     <section class="wr-controls"><label>Benim rolüm<select id="wr-role">${Object.entries(ROLES).map(([id,n])=>`<option value="${id}" ${id===draft.role?'selected':''}>${n}</option>`).join('')}</select></label><label>İstatistik ligi<select id="wr-rank">${Object.entries(RANKS).map(([id,n])=>`<option value="${id}" ${id===draft.rank?'selected':''} ${!data.stats.brackets[id]?'disabled':''}>${n}${!data.stats.brackets[id]?' · Veri yok':''}</option>`).join('')}</select></label><div class="wr-own"><small>KONTROL ETTİĞİN ŞAMPİYON</small><button class="secondary" data-action="pick" data-side="blue" data-role="${draft.role}">${own?image(own.portrait,own.name):'<span class="wr-plus">＋</span>'}<b>${esc(own?.name||'Şampiyonunu seç')}</b></button></div></section>`;
 }
 function team(side){
-  return `<section class="wr-team ${side}"><div class="wr-team-title"><h2>${side==='blue'?'Mavi takım':'Kırmızı takım'}</h2><span>${side==='blue'?'BİZİM TAKIMIMIZ':'RAKİP TAKIM'}</span></div>${Object.entries(ROLES).map(([role,name])=>{
+  return `<section class="wr-team ${side}" aria-label="${side==='blue'?'Mavi takım seçimleri':'Kırmızı takım seçimleri'}"><div class="wr-team-title"><h2>${side==='blue'?'Mavi takım':'Kırmızı takım'}</h2><span>${side==='blue'?'BİZİM TAKIMIMIZ':'RAKİP TAKIM'} · ${Object.values(draft[side]).filter(Boolean).length}/5</span></div>${Object.entries(ROLES).map(([role,name])=>{
     const c=champ(draft[side][role]);return `<div class="wr-slot-wrap"><div class="wr-slot ${side==='blue'&&role===draft.role?'wr-mine':''}"><button class="wr-slot-pick" data-action="pick" data-side="${side}" data-role="${role}">${c?image(c.portrait,c.name):'<span class="wr-placeholder">＋</span>'}<span><small>${name}${side==='blue'&&role===draft.role?' · SEN':''}</small><b>${esc(c?.name||'Seçim bekleniyor')}</b>${c&&!c.roles.includes(role)?'<small class="wr-warning">Alışılmış rol dışında · veri sınırlı</small>':''}</span></button>${c?`<button class="wr-clear" data-action="move" data-side="${side}" data-role="${role}" aria-label="${esc(c.name)} koridorunu değiştir">⇄</button><button class="wr-clear" data-action="remove" data-side="${side}" data-role="${role}" aria-label="${name} seçimini kaldır">×</button>`:''}</div>${side==='red'&&c&&c.roles.length>1?`<label class="wr-check wr-flex"><input type="checkbox" data-uncertain="${c.id}" ${draft.uncertain.includes(c.id)?'checked':''}> Koridoru henüz belli değil</label>`:''}</div>`;
   }).join('')}</section>`;
 }
@@ -84,7 +84,7 @@ function render(){
   if(!active()||!root)return;
   const started=performance.now();history.record(draft);
   const tabs={counters:'Karşı seçimler',build:'Eşya dizilimi',coach:'Oyun planı',team:'Takım dengesi',patch:'Yama ve kaynaklar'};
-  root.innerHTML=header()+`<div class="wr-teams">${team('blue')}${team('red')}</div><div class="wr-tools"><button class="secondary" data-action="bans">Yasaklar (${draft.bans.length})</button><button class="secondary" data-action="pool">Şampiyon havuzum (${draft.pool.length||'Tümü'})</button><button class="secondary" data-action="undo" ${history.canUndo?'':'disabled'} aria-label="Son değişikliği geri al">↶ Geri al</button><button class="secondary" data-action="redo" ${history.canRedo?'':'disabled'}>↷ İleri al</button><button class="secondary" data-action="saved">Kayıtlı seçimler (${workspace.saved.length})</button><button class="secondary" data-action="reset">Seçimleri temizle</button><span>Seçimler bu hesap için bu cihazda saklanır.</span></div><nav class="wr-tabs" aria-label="Wild Rift bölümleri">${Object.entries(tabs).map(([id,n])=>`<button data-action="tab" data-tab="${id}" aria-current="${draft.tab===id?'page':'false'}">${n}</button>`).join('')}</nav><div class="wr-content">${draft.tab==='counters'?counterView():draft.tab==='build'?buildView():draft.tab==='coach'?coachView():draft.tab==='team'?teamView():patchView()}</div><footer class="wr-foot">Öneriler istatistik, rehber eşleşmeleri ve açıklanabilir kurallara dayanır. Uygunluk sırası kazanma olasılığı değildir.</footer><dialog id="wr-picker" class="wr-dialog" aria-labelledby="wr-picker-title"></dialog>`;
+  root.innerHTML=header()+`<div class="wr-teams">${team('blue')}${team('red')}</div><div class="wr-tools"><button class="secondary" data-action="bans">Yasaklar (${draft.bans.length})</button><button class="secondary" data-action="pool">Şampiyon havuzum (${draft.pool.length||'Tümü'})</button><button class="secondary" data-action="undo" ${history.canUndo?'':'disabled'} aria-label="Son değişikliği geri al">↶ Geri al</button><button class="secondary" data-action="redo" ${history.canRedo?'':'disabled'}>↷ İleri al</button><button class="secondary" data-action="saved">Kayıtlı seçimler (${workspace.saved.length})</button><button class="secondary" data-action="reset">Seçimleri temizle</button><span>Seçimler bu hesap için bu cihazda saklanır.</span></div><div class="wr-workbench"><nav class="wr-tabs" aria-label="Wild Rift bölümleri">${Object.entries(tabs).map(([id,n])=>`<button data-action="tab" data-tab="${id}" aria-current="${draft.tab===id?'page':'false'}">${n}</button>`).join('')}</nav><div class="wr-content">${draft.tab==='counters'?counterView():draft.tab==='build'?buildView():draft.tab==='coach'?coachView():draft.tab==='team'?teamView():patchView()}</div></div><footer class="wr-foot">Öneriler istatistik, rehber eşleşmeleri ve açıklanabilir kurallara dayanır. Uygunluk sırası kazanma olasılığı değildir.</footer><dialog id="wr-picker" class="wr-dialog" aria-labelledby="wr-picker-title"></dialog>`;
   bindImageFallback(root);
   remember();
   renderTimes.push(performance.now()-started);renderTimes=renderTimes.slice(-100);
@@ -205,6 +205,7 @@ function handleClick(event){
   const el=event.target.closest('[data-action]');if(!el||!active())return;
   const {action,side,role,id}=el.dataset;
   if(action==='back')return window.switchView('view-dashboard');
+  if(action==='analysis-jump'){const tab=root.querySelector('.wr-tabs button[aria-current=page]');root.querySelector('.wr-workbench').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});tab?.focus({preventScroll:true});return;}
   if(action==='pick')return openPicker({side,role,kind:'pick'});
   if(action==='move')return openMove(side,role);
   if(action==='apply-move'){

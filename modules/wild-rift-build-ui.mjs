@@ -1,6 +1,6 @@
-import {PHASES,BUILD_PRIORITIES,itemFacts} from './wild-rift-item-rules.mjs?v=20260930-critical2';
-import {itemName} from './wild-rift-tr.mjs?v=20260930-critical2';
-import {itemAvailability} from './wild-rift-evidence.mjs?v=20260930-critical2';
+import {PHASES,BUILD_PRIORITIES,itemFacts} from './wild-rift-item-rules.mjs?v=20260930-studio1';
+import {itemName} from './wild-rift-tr.mjs?v=20260930-studio1';
+import {itemAvailability} from './wild-rift-evidence.mjs?v=20260930-studio1';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const options=(values,selected)=>Object.entries(values).map(([id,name])=>`<option value="${id}" ${selected===id?'selected':''}>${name}</option>`).join('');
 export function metaSelectionView(result){
