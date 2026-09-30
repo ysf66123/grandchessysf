@@ -1,5 +1,5 @@
-import {NEED_LABELS} from './wild-rift-item-rules.mjs?v=20260930-model1';
-import {itemName} from './wild-rift-tr.mjs?v=20260930-model1';
+import {NEED_LABELS} from './wild-rift-item-rules.mjs?v=20261001-auto1';
+import {itemName} from './wild-rift-tr.mjs?v=20261001-auto1';
 export function decisionConditions(result,draft){
  const lines=[],rows=result.context.rows;
  for(const row of rows.filter(r=>r.buildScenarios?.ambiguous))lines.push({kind:'enemyStyle',text:row.name+' için farklı hasar düzenleri var. Biçimini veya kaynak setini kesinleştirirsen savunma tercihleri yeniden değerlendirilir.'});

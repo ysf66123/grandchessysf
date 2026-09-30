@@ -1,3 +1,21 @@
+## Otomatik maç yardımcısı — 1 Ekim 2026
+
+20261001-auto1: Kullanıcının onayladığı az elle giriş isteyen dokuz madde ve ayrı “Son güncellemeler” sekmesi uygulandı. Yönetici erişimi korunur. Yeni zorunlu alan yoktur.
+
+1. Kaynak yetenek sırası ile 5 / 9 / 13. seviye ve 1 / 3 / 5 ana eşya referansları hesaplanır. Taban niteliklerin kaynak büyümesi ve öğrenilmiş yetenek kademesi kullanılır. Bunlar canlı seviye, hasar oranı, tam birleşim veya DPS değildir.
+2. Toplam AD taban ve eşya yatırımını, bonus AD yalnız yatırımı kullanır. Parantez içindeki bonus AD koşul sayılmaz. Hedef maksimum/eksik/mevcut can, çok vuruş, saniye başı hasar, saldırı tetiklemesi ve etkinleşme koşulları ayrılır; bilinmeyen kritik/tetikleme kesin toplamına eklenmez.
+3. Kayn’ın seçilmeyen biçimleri ana hasara eklenmez. Açık yakın/uzak etiketleri ve Nidalee dönüşüm metni okunur: dört şampiyonda doğrulanmış menzil biçimi vardır. Geri kalanlar tahminle doldurulmaz; kısıtlı eşya izni verilmez. Sabit ritim, mana, vuruş etkisi ve ana düzen kontrolleri korunur.
+4. Rakibin kaynak setleri ve referans aşamalarındaki fiziksel/büyü hasar olasılıkları en fazla 18 ayrı uç/sapma senaryosunda karşılaştırılır. Öneri katkısı ortalama ve en düşük senaryoyu birlikte kullanır; bunlar gerçekleşme olasılığı değildir. Kritik/zırh/büyü direnci yatırımı kaynak setinden gerçek alınmış eşya olarak üretilmez.
+5. İlk aşamada koridor, sonraki aşamada takım ağırlığı; kaynak satın alma sırasındaki eşya kapsamıyla tam set seçimine katılır. İlk iki ana eşya ve satın alınmış parçalar korunur.
+6. Altın/seviye gerektirmeyen üç hazır alışveriş rotası: normal, baskı altında ve uygun erken karşı parça. Tarif ve fiyat bilinmiyorsa kesin parça/tamamlama hesabı yapılmaz. Sapmalar son seçilen sete birleşir; harcanan bütçe açıklanır.
+7. Güncel yetenek panelinden kaçınılacak rakip yeteneği, kendi takas fırsatı ve güvenle erişilebilen takım savaşı tehdidi üç kısa kuraldır. Temel beklemeler canlı sayaç olarak gösterilmez.
+8. “Hızlı maç” sekmesi altı eşya, sıra, üç kural ve hazır rotaları gösterir. Rün/yetenek paneli son setin altında isteğe bağlı açılır; ayrıntılı eşya ekranında panel doğrudan son set altında açık kalır. Öndeki rakip ve gerçek görülen kritik eşya tek dokunuşla bildirilir; hiçbir eşya önceden gözlem sayılmaz.
+9. 7.3a için güncel doğal yetenek kanıtı bulunan şampiyonlarda takım dengesi katkısının yanlışlıkla kapalı kalması düzeltildi. Yakın adaylar ve sınırlı kaynak güveni ayrı açıklanır. Kalite kontrolleri yayımlanan binden fazla karşı seçim çiftinin yönü, çelişki sınırı, tüm kullanılabilir şampiyon/rol setleri, belirsiz koridor ve bilinmeyen envanterleri kapsar.
+
+Son güncellemeler sekmesinde dokuz tamamlanan gelişme; tarih, açıklama ve oyuncuya avantajı olan lacivert/turkuaz/altın kartlarda listelenir. 360 px ve masaüstü görselleri incelendi. Sayısal işlem ve ekran yeni ağ isteği gerektirmez. 142 yetenek paneli gerçekten yeniden kontrol edildi; başarısız panel yok. Önbellek yeniden ayrıştırması gerçek kontrol zamanını değiştirmez. Son resmî yama kontrolü 7.3a; yerel yöntem sürümü 7.
+
+Doğrulama: 196 birim/HTTP testi ve genişletilmiş Wild Rift tarayıcı testi geçti. Hızlı maçtaki isteğe bağlı işaretler, dokuz avantaj kartı, 360 px taşma, kaynak yenileme ve çıkış sınandı. Gerçek Pages paketi entegrasyonu da geçti; canlı yayına ait doğrulama yerel devam kaydında tutulur.
+
 ## Yetenek, eşya ve karar modeli — 30 Eylül 2026
 
 20260930-model1: Onaylanan sekiz madde ve istenen yerleşim uygulandı. Rünler, sihirdar büyüleri ve 1–15 yetenek sırası, son altı yuvalı eşya setinin hemen altında bir kez gösterilir.
@@ -167,3 +185,5 @@ Kod `28ccf78` commit'iyle GitHub main dalına gönderildi. Pages yayın kaynağ�
 
 GitHub iş açıklaması: “The job was not started because your account is locked due to a billing issue.” Bu hesap kilidi çözülmeden Actions dağıtımı ve zamanlanmış tarama çalışmaz. Kullanıcının GitHub faturalandırma engelini çözmesi gerekir; ödeme veya hesap ayarı değiştirilmedi. Engel kalkınca Actions → Site yayını ve Wild Rift verileri → Run workflow ile tarama ve yayın birlikte başlatılır. Eski canlı yayının güncellendiği iddia edilmemelidir.
 
+
+Canlı yayın doğrulandı: 8ecdd85a3ef9309a534d8dbabcd79c141c78dace. Pages işi https://github.com/ysf66123/grandchessysf/actions/runs/36729227057 başarılı. Canlı 15 dosya (index, uygulama, CSS, yeni motor/arayüz modülleri ve JSON veri paketi) yerelle SHA-256 eşleşti. Bu sonuç yerel devam notudur.

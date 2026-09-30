@@ -13,8 +13,13 @@ function damagePackets(text){
   }
   const bases=formula?.match(/^\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)*/)?.[0].match(/\d+(?:\.\d+)?/g).map(Number)||[];
   const percent=!!formula?.match(/^\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)*%/);
-  const healthBasis=/target.{0,15}(?:max|maximum)\s*health/i.test(clause+' '+text.slice(match.index,match.index+100))?'targetMaximum':/target.{0,15}missing\s*health/i.test(clause)?'targetMissing':null;
-  packets.push({type:match[1].toLowerCase(),...(bases.length&&bases.length<=5?{baseValues:bases,baseUnit:percent?'percent':'flat'}:{}),scalings,...(healthBasis?{healthBasis}:{}),attackTriggered:/\b(?:basic attacks?|attacks?) (?:deal|inflict)/i.test(clause),conditional:/\b(?:if|when|only|additional|bonus|critically|out of combat)\b/i.test(clause),parsed:!!formula});
+  const tail=text.slice(match.index,match.index+100).split(/[.!;]/)[0],scope=clause+' '+tail;
+  const healthBasis=/target.{0,15}(?:max|maximum)\s*health/i.test(scope)?'targetMaximum':/target.{0,15}missing\s*health/i.test(scope)?'targetMissing':/target.{0,15}current\s*health/i.test(scope)?'targetCurrent':null;
+  // A bonus-stat ratio describes scaling, not an activation condition.
+  const triggerClause=clause.replace(/\([^)]*\)/g,''),conditional=/\b(?:if|when|only|every|additional|bonus|critically|out of combat|against isolated|empowered|next (?:basic )?attack)\b/i.test(triggerClause);
+  const repeats=scope.match(/\b(\d+) (?:times|hits|strikes|bolts)|(?:each|per) (?:second|hit|strike)/i);
+  const crit=scope.match(/(?:critically strike|critical strikes?).{0,45}?(\d+(?:\.\d+)?)%/i);
+  packets.push({type:match[1].toLowerCase(),...(bases.length&&bases.length<=5?{baseValues:bases,baseUnit:percent?'percent':'flat'}:{}),scalings,...(healthBasis?{healthBasis}:{}),attackTriggered:/\b(?:basic attacks?|attacks?) (?:deal|inflict)/i.test(clause),conditional,...(repeats?{repeated:true,...(repeats[1]?{maxHits:Number(repeats[1])}:{}),unit:/second/i.test(repeats[0])?'perSecond':'perHit'}:{}),...(crit?{criticalMultiplier:Number(crit[1])/100}:{}),parsed:!!formula});
  }
  return packets;
 }

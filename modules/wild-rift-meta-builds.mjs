@@ -1,12 +1,12 @@
-import {sourceConditionFit,loadoutAdvice,bootUpgradeAdvice} from './wild-rift-loadout.mjs?v=20260930-model1';
-import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260930-model1';
-import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-model1';
-import {planBuild,buildContext,coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20260930-model1';
-import {decisionConditions} from './wild-rift-decision-conditions.mjs?v=20260930-model1';
-import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20260930-model1';
-import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20260930-model1';
-import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20260930-model1';
-import {traits} from './wild-rift-knowledge.mjs?v=20260930-model1';
+import {sourceConditionFit,loadoutAdvice,bootUpgradeAdvice} from './wild-rift-loadout.mjs?v=20261001-auto1';
+import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20261001-auto1';
+import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-auto1';
+import {planBuild,buildContext,coverage,contextUtility,robustAssessment} from './wild-rift-build-planner.mjs?v=20261001-auto1';
+import {decisionConditions} from './wild-rift-decision-conditions.mjs?v=20261001-auto1';
+import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20261001-auto1';
+import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20261001-auto1';
+import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20261001-auto1';
+import {traits} from './wild-rift-knowledge.mjs?v=20261001-auto1';
 
 // Compare complete, attributed templates against one stable champion/role
 // reference. A candidate must not grade its own lost damage as zero.
@@ -44,7 +44,8 @@ export function selectMetaBuild(data,draft,champion,reference,scenarios){
   const defensiveItems=r.final.filter(id=>{const v=coverage([id],data,candidateProfile);return (v.magic||0)+(v.physical||0)+(v.burst||0)>=.6;}).length;
   const overDefense=!candidateProfile.tank&&!candidateProfile.support&&defensiveItems>2?(defensiveItems-2)*1.4:0;
   const sourceFit=sourceConditionFit(guide,r.context,draft,candidateProfile);
-  const utility=sourceFit.bonus+contextUtility(pressure,cov,draft)+supportBonus+investmentBonus-finalFit.penalty*1.8-changed*.7-metaPenalty-r.comparison.automatic*.35-overDefense-(nativeAlternative&&styleChanged?1.25:0);
+  const robust=robustAssessment(r.context,cov,draft);
+  const utility=sourceFit.bonus+robust.score*.75+r.stageEvaluation.score*.25+supportBonus+investmentBonus-finalFit.penalty*1.8-changed*.7-metaPenalty-r.comparison.automatic*.35-overDefense-(nativeAlternative&&styleChanged?1.25:0);
   const benefits=r.context.priorities.filter(n=>(cov[n.key]||0)>.5).slice(0,3).map(n=>({label:n.label,targets:n.targets}));
   evaluated.push({result:r,sourceFit,score:utility,guideId:guide.guideId,final:r.final,baseFinal:guide.final,label:guide.label||'Ana meta rehberi',source:guide.source,sourceId:guide.sourceId||'wildriftfire',patch:guide.patch,reviewed:r.quality.reviewed,benefits,tradeoff:finalFit.label,losses:finalFit.losses,style:candidateProfile.label,styleChanged,coreChanged:primary.core.slice(0,2).some(id=>!guide.final.includes(id))});
  }

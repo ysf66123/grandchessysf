@@ -1,7 +1,7 @@
-import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20260930-model1';
-import {traits} from './wild-rift-knowledge.mjs?v=20260930-model1';
-import {ageInDays} from './wild-rift-quality.mjs?v=20260930-model1';
-import {abilityProfile} from './wild-rift-ability-profile.mjs?v=20260930-model1';
+import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-auto1';
+import {traits} from './wild-rift-knowledge.mjs?v=20261001-auto1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20261001-auto1';
+import {abilityProfile} from './wild-rift-ability-profile.mjs?v=20261001-auto1';
 export function itemTotals(data,ids){
  const totals={},unknown=[],uncertainStats=new Set();
  for(const id of ids){const f=itemFacts(data,id);if(!f.known||f.conflicts.length)unknown.push(id);if(!f.known)uncertainStats.add('*');for(const key of f.conflicts)uncertainStats.add(key);for(const [k,n] of Object.entries(f.stats))if(Number.isFinite(n))totals[k]=(totals[k]||0)+n;}
@@ -17,7 +17,9 @@ export function championProfile(data,champion,base){
  const total=itemTotals(data,base.final.filter(id=>!BOOTS.includes(id))),s=total.stats,t=traits(champion),combat=combatFacts(data,champion);
  const native=combat?.mechanics||{},ap=s.ap||0,ad=s.ad||0,attack=!!native.magicOnAttack||(s.attackSpeed||0)>=35||(s.crit||0)>=40||base.core.some(id=>['blade-of-the-ruined-king','guinsoos-rageblade','nashors-tooth','kraken-slayer'].includes(id));
  const mixed=ap>=70&&ad>=50;
- const ability=abilityProfile(combat,s,attack,base);
+ const ordered=[...new Set([...(base.purchaseOrder||base.core),...base.final].map(id=>base.final.includes(id)?id:null).filter(id=>id&&!BOOTS.includes(id)))];
+ const stages=[5,9,13].map((level,i)=>{const itemIds=ordered.slice(0,[1,3,5][i]);return {level,itemIds,stats:itemTotals(data,itemIds).stats};});
+ const ability=abilityProfile(combat,s,attack,base,stages);
  const damage=ability.damage||(mixed?'mixed':ap>ad*1.25&&ap>=70?'magic':ad>=50?'physical':t.magic?'magic':t.mixed?'mixed':t.attack?'physical':'unknown');
  const support=base.role==='support'&&base.final.some(id=>SUPPORT_ITEMS.includes(id));
  const tank=(s.armor||0)+(s.magicResist||0)>=100&&ad<110&&ap<140;

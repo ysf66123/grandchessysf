@@ -1,6 +1,6 @@
-import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20260930-model1';
-import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-model1';
-import {championProfile} from './wild-rift-build-fit.mjs?v=20260930-model1';
+import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20261001-auto1';
+import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-auto1';
+import {championProfile} from './wild-rift-build-fit.mjs?v=20261001-auto1';
 const cache=new WeakMap();
 export function enemyBuildScenarios(data,champion,role,observed=[],selected=''){
  let byChampion=cache.get(data);if(!byChampion){byChampion=new Map();cache.set(data,byChampion);}

@@ -118,8 +118,11 @@ function parseChampionFacts(html,champion){
  if(abilityFacts.some(a=>a.flags.heal))mechanics.heal=true;
  if(abilityFacts.some(a=>a.flags.shield))mechanics.shield=true;
  if(abilityFacts.some(a=>a.flags.control))mechanics.control=true;
- const declaredRange=$('.wf-champion__about').text().match(/\b(Melee|Ranged) champion\b/i)?.[1];
- if(declaredRange)mechanics.rangeMode=declaredRange.toLowerCase();
+ const tags=$('.wf-champion__about__tags__tag').map((_,e)=>$(e).text().trim()).get(),declaredModes=new Set();
+ for(const tag of tags)if(/^(?:Melee|Ranged)(?:\s*\/\s*(?:Melee|Ranged))?$/i.test(tag))for(const mode of tag.split('/'))declaredModes.add(mode.trim().toLowerCase());
+ // Form descriptions are explicit attack modes, not references to an enemy's range.
+ if(/gaining melee attacks/i.test(abilities)&&/gaining ranged attacks/i.test(abilities)){declaredModes.add('melee');declaredModes.add('ranged');}
+ if(declaredModes.size){mechanics.rangeModes=[...declaredModes];mechanics.rangeMode=declaredModes.size===1?[...declaredModes][0]:'variable';}
  return {patch,checkedAt:new Date().toISOString(),source:champion.guide,provenance:{patchScope:'champion-ability-panel',sourcePatch:patch},abilityFacts,stats,usesMana:!!stats.mana,trueDamage:/\btrue damage\b/i.test(abilities),mechanics};
 }
 function parseGuide(html,champion) {

@@ -1,9 +1,9 @@
-import {traits,CONDITIONS} from './wild-rift-knowledge.mjs?v=20260930-model1';
-import {itemAvailability,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-model1';
-import {guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260930-model1';
-import {ITEM_ROLES,itemFacts,itemConflicts,itemFamily,BOOTS,SUPPORT_ITEMS,NEED_LABELS,rulesUsable,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20260930-model1';
-import {championProfile,combatFacts,application,incompatibleItem,buildFit} from './wild-rift-build-fit.mjs?v=20260930-model1';
-import {enemyBuildScenarios} from './wild-rift-enemy-scenarios.mjs?v=20260930-model1';
+import {traits,CONDITIONS} from './wild-rift-knowledge.mjs?v=20261001-auto1';
+import {itemAvailability,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-auto1';
+import {guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20261001-auto1';
+import {ITEM_ROLES,itemFacts,itemConflicts,itemFamily,BOOTS,SUPPORT_ITEMS,NEED_LABELS,rulesUsable,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20261001-auto1';
+import {championProfile,combatFacts,application,incompatibleItem,buildFit} from './wild-rift-build-fit.mjs?v=20261001-auto1';
+import {enemyBuildScenarios} from './wild-rift-enemy-scenarios.mjs?v=20261001-auto1';
 const ENCHANTERS=new Set('janna karma lulu milio nami sona soraka yuumi'.split(' '));
 const STRONG_HEAL=new Set('aatrox dr-mundo kayn soraka swain vladimir warwick yuumi'.split(' '));
 const STRONG_SHIELD=new Set('janna karma lulu sett shen'.split(' '));
@@ -51,7 +51,37 @@ export function buildContext(data,draft,scenarios){
  if(native?.innateAntiHeal)pressure.heal*=.75;
  for(const k of ['heal','shield'])if(coverage[k]&&!assignments.some(a=>a.need===k))pressure[k]*=.9;
  const priorities=Object.keys(pressure).map(key=>({key,label:NEED_LABELS[key],value:pressure[key],targets:rows.filter(r=>r.keys[key]>0).sort((a,b)=>b.keys[key]*b.weight-a.keys[key]*a.weight).map(r=>r.name)})).filter(p=>p.value>.5).sort((a,b)=>b.value*FACTOR[b.key]-a.value*FACTOR[a.key]);
- return {pressure,rows,priorities,assignments,nativeAntiHeal:!!native?.innateAntiHeal,phase:draft.phase||'draft',uncertain:scenarios.uncertain,valid:scenarios.valid,missing:5-rows.length,unknownInventories:rows.filter(r=>!r.inventoryKnown).length};
+ const result={pressure,rows,priorities,assignments,nativeAntiHeal:!!native?.innateAntiHeal,phase:draft.phase||'draft',uncertain:scenarios.uncertain,valid:scenarios.valid,missing:5-rows.length,unknownInventories:rows.filter(r=>!r.inventoryKnown).length};
+ result.damageScenarios=damageScenarios(result);return result;
+}
+// Bound uncertainty by damage-channel extremes and one-enemy deviations.
+// Source variants never become observed armor, critical chance or bought gear.
+function damageScenarios(context){
+ const choices=context.rows.map(r=>[...new Set(r.buildScenarios.scenarios.flatMap(s=>[s.profile.threatDamage,...(s.profile.ability.stages||[]).map(s=>s.damage)]).filter(d=>['physical','magic','mixed'].includes(d)))]);
+ const baseline=context.rows.map(r=>r.damage),vectors=[baseline];
+ for(const preferred of ['physical','magic'])vectors.push(choices.map((ds,i)=>ds.includes(preferred)?preferred:ds[0]||baseline[i]));
+ choices.forEach((ds,i)=>ds.forEach(d=>{const v=[...baseline];v[i]=d;vectors.push(v);}));
+ const seen=new Set();return vectors.filter(v=>{const k=v.join('|');if(seen.has(k))return false;seen.add(k);return true;}).slice(0,18).map(vector=>{
+  const pressure={...context.pressure};pressure.magic=0;pressure.physical=0;
+  context.rows.forEach((r,i)=>{const support=r.role==='support'&&ENCHANTERS.has(r.id)?.35:1,d=vector[i];pressure.magic+=Math.max(d==='magic'?1:d==='mixed'?.5:0,r.stats.ap>=150?.75:0)*support*r.weight;pressure.physical+=Math.max(d==='physical'?1:d==='mixed'?.5:0,r.stats.ad>=100?.75:0)*support*r.weight;});
+  return {pressure,damage:vector};
+ });
+}
+export function robustAssessment(context,cov,draft){
+ const values=(context.damageScenarios?.length?context.damageScenarios:[context]).map(s=>contextUtility(s.pressure,cov,draft));
+ const minimum=Math.min(...values),maximum=Math.max(...values),mean=values.reduce((n,v)=>n+v,0)/values.length;
+ return {score:mean*.65+minimum*.35,minimum,maximum,count:values.length,spread:maximum-minimum};
+}
+export function stageEvaluation(data,draft,context,items,base,profile){
+ const order=[...new Set([...(base.purchaseOrder||base.core),...base.final].map(id=>items.includes(id)?id:items[base.final.indexOf(id)]).filter(Boolean))],boot=items.find(id=>BOOTS.includes(id)),core=order.filter(id=>!BOOTS.includes(id));
+ const weights=draft.phase==='lane'?[.6,.25,.15]:draft.phase==='team'?[.15,.25,.6]:[.25,.35,.4];
+ const stages=[5,9,13].map((level,index)=>{
+  const pressure=Object.fromEntries(Object.keys(context.pressure).map(k=>[k,0]));
+  for(const r of context.rows){const weight=(index===0?(r.lane?2.1:.7):index===1?(r.lane?1.5:1):(r.lane?1.1:1))+(r.fed?1.7:0);for(const k of Object.keys(pressure))pressure[k]+=(r.keys[k]||0)*weight*(['health','armor','magicResist','heal','shield'].includes(k)&&r.target?1.35:1);}
+  if(context.nativeAntiHeal)pressure.heal*=.75;
+  const itemIds=[...core.slice(0,[1,3,5][index]),...(boot?[boot]:[])],score=contextUtility(pressure,coverage(itemIds,data,profile),draft);
+  return {level,itemIds,score,weight:weights[index],laneWeight:index===0?2.1:index===1?1.5:1.1};
+ });return {stages,score:stages.reduce((n,s)=>n+s.score*s.weight,0)};
 }
 function cover(id,data,profile){
  const result={...(rulesUsable(data)?ITEM_ROLES[id]?.covers||{}:{})},facts=itemFacts(data,id);
@@ -132,7 +162,7 @@ export function planBuild(data,draft,champion,base,scenarios,sharedContext=null)
   initial[slot]=to;fixed.add(slot);fixedChanges.push({...a,label:'Elle seçtiğin kaynak alternatifi',mode:'manual'});
  }
  const initialCover=coverage(initial,data,profile),baseUtility=utility(initial),candidates=[];
- function utility(items){return contextUtility(p,coverage(items,data,profile),draft)-buildFit(data,items,profile).penalty*(draft.buildPriority==='damage'?1.5:1);}
+ function utility(items){return robustAssessment(context,coverage(items,data,profile),draft).score-buildFit(data,items,profile).penalty*(draft.buildPriority==='damage'?1.5:1);}
  // Enumerate bounded combinations instead of greedily taking the first same-slot swap.
  function search(slot,items,chosen){
   if(slot===initial.length){
@@ -160,7 +190,7 @@ export function planBuild(data,draft,champion,base,scenarios,sharedContext=null)
  const gap=candidates.length>1?best.score-candidates[1].score:Infinity;
  const limited=!current||!rulesCurrent||!context.valid||context.uncertain||context.missing>0||context.unknownInventories>0||profile.unknown.length>0||context.rows.some(r=>r.unknown.length||r.damage==='unknown');
  const confidence=limited?'limited':gap<.65?'close':'clear';
- return {champion,base,final,changes,alternatives:alternatives.sort((a,b)=>Number(b.selected)-Number(a.selected)||b.priority-a.priority),current,quality,rejected,missing:false,context,unmet,profile,fit:buildFit(data,final,profile),rulesCurrent,maxChanges,
+ return {champion,base,final,changes,alternatives:alternatives.sort((a,b)=>Number(b.selected)-Number(a.selected)||b.priority-a.priority),current,quality,rejected,missing:false,context,unmet,profile,fit:buildFit(data,final,profile),rulesCurrent,maxChanges,robustness:robustAssessment(context,cov,draft),stageEvaluation:stageEvaluation(data,draft,context,final,base,profile),
   confidence:{level:confidence,label:confidence==='limited'?'Eksik bilgiyle sınırlı öneri':confidence==='close'?'Birbirine yakın seçenekler':'Kurallar içinde belirgin tercih',gap:Number.isFinite(gap)?Math.round(gap*100)/100:null},
   sourceOptions:sourceGuides.map(b=>({guideId:b.guideId,label:b.label||'Kaynak dizilimi',source:b.source,region:b.region||'global',final:b.final,coreChange:base.core.slice(0,2).some(id=>!b.final.includes(id)),reason:b.variantType==='anti-ad'&&p.physical>p.magic?'Fiziksel baskıya yönelik kaynak seçeneği.':b.variantType==='anti-ap'&&p.magic>p.physical?'Büyü baskısına yönelik kaynak seçeneği.':b.variantType==='anti-tank'&&p.tank>=2?'Ön saflara yönelik kaynak seçeneği.':'Farklı bir kaynak düzeni; tüm dizilim olarak karşılaştır.'})),
   comparison:{unchanged,automatic:best.changes.length,evaluated:candidates.length,baseline:base.final,coverageBefore:initialCover,coverageAfter:cov},

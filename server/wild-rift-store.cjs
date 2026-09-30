@@ -113,7 +113,7 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
     await require('./wild-rift-model-update.cjs').refreshModelEvidence(data,source.fetchText);
     data.itemRegistry=require('./wild-rift-registry.cjs').buildRegistry(data);
     require('./wild-rift-audit.cjs').auditSnapshot(data);
-    data.methodologyVersion=6;data.localRevisionAt=new Date().toISOString();
+    data.methodologyVersion=7;data.localRevisionAt=new Date().toISOString();
     validateSnapshot(data);
     await fs.mkdir(path.dirname(DATA_FILE),{recursive:true});
     const temp=DATA_FILE+'.tmp';await fs.writeFile(temp,JSON.stringify(data));

@@ -1,11 +1,11 @@
-import {combatFacts} from './wild-rift-build-fit.mjs?v=20260930-model1';
-import {evaluateMatchup,mechanicalContext,duoContext} from './wild-rift-counters.mjs?v=20260930-model1';
-import {planBuild} from './wild-rift-build-planner.mjs?v=20260930-model1';
-import {selectMetaBuild} from './wild-rift-meta-builds.mjs?v=20260930-model1';
-import {PHASES,BUILD_PRIORITIES} from './wild-rift-item-rules.mjs?v=20260930-model1';
-import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20260930-model1';
-import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20260930-model1';
-import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20260930-model1';
+import {combatFacts} from './wild-rift-build-fit.mjs?v=20261001-auto1';
+import {evaluateMatchup,mechanicalContext,duoContext} from './wild-rift-counters.mjs?v=20261001-auto1';
+import {planBuild} from './wild-rift-build-planner.mjs?v=20261001-auto1';
+import {selectMetaBuild} from './wild-rift-meta-builds.mjs?v=20261001-auto1';
+import {PHASES,BUILD_PRIORITIES,rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-auto1';
+import {ROLES,traits,CONDITIONS,CHAMPION_TIPS} from './wild-rift-knowledge.mjs?v=20261001-auto1';
+import {ageInDays,guideQuality,championBuilds} from './wild-rift-quality.mjs?v=20261001-auto1';
+import {relationshipEvidence,itemAvailability,finalItemAvailable,invalidFinalItems,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-auto1';
 export {ROLES};
 export const SORT_MODES={balanced:'Dengeli öneri',lane:'Koridor eşleşmesi',team:'Takım uyumu',safe:'Güvenli seçim'};
 export const emptyDraft=()=>({blue:{},red:{},role:'mid',rank:'diamond',bans:[],pool:[],fed:'',targetEnemy:'',locked:[],tab:'counters',uncertain:[],comfort:{},sort:'balanced',overrides:{},compare:[],gold:0,owned:[],enemyItems:{},variant:'',phase:'draft',buildPriority:'balanced',teamCoverage:{heal:false,shield:false},teamAssignments:[],enemyLevels:{},enemyVariants:{},matchMinutes:null,upgradedBoot:'',purchaseTarget:'',ownState:'even',adaptation:'standard'});
@@ -42,7 +42,7 @@ export function sanitizeDraft(value,data){
   d.teamAssignments=(Array.isArray(value.teamAssignments)?value.teamAssignments:[]).filter(a=>Object.values(d.blue).includes(a.ally)&&a.ally!==d.blue[d.role]&&itemAvailability(data,a.item)&&Object.values(d.red).includes(a.target)).slice(0,10).map(a=>({ally:a.ally,item:a.item,target:a.target}));
   const own=data.champions.find(c=>c.id===d.blue[d.role]);
   if(championBuilds(own).some(b=>b.role===d.role&&b.guideId===value.variant))d.variant=value.variant;
-  d.tab=['counters','build','coach','team','patch'].includes(value.tab)?value.tab:'counters';return d;
+  d.tab=['counters','build','match','coach','team','patch','updates'].includes(value.tab)?value.tab:'counters';return d;
 }
 export function buildFor(c,role,variant=''){return championBuilds(c).find(b=>b.role===role&&b.guideId===variant)||c?.builds?.find(b=>b.role===role)||null;}
 export function movePick(data,draft,side,from,to){
@@ -89,7 +89,7 @@ export function recommendations(data,draft){
   const scenarios=laneScenarios(data,draft),team=Object.entries(draft.blue).filter(([r])=>r!==draft.role).map(([,id])=>byId.get(id)).filter(Boolean);
   const taken=new Set([...Object.values(draft.blue),...Object.values(draft.red),...draft.bans]);
   const threat=threats(data,draft),state=freshness(data),rankRows=data.stats.brackets[draft.rank]||[];
-  return data.champions.filter(c=>c.roles.includes(draft.role)&&!taken.has(c.id)&&(!draft.pool.length||draft.pool.includes(c.id))).map(c=>{
+  const ranked=data.champions.filter(c=>c.roles.includes(draft.role)&&!taken.has(c.id)&&(!draft.pool.length||draft.pool.includes(c.id))).map(c=>{
     const t=traits(c),b=buildFor(c,draft.role),stat=rankRows.find(s=>s.id===c.id&&s.role===draft.role),tier=c.tiers[draft.role];
     const quality=guideQuality(data,c,draft.role),current=quality.usable,reasons=[],risks=[...quality.issues];
     const base=current?({'S+':24,S:21,A:17,B:12,C:7})[tier]??10:10;
@@ -104,7 +104,8 @@ export function recommendations(data,draft){
     const laneMin=Math.min(...matchups.map(m=>m.value)),laneMax=Math.max(...matchups.map(m=>m.value));
     // Until the lane is confirmed use the worst supported scenario; never average into a fake win chance.
     const parts={meta:base,statistics:state.statsCurrent&&stat?Math.max(-5,Math.min(5,(stat.win-50)*.8)):0,lane:laneMin,team:0,comfort:(draft.comfort?.[c.id]||0)*3,safety:0,mechanics:0,duo:0,composition:0,synergy:0};
-    const add=(value,reason)=>{if(data.latestPatch.version==='7.3'){parts.team+=value;reasons.push(reason);}};
+    const compositionCurrent=rulesUsable(data)&&!!combatFacts(data,c);
+    const add=(value,reason)=>{if(compositionCurrent){parts.team+=value;reasons.push(reason);}};
     if(t.tankbuster&&threat.tank>=2)add(10,'Rakibin dayanıklı ön saflarına karşı sürekli hasar sağlar.');
     if(t.peel&&threat.engage>=2)add(9,'Rakibin dalışına karşı taşıyıcını koruyabilir.');
     if(t.engage&&team.length>=2&&!team.some(a=>traits(a).engage))add(7,'Takımın eksik olan savaşı başlatma ihtiyacını karşılar.');
@@ -118,9 +119,9 @@ export function recommendations(data,draft){
       if(synergy.length){parts.synergy+=4;reasons.push(`${ally.name} ile kaynakta belirtilmiş uyumu var.`);}
     }
     parts.synergy=Math.min(8,parts.synergy);
-    if(data.latestPatch.version==='7.3'&&team.length>=3&&!t.tank&&!team.some(a=>traits(a).tank)){parts.composition-=4;risks.push('Bu seçimden sonra takımın dayanıklı ön hat ihtiyacı sürüyor.');}
-    if(data.latestPatch.version==='7.3'&&team.length>=3&&t.damage==='physical'&&team.every(a=>traits(a).damage==='physical')){parts.composition-=4;risks.push('Takımın fiziksel hasara yığılıyor; rakibin zırh tercihi kolaylaşabilir.');}
-    if(data.latestPatch.version!=='7.3')parts.composition=0;
+    if(compositionCurrent&&team.length>=3&&!t.tank&&!team.some(a=>traits(a).tank)){parts.composition-=4;risks.push('Bu seçimden sonra takımın dayanıklı ön hat ihtiyacı sürüyor.');}
+    if(compositionCurrent&&team.length>=3&&t.damage==='physical'&&team.every(a=>traits(a).damage==='physical')){parts.composition-=4;risks.push('Takımın fiziksel hasara yığılıyor; rakibin zırh tercihi kolaylaşabilir.');}
+    if(!compositionCurrent)parts.composition=0;
     parts.team=Math.max(-8,Math.min(24,parts.composition+parts.synergy));
     const mechanical=mechanicalContext(data,c,scenarios.opponents.filter(Boolean)),duo=duoContext(data,draft,c,byId);
     parts.mechanics=scenarios.valid?mechanical.score:0;parts.duo=duo.score;
@@ -138,6 +139,7 @@ export function recommendations(data,draft){
     const evidence=matchups.some(m=>m.conflict)?'Kaynaklar çelişiyor':matchups.some(m=>m.status==='advantage')?'Kaynaklarla desteklenen karşı seçim':matchups.some(m=>m.status==='disadvantage')?'Zor koridor; takım katkısıyla değerlendir':matchups.some(m=>m.status==='skill')?'Beceriye bağlı eşleşme':parts.mechanics>0?'Mekanik açıdan uygun; doğrudan kanıt sınırlı':'Eşleşme verisi sınırlı';
     return {champion:c,tier,stat,statsCurrent:state.statsCurrent,score:Math.round(score),parts,laneRange:[laneMin,laneMax],matchups,quality,confidence,reasons,risks:[...new Set(risks)],evidence,mechanical,duo};
   }).sort((a,b)=>b.score-a.score||a.champion.name.localeCompare(b.champion.name,'tr'));
+  return ranked.map((r,i)=>({...r,stability:{distance:ranked[0].score-r.score,closeToLead:ranked.length>1&&ranked[0].score-r.score<=3,leadGap:ranked.length>1?ranked[0].score-ranked[1].score:null,label:r.confidence!=='supported'?'Kaynak veya koridor belirsizliği var':ranked.length>1&&ranked[0].score-r.score<=3&&ranked[0].score-ranked[1].score<=3?'Öndeki adaylar birbirine yakın':i===0?'Kurallar içinde öne çıkan aday':'Takım ve koridor katkısıyla karşılaştır'}}));
 }
 export function recommendBuild(data,draft){
   const c=data.champions.find(c=>c.id===draft.blue[draft.role]);let base=buildFor(c,draft.role,draft.variant),sourceFallback=false;

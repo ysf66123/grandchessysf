@@ -1,6 +1,6 @@
-import {priceEvidence} from './wild-rift-evidence.mjs?v=20260930-model1';
-import {itemName} from './wild-rift-tr.mjs?v=20260930-model1';
-import {championBuilds,guideQuality,ageInDays} from './wild-rift-quality.mjs?v=20260930-model1';
+import {priceEvidence} from './wild-rift-evidence.mjs?v=20261001-auto1';
+import {itemName} from './wild-rift-tr.mjs?v=20261001-auto1';
+import {championBuilds,guideQuality,ageInDays} from './wild-rift-quality.mjs?v=20261001-auto1';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const names={riot:'Riot Games',wildriftfire:'WildRiftFire',wildriftcore:'WildRiftCore',wrmeta:'WR-META',riftgg:'RiftGG',riftforge:'RiftForge',lolegacy:'LoLegacy'};
 const statuses={available:'Veri alındı',partial:'Kısmen alındı',unavailable:'Son kontrol başarısız',manual:'Dış kaynak',pending:'Kontrol bekliyor'};
