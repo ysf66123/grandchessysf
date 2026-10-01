@@ -1,17 +1,17 @@
-import {counterSummary,counterProof,counterCoverage} from './wild-rift-counter-ui.mjs?v=20261001-combat2';
-import {strategyView,adaptationView,itemFactView,advancedStrategy,metaSelectionView,loadoutAdviceView} from './wild-rift-build-ui.mjs?v=20261001-combat2';
-import {sourcesView,priceProof,championDataView,patchImpactView} from './wild-rift-source-ui.mjs?v=20261001-combat2';
-import {staticMode,publishedSnapshot} from './wild-rift-static.mjs?v=20261001-combat2';
-import {itemAvailability,priceEvidence,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-combat2';
-import {emptyDraft,sanitizeDraft,recommendations,recommendBuild,coaching,matchupPlan,threats,freshness,laneScenarios,movePick,SORT_MODES,ROLES} from './wild-rift-engine.mjs?v=20261001-combat2';
-import {dataQuality,championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20261001-combat2';
-import {createHistory,readWorkspace,writeWorkspace} from './wild-rift-workspace.mjs?v=20261001-combat2';
-import {purchasePlan,itemCost} from './wild-rift-purchase.mjs?v=20261001-combat2';
-import {RANKS,traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20261001-combat2';
-import {itemName,termName} from './wild-rift-tr.mjs?v=20261001-combat2';
-import {quickMatchPlan,shoppingRoutes,criticalItemOptions} from './wild-rift-auto-match.mjs?v=20261001-combat2';
-import {defenseView,attackView,counterfactualView,combatEvaluationView,duoPlanView} from './wild-rift-interaction-ui.mjs?v=20261001-combat2';
-import {LATEST_UPDATE,PREVIOUS_UPDATE,OLDER_UPDATE} from './wild-rift-updates.mjs?v=20261001-combat2';
+import {counterSummary,counterProof,counterCoverage} from './wild-rift-counter-ui.mjs?v=20261001-combat3';
+import {strategyView,adaptationView,itemFactView,advancedStrategy,metaSelectionView,loadoutAdviceView} from './wild-rift-build-ui.mjs?v=20261001-combat3';
+import {sourcesView,priceProof,championDataView,patchImpactView} from './wild-rift-source-ui.mjs?v=20261001-combat3';
+import {staticMode,publishedSnapshot} from './wild-rift-static.mjs?v=20261001-combat3';
+import {itemAvailability,priceEvidence,finalItemAvailable,finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-combat3';
+import {emptyDraft,sanitizeDraft,recommendations,recommendBuild,coaching,matchupPlan,threats,freshness,laneScenarios,movePick,SORT_MODES,ROLES} from './wild-rift-engine.mjs?v=20261001-combat3';
+import {dataQuality,championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20261001-combat3';
+import {createHistory,readWorkspace,writeWorkspace} from './wild-rift-workspace.mjs?v=20261001-combat3';
+import {purchasePlan,itemCost} from './wild-rift-purchase.mjs?v=20261001-combat3';
+import {RANKS,traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20261001-combat3';
+import {itemName,termName} from './wild-rift-tr.mjs?v=20261001-combat3';
+import {quickMatchPlan,shoppingRoutes,criticalItemOptions} from './wild-rift-auto-match.mjs?v=20261001-combat3';
+import {defenseView,attackView,counterfactualView,combatEvaluationView,duoPlanView} from './wild-rift-interaction-ui.mjs?v=20261001-combat3';
+import {LATEST_UPDATE,PREVIOUS_UPDATE,OLDER_UPDATE} from './wild-rift-updates.mjs?v=20261001-combat3';
 let data=null,draft=emptyDraft(),root=null,picker=null,queryTimer=null,controller=null,updating=false,pollTimer=null,pollResolve=null,owner=null;
 const history=createHistory();
 let lastBuildDecision=null,decisionNotice='',draftPanelCollapsed=false,priorRecommendation=null;
@@ -60,7 +60,7 @@ export async function mount(){
   if(!window.isSiteAdmin?.())return;
   owner=window.currentUser.uid;
   controller?.abort();controller=new AbortController();root=document.getElementById('wr-root');
-  if(!document.getElementById('wr-css')){const link=document.createElement('link');link.id='wr-css';link.rel='stylesheet';link.href=new URL('../wild-rift.css?v=20261001-combat2',import.meta.url).href;document.head.append(link);}
+  if(!document.getElementById('wr-css')){const link=document.createElement('link');link.id='wr-css';link.rel='stylesheet';link.href=new URL('../wild-rift.css?v=20261001-combat3',import.meta.url).href;document.head.append(link);}
   root.innerHTML='<div class="wr-empty" role="status">Wild Rift verileri hazırlanıyor…</div>';
   if(!data){
     try{accept(await (staticMode()?publishedSnapshot(controller.signal):api()));}

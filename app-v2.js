@@ -78,7 +78,7 @@ const [
     };
 
     // Load modules dynamically
-    const cacheBuster = '20261001-combat2';
+    const cacheBuster = '20261001-combat3';
     await Promise.all([
         import(`./modules/admin-access.mjs?v=${cacheBuster}`),
         import(`./modules/auth-social-v2.js?v=${cacheBuster}`),

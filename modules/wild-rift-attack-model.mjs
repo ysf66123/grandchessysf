@@ -1,5 +1,5 @@
-import {itemFacts} from './wild-rift-item-rules.mjs?v=20261001-combat2';
-import {ageInDays} from './wild-rift-quality.mjs?v=20261001-combat2';
+import {itemFacts} from './wild-rift-item-rules.mjs?v=20261001-combat3';
+import {ageInDays} from './wild-rift-quality.mjs?v=20261001-combat3';
 export function attackModel(data,champion,stats,items=[],level=9){
  const rules=data.attackRules,native=champion?.combatFacts;
  if(!rules||rules.patch!==data.latestPatch.version||ageInDays(rules.checkedAt)>7||native?.patch!==data.latestPatch.version||ageInDays(native.checkedAt)>7)return {known:false};

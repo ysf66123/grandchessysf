@@ -1,5 +1,5 @@
-import {ageInDays,guideQuality} from './wild-rift-quality.mjs?v=20261001-combat2';
-import {itemConflicts,factPatchUsable} from './wild-rift-item-rules.mjs?v=20261001-combat2';
+import {ageInDays,guideQuality} from './wild-rift-quality.mjs?v=20261001-combat3';
+import {itemConflicts,factPatchUsable} from './wild-rift-item-rules.mjs?v=20261001-combat3';
 const cache=new WeakMap();
 function index(data){
  if(cache.has(data)&&cache.get(data).evidence===data.evidence)return cache.get(data);

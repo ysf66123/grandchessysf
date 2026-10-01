@@ -1,7 +1,7 @@
-import {PHASES,BUILD_PRIORITIES,itemFacts} from './wild-rift-item-rules.mjs?v=20261001-combat2';
-import {itemName,termName} from './wild-rift-tr.mjs?v=20261001-combat2';
-import {itemAvailability} from './wild-rift-evidence.mjs?v=20261001-combat2';
-import {tradeoffView} from './wild-rift-interaction-ui.mjs?v=20261001-combat2';
+import {PHASES,BUILD_PRIORITIES,itemFacts} from './wild-rift-item-rules.mjs?v=20261001-combat3';
+import {itemName,termName} from './wild-rift-tr.mjs?v=20261001-combat3';
+import {itemAvailability} from './wild-rift-evidence.mjs?v=20261001-combat3';
+import {tradeoffView} from './wild-rift-interaction-ui.mjs?v=20261001-combat3';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const options=(values,selected)=>Object.entries(values).map(([id,name])=>`<option value="${id}" ${selected===id?'selected':''}>${name}</option>`).join('');
 export function metaSelectionView(result){

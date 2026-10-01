@@ -1,4 +1,4 @@
-import {itemFacts} from './wild-rift-item-rules.mjs?v=20261001-combat2';
+import {itemFacts} from './wild-rift-item-rules.mjs?v=20261001-combat3';
 export function defenseApplication(data,id,context,profile){
  const d=itemFacts(data,id).mechanics.defense;if(!d)return {factor:1,known:false};
  const abilities=context.rows.flatMap(r=>(r.native?.abilityFacts||[]).map(a=>({row:r,ability:a})));

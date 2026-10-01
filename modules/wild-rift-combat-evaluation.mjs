@@ -1,5 +1,5 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20261001-combat2';
-import {itemFacts,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20261001-combat2';
+import {ageInDays} from './wild-rift-quality.mjs?v=20261001-combat3';
+import {itemFacts,TRANSFORM_FROM} from './wild-rift-item-rules.mjs?v=20261001-combat3';
 export function verifiedCombat(data,champion){
  const f=champion?.combatFacts;if(!f||f.patch!==data.latestPatch.version||ageInDays(f.checkedAt)>7)return null;
  const review=data.combatReview?.patch===data.latestPatch.version&&ageInDays(data.combatReview.checkedAt)<=7?data.combatReview.champions?.[champion.id]:null;
@@ -94,4 +94,10 @@ export function duoAbilityPlan(data,draft){
  const steps=[{title:'Birlikte açılış',text:opener?opener.c.name+' '+slot(opener.a)+' kontrolü isabet ederse takip et. '+(opener.a.flags.collision?'İlk hedefe çarpma koşulunda minyon hattını dikkate al.':'Partnerin takip mesafesinde olsun.'):'Doğrulanmış giriş kontrolü bulunamadı; aynı hedefe kısa baskı kur, zorla giriş yapma.'},{title:'Aynı hedefe takip',text:damage?follow.c.name+' '+slot(damage)+' hasarını kontrol penceresinde aynı hedefe yönelt. Yeteneklerin hazır olduğunu ve isabetini uygulama varsaymaz.':'Kaynak yetenek kapsamı eksik; kesin kombodan söz edilmez.'},{title:'Güvenli çıkış',text:exit?exit.c.name+' '+slot(exit.a)+' '+(exit.a.flags.mobility&&!exit.a.flags.mobilityRequiresEnemy?'hareket seçeneğini':exit.a.flags.immunity?'dokunulmazlık seçeneğini':exit.a.flags.control?'takibi kesebilen kontrol seçeneğini':'koruma seçeneğini')+' çıkış için saklayabilir. Rakip tepki vermeden partnerinden kopma.':'Kaçış/koruma yuvası kaynakta doğrulanmadı; takası güvenli mesafede kes.'}];
  const reactions=enemies.flatMap(c=>(verifiedCombat(data,c)?.abilityFacts||[]).filter(a=>a.flags.control||a.flags.immunity).slice(0,1).map(a=>c.name+' '+slot(a)+': '+(a.flags.immunity?'dokunulmazlık sırasında takip hasarını harcama.':'kontrolü boşa çıkmadan iki kişi aynı giriş açısında kalma.')));
  return {steps,reactions,complete:enemies.length===2,sources:pair.map(p=>p.f?.source).filter(Boolean),basis:'Seçilen iki müttefikin ve bilinen rakip ikilinin güncel yetenek kayıtları. Canlı bekleme süresi, kesin kombo veya kazanma garantisi değildir.'};
+}
+export function contextApplication(data,id,profile,need,context){
+ const base=targetApplication(data,id,profile,need),rows=(context?.rows||[]).filter(r=>r.keys[need]>0).map(r=>({...targetApplication(data,id,profile,need,r),weight:r.keys[need]*r.weight})),total=rows.reduce((n,r)=>n+r.weight,0);
+ if(!total)return {...base,rows:[]};
+ const factor=rows.reduce((n,r)=>n+r.factor*r.weight,0)/total,limited=rows.filter(r=>r.factor<.75).map(r=>r.target);
+ return {...base,factor,rows,reason:base.reason+(limited.length?' Uygulaması sınırlı hedefler: '+limited.join(', ')+'.':'')};
 }

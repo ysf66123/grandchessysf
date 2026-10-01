@@ -1,8 +1,8 @@
-import {purchasePlan,affordableComponents,itemCost} from './wild-rift-purchase.mjs?v=20261001-combat2';
-import {combatFacts,incompatibleItem} from './wild-rift-build-fit.mjs?v=20261001-combat2';
-import {itemFacts,BOOTS} from './wild-rift-item-rules.mjs?v=20261001-combat2';
-import {itemAvailability,finalItemAvailable} from './wild-rift-evidence.mjs?v=20261001-combat2';
-import {ageInDays} from './wild-rift-quality.mjs?v=20261001-combat2';
+import {purchasePlan,affordableComponents,itemCost} from './wild-rift-purchase.mjs?v=20261001-combat3';
+import {combatFacts,incompatibleItem} from './wild-rift-build-fit.mjs?v=20261001-combat3';
+import {itemFacts,BOOTS} from './wild-rift-item-rules.mjs?v=20261001-combat3';
+import {itemAvailability,finalItemAvailable} from './wild-rift-evidence.mjs?v=20261001-combat3';
+import {ageInDays} from './wild-rift-quality.mjs?v=20261001-combat3';
 export function tradeWindow(data,own,ownFacts,enemy){
  const abilities=enemy?.native?.abilityFacts||[],active=abilities.filter(a=>a.slot!=='P'),danger=active.slice().sort((a,b)=>Number(!!b.flags.control)-Number(!!a.flags.control)||Number(b.damageTypes.includes('true'))-Number(a.damageTypes.includes('true'))||Number(b.slot==='4')-Number(a.slot==='4'))[0];
  if(!danger)return null;

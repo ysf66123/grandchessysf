@@ -1,9 +1,9 @@
-import {relationshipEvidence} from './wild-rift-evidence.mjs?v=20261001-combat2';
-import {ageInDays} from './wild-rift-quality.mjs?v=20261001-combat2';
-import {traits} from './wild-rift-knowledge.mjs?v=20261001-combat2';
-import {rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-combat2';
-import {combatFacts} from './wild-rift-build-fit.mjs?v=20261001-combat2';
-import {duoAbilityPlan,verifiedCombat} from './wild-rift-combat-evaluation.mjs?v=20261001-combat2';
+import {relationshipEvidence} from './wild-rift-evidence.mjs?v=20261001-combat3';
+import {ageInDays} from './wild-rift-quality.mjs?v=20261001-combat3';
+import {traits} from './wild-rift-knowledge.mjs?v=20261001-combat3';
+import {rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-combat3';
+import {combatFacts} from './wild-rift-build-fit.mjs?v=20261001-combat3';
+import {duoAbilityPlan,verifiedCombat} from './wild-rift-combat-evaluation.mjs?v=20261001-combat3';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 // Recommendation weights, not measured probabilities or combat simulation.
 export function evaluateMatchup(data,candidate,enemy,role,now=Date.now()){

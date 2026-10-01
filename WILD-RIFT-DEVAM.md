@@ -1,3 +1,14 @@
+## Hız ve hedefe uygulanabilirlik — 1 Ekim 2026, 03.17 öncesi
+
+20261001-combat3: Süreli devam talebinde iki ek kritik iyileştirme yapıldı. Yeni zorunlu alan yok; yönetici erişimi, Türkçe arayüz ve son set altındaki yükleme düzeni aynı kaldı.
+
+1. Aynı plan içindeki eşya seti kapsam hesapları karar süresince yeniden kullanılır; tam kaynak seti seçimi planlayıcının hesapladığı son kapsamı tekrar hesaplamaz. Önbellek yalnızca tek plan çağrısına aittir. Değişen taslak, eşya gözlemi, kaynak paketi ve başka kullanıcıya taşınmaz. Aynı beş rakipli Ahri senaryosunda 4 ısınma + 35 ölçüm: önce ortalama 12.746 ms / medyan 12.741 ms; sonra ortalama 9.843 ms / medyan 9.840 ms. Bu örnekte yaklaşık yüzde 23 azalma; tüm cihazlarda sabit hız garantisi değildir. Bu örneğin eşya seti korunmuştur.
+2. Otomatik iyileşme/kalkan azaltma değişikliği, hedefler üzerindeki uygulama faktörlerinin tehdit ağırlıklı kontrolünden geçer. Genel tetikleme doğru olsa bile kritik hedefe uygulanamayan karşı etki güvenilir sayılmaz. Kaynak toplamı, satın alınmış eşya, korunan ilk iki ana eşya ve set sürekliliği kuralları devam eder. Hedef listesi ve sınırlı uygulama nedeni alternatif açıklamasına taşınır. Boş rakipte genel koşula dönülür; kazanma veya isabet yüzdesi türetilmez.
+
+Son güncellemeler ekranında iki yeni avantaj kartı eklendi: toplam 9 güncel kart ve 16 geçmiş kart. Veri paketi ve kaynak tarihleri bu kod güncellemesi için yeniden damgalanmadı.
+
+Doğrulama: 231 birim/HTTP testi, genişletilmiş Wild Rift masaüstü ve 360 px mobil tarayıcı testi, statik Pages paketinden gerçek uygulama entegrasyonu geçti. 9 güncel ve 16 geçmiş kart, erişim/çıkış temizliği ve seçim sırasında veri isteği açılmaması sınandı.
+
 ## Koşula göre eşya ve resmî şampiyon kontrolü — 1 Ekim 2026
 
 20261001-combat2: Kullanıcının onayladığı yedi geliştirme uygulandı. Yönetici erişimi, Türkçe arayüz ve son setin hemen altındaki rün/büyü/yetenek sırası korundu. Yeni zorunlu manuel alan yoktur.
@@ -227,3 +238,6 @@ Canlı yayın doğrulaması — 20261001-auto1: cfe68aae3fc776113b1e9c63c368f183
 20261001-interactions1 doğrulaması: 209 birim/HTTP testi, genişletilmiş Wild Rift tarayıcı testi ve gerçek .pages-dist uygulama entegrasyonu geçti. Mobil/masaüstü senaryo ve güncelleme kartları görsel olarak incelendi. Seçimler yeni veri isteği üretmiyor; yönetici erişimi, rün paneli yerleşimi ve çıkış temizliği korundu.
 
 Canlı yayın doğrulandı: 74a08712c87e21fa9fcfdf903d0cf5a432fc5b50. GitHub Pages çalışması 36789202151 başarıyla tamamlandı. 19 kritik canlı dosyanın normalize edilmiş SHA256 değerleri yerel paketle eşleşti (.cache/interactions1-live.json). Sürüm: 20261001-interactions1. Kontrol: 2026-09-30T23:06:21.952Z.
+
+
+Canlı yayın doğrulaması — 20261001-combat2: Commit 06d5aac5e406a7a6d692e9afa1ff32c205ea26fa. Aynı commit için GitHub Pages başarıyla tamamlandı: https://github.com/ysf66123/grandchessysf/actions/runs/36794632348. 24/24 kritik canlı dosya yerel sürümle SHA-256 (satır sonu normalleştirilmiş) eşleşti. Doğrulama: 2026-10-01T00:08:47.506Z. Bu yayın kanıtı yerel not dosyasına dağıtımdan sonra eklendi; yalnızca not için ikinci yayın yapılmadı.

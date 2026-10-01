@@ -1,12 +1,12 @@
-import {sourceConditionFit,loadoutAdvice,bootUpgradeAdvice} from './wild-rift-loadout.mjs?v=20261001-combat2';
-import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20261001-combat2';
-import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-combat2';
-import {planBuild,buildContext,coverage,contextUtility,robustAssessment} from './wild-rift-build-planner.mjs?v=20261001-combat2';
-import {decisionConditions} from './wild-rift-decision-conditions.mjs?v=20261001-combat2';
-import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20261001-combat2';
-import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20261001-combat2';
-import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20261001-combat2';
-import {traits} from './wild-rift-knowledge.mjs?v=20261001-combat2';
+import {sourceConditionFit,loadoutAdvice,bootUpgradeAdvice} from './wild-rift-loadout.mjs?v=20261001-combat3';
+import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20261001-combat3';
+import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-combat3';
+import {planBuild,buildContext,coverage,contextUtility,robustAssessment} from './wild-rift-build-planner.mjs?v=20261001-combat3';
+import {decisionConditions} from './wild-rift-decision-conditions.mjs?v=20261001-combat3';
+import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20261001-combat3';
+import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20261001-combat3';
+import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20261001-combat3';
+import {traits} from './wild-rift-knowledge.mjs?v=20261001-combat3';
 
 // Compare complete, attributed templates against one stable champion/role
 // reference. A candidate must not grade its own lost damage as zero.
@@ -34,7 +34,7 @@ export function selectMetaBuild(data,draft,champion,reference,scenarios,previous
   // an explicit transition cost instead of judging a tank solely by lost AP.
   const fitProfile=nativeAlternative&&styleChanged?candidateProfile:profile;
   const finalFit=buildFit(data,r.final,fitProfile),changed=primary.final.filter(id=>!r.final.includes(id)&&!BOOTS.includes(id)).length;
-  const cov=coverage(r.final,data,candidateProfile,r.context),pressure=r.context.pressure;
+  const cov=r.comparison.coverageAfter,pressure=r.context.pressure;
   const metaPenalty=(guide.sourceId==='wildriftcore'?.65:0)+(r.quality.normalized?.65:0)+(r.quality.reviewed?.25:0)+(r.quality.editorialBeforePatch?.65:0);
   const allies=Object.entries(draft.blue).filter(([,id])=>id!==champion.id).map(([role,id])=>{const c=data.champions.find(c=>c.id===id),b=c?.builds.find(b=>b.role===role);return b?championProfile(data,c,b):null;}).filter(Boolean);
   const supportBonus=profile.support&&['janna','karma','lulu','milio','nami','senna','sona','soraka','yuumi'].includes(champion.id)&&r.final.includes('ardent-censer')&&allies.some(p=>p.attack)?.5:0;
