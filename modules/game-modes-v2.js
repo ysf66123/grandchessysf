@@ -1,5 +1,5 @@
-import {appendMatchClock} from './match-clock.mjs?v=20261001-speed1';
-import {latestMove,markLastMove,premoveValid,rankStyledCandidates} from './chess-live-tools.mjs?v=20261001-speed1';
+import {appendMatchClock} from './match-clock.mjs?v=20261001-speed2';
+import {latestMove,markLastMove,premoveValid,rankStyledCandidates} from './chess-live-tools.mjs?v=20261001-speed2';
 import { doc, onSnapshot, setDoc, updateDoc, getDoc, getDocs, collection, query, where, arrayUnion, arrayRemove, serverTimestamp, deleteField, runTransaction, deleteDoc, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const db = window.db;
@@ -177,6 +177,8 @@ function warmAnalysisCacheForActiveFen(mode, fen, moveCount) {
 }
 
 function warmAnalysisCacheForActiveGame(mode, pgn, fen, moveCount) {
+    const finishedData=mode==='1v1'?current1v1Data:current2v2Data;
+    if(finishedData?.status!=='finished'){window.pauseChessPreparation?.();return;}
     if (!fen && !pgn) return;
     const key = mode + ':game:' + moveCount + ':' + (fen || '');
     if (warmedAnalysisFenByMode[mode + '_game'] === key) return;
@@ -4569,7 +4571,8 @@ function update2v2Game(d) {
     } else {
         chess.load(d.fen);
     }
-    if (d.status === 'active') warmAnalysisCacheForActiveGame('2v2', d.pgn || '', chess.fen(), d.moveCount || 0);
+    if (d.status === 'active') window.warmAnalysisCacheForGame?.();
+    if (d.status === 'finished') warmAnalysisCacheForActiveGame('2v2', d.pgn || '', chess.fen(), d.moveCount || 0);
     maybeResolveReconnectForfeit('2v2', current2v2Id, d);
     updateSpectatorCountUI('2v2', d);
     renderReconnectBanner('2v2', d);

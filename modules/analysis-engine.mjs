@@ -1,17 +1,17 @@
-import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs?v=20261001-speed1';
-import {engineProfile,requestIdentity} from './engine-profile.mjs?v=20261001-speed1';
-import {NativeEngineWorker,selectedBackend} from './native-engine-worker.mjs?v=20261001-speed1';
+import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs?v=20261001-speed2';
+import {calibratedProfile,requestIdentity} from './engine-profile.mjs?v=20261001-speed2';
+import {NativeEngineWorker,selectedBackend} from './native-engine-worker.mjs?v=20261001-speed2';
 
 // One owner of the UCI stream. A task is not released until bestmove or restart.
 export class AnalysisEngine {
     constructor(workerFactory,profile) {
         const nav=globalThis.navigator||{};
-        this.profile=profile||engineProfile({cores:nav.hardwareConcurrency,memory:nav.deviceMemory,
-            mobile:globalThis.matchMedia?.('(max-width:760px)').matches,isolated:globalThis.crossOriginIsolated});
+        this.environment={cores:nav.hardwareConcurrency,memory:nav.deviceMemory,mobile:globalThis.matchMedia?.('(max-width:760px)').matches,isolated:globalThis.crossOriginIsolated};
+        this.profile=profile||calibratedProfile(this.environment,selectedBackend());
         this.profile.backend ||= selectedBackend();
-        if(this.profile.backend==='native')this.profile.threads=Math.min(2,Math.max(1,Math.floor((nav.hardwareConcurrency||2)/2)));
         this.factory = workerFactory || (() => this.profile.backend==='native'?new NativeEngineWorker():new Worker(this.profile.threads>1?'vendor/stockfish-18-lite.js':'vendor/stockfish-18-lite-single.js'));
-        this.customFactory=!!workerFactory;this.shared=new Map();this.stats={requests:0,shared:0,ms:0,nodes:0};
+        this.customFactory=!!workerFactory;this.shared=new Map();this.stats={requests:0,shared:0,ms:0,nodes:0,interrupted:0,commands:0};
+        this.options=new Map();this.nativeRetryAt=0;
         this.queue = [];
         this.active = null;
         this.ready = false;
@@ -20,6 +20,10 @@ export class AnalysisEngine {
         this.searchContext=null;
     }
     async init() {
+        if(this.autoReconnect!==false&&!this.customFactory&&selectedBackend()==='native'&&this.profile.backend==='browser'&&!this.active&&!this.queue.length&&Date.now()>=this.nativeRetryAt){
+            this.nativeRetryAt=Date.now()+45000;
+            try{const r=await fetch('http://127.0.0.1:8766/health',{headers:{'X-GM-Engine':'1'},signal:AbortSignal.timeout(900)});if(r.ok){this.worker?.terminate();this.worker=null;this.ready=false;this.options.clear();this.searchContext=null;this.profile={...calibratedProfile(this.environment,'native'),backend:'native'};}}catch{}
+        }
         if (this.ready) return;
         if (this.initializing) return this.initializing;
         this.initializing = new Promise((resolve, reject) => {
@@ -39,7 +43,7 @@ export class AnalysisEngine {
         catch(error){
             if(!this.customFactory&&this.profile.backend==='native'){
                 this.profile.backend='browser';this.profile.threads=globalThis.crossOriginIsolated?this.profile.threads:1;
-                try{localStorage.setItem('gm_chess_backend','browser');}catch{}
+                this.nativeRetryAt=Date.now()+45000;
                 globalThis.window?.showToast?.('Yerel motor bağlantısı kurulamadı. Tarayıcı motoruyla devam ediliyor.','info');
                 this.initializing=null;return this.init();
             }
@@ -51,6 +55,7 @@ export class AnalysisEngine {
         clearTimeout(this.initTimer);
         this.worker?.terminate(); this.worker = null; this.ready = false;
         this.searchContext=null;
+        this.options.clear();
         const tasks = [this.active, ...this.queue].filter(Boolean);
         this.active = null; this.queue = [];
         for (const task of tasks) {
@@ -63,8 +68,8 @@ export class AnalysisEngine {
     line(text) {
         if (!text) return;
         if (text === 'uciok') {
-            this.worker.postMessage('setoption name Hash value '+this.profile.hash);
             this.worker.postMessage('setoption name Threads value '+this.profile.threads);
+            this.worker.postMessage('setoption name Hash value '+this.profile.hash);
             this.worker.postMessage('setoption name UCI_ShowWDL value true');
             this.worker.postMessage('isready');
             return;
@@ -76,8 +81,10 @@ export class AnalysisEngine {
         }
         const task = this.active;
         if (!task) return;
+        if(/^info\b/.test(text)){const nodes=Number(text.match(/\bnodes (\d+)/)?.[1]||0);if(nodes>task.lastNodes){task.lastNodes=nodes;task.lastProgress=Date.now();}}
         const info = parseInfo(text);
         if (info) {
+            if(info.depth>task.lastDepth){task.lastDepth=info.depth;task.lastProgress=Date.now();}
             task.frames[info.depth] ||= new Map();
             task.frames[info.depth].set(info.rank, info);
             // Keep complete iterations, never mix ranks from different depths.
@@ -85,6 +92,7 @@ export class AnalysisEngine {
             if (Array.from({length:task.expected},(_,i)=>i+1).every(rank=>frame.has(rank)) && info.depth >= task.reached) {
                 task.reached = info.depth;
                 task.lines = [...frame.values()].sort((a,b)=>a.rank-b.rank).slice(0,task.expected);
+                if([16,20,22,24,26,28].includes(info.depth))task.iterations.set(info.depth,task.lines.map(l=>({...l})));
                 if (!task.cancelled) task.onProgress?.(task.lines[0]);
                 for (const d of Object.keys(task.frames)) if (Number(d) < info.depth) delete task.frames[d];
             }
@@ -102,8 +110,10 @@ export class AnalysisEngine {
             nodes:Math.max(0,...topLines.map(line=>line.nodes || 0)),
             time:Math.max(0,...topLines.map(line=>line.time || 0)),
             complete:!task.cancelled && task.reached >= task.depth,
+            expectedLines:task.expected,
             cancelled:!!task.cancelled, fallback:!first || !!task.cancelled,
             source:this.profile.backend==='native'?'Stockfish 18 Full · yerel':'Stockfish 18 Lite',threads:this.profile.threads,hash:this.profile.hash,version:REVIEW_VERSION,
+            iterations:[...task.iterations].map(([depth,lines])=>({depth,topLines:lines.map(l=>({...l,whiteScore:whiteScore(l,task.fen)}))})),
             fen:task.fen, mode:task.mode, requestId:task.requestId });
         this.next();
     }
@@ -114,7 +124,7 @@ export class AnalysisEngine {
         this.stats.requests++;
         const promise=new Promise(resolve => {
             const task = {fen, depth:18, mode:'live', ...options, resolve,
-                frames:{}, lines:[], reached:0};
+                frames:{}, iterations:new Map(), lines:[], reached:0};
             task.priority = options.priority === 'high' ? 1 : Number(options.priority) ||
                 (task.mode === 'bot' || task.mode === 'live' || task.mode === 'variation' ? 1 : 2);
             if (['live','variation'].includes(task.mode)) this.cancel(t=>t.mode === task.mode);
@@ -129,6 +139,7 @@ export class AnalysisEngine {
     stop() {
         const task = this.active;
         if (!task || task.watchdog) return;
+        clearTimeout(task.timer);if(task.reached<task.depth&&!task.cancelled)this.stats.interrupted++;
         this.worker.postMessage('stop');
         task.watchdog = setTimeout(()=>this.fail('Motor yanıt vermedi; yeniden deneyin.'), 3000);
     }
@@ -142,20 +153,22 @@ export class AnalysisEngine {
     next() {
         if (!this.ready || this.active || !this.queue.length) return;
         const t = this.active = this.queue.shift();
-        t.started=Date.now();
-        const send = message => this.worker.postMessage(message);
+        t.started=Date.now();t.lastProgress=t.started;t.lastNodes=0;t.lastDepth=0;
+        const send = message => {this.stats.commands++;this.worker.postMessage(message);};
+        const option=(name,value)=>{if(this.options.get(name)!==value){send('setoption name '+name+' value '+value);this.options.set(name,value);}};
         const mpv = t.mode === 'bot' ? t.multiPv || 1 : t.multiPv || 3;
         t.expected = Math.min(mpv, t.searchmoves?.length || t.legalCount || 1);
-        send('setoption name MultiPV value ' + mpv);
-        send('setoption name UCI_LimitStrength value ' + (t.elo != null ? 'true' : 'false'));
-        if (t.elo != null) send('setoption name UCI_Elo value ' + t.elo);
-        send('setoption name Skill Level value ' + (t.skillLevel ?? 20));
+        option('MultiPV',mpv);
+        option('UCI_LimitStrength',t.elo != null ? 'true' : 'false');
+        if (t.elo != null) option('UCI_Elo',t.elo);
+        option('Skill Level',t.skillLevel ?? 20);
         // Keep transpositions across the same game's increasingly deep searches.
         // Clear once on game/strength changes, rather than on every candidate.
         const context=(t.elo ?? 'full')+'|'+(t.skillLevel ?? 20)+'|'+(t.mode==='review'?(t.reviewSession ?? 'unscoped'):'interactive');
         if(context!==this.searchContext){send('setoption name Clear Hash');this.searchContext=context;}
         send(t.position || 'position fen ' + t.fen);
         send('go depth ' + t.depth + (t.searchmoves?.length ? ' searchmoves ' + t.searchmoves.join(' ') : ''));
-        t.timer = setTimeout(()=>this.stop(), t.timeoutMs || (t.mode === 'review' ? 2200 : 3500));
+        if(t.mode==='review'&&t.adaptive!==false){const check=()=>{if(this.active!==t||t.watchdog)return;const now=Date.now();if(now-t.lastProgress>Math.max(30000,t.stallMs||0)||now-t.started>(t.maxSearchMs||300000))return this.stop();t.timer=setTimeout(check,1000);};t.timer=setTimeout(check,1000);}
+        else t.timer = setTimeout(()=>this.stop(), t.timeoutMs || 3500);
     }
 }

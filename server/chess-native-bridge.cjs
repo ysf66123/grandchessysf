@@ -22,6 +22,7 @@ function createBridge({binary=process.env.STOCKFISH_BINARY||findBinary(),spawnEn
    for(const line of s.buffer)res.write('data: '+JSON.stringify(line)+'\n\n');s.buffer=[];req.on('close',()=>destroy(s.id));return;
   }
   if(req.headers['x-gm-engine']!=='1')return json(403,{error:'Header required'});
+  if(url.pathname==='/health'&&req.method==='GET')return json(200,{ready:true,batch:true});
   if(url.pathname==='/session'&&req.method==='DELETE'){const s=sessions.get(url.searchParams.get('id'));if(s?.origin===origin)destroy(s.id);return json(200,{closed:true});}
   if(req.method!=='POST')return json(404,{error:'Unknown endpoint'});
   let raw='';try{for await(const chunk of req){raw+=chunk;if(raw.length>20000)return json(413,{error:'Too large'});}}catch{return;}
@@ -29,12 +30,12 @@ function createBridge({binary=process.env.STOCKFISH_BINARY||findBinary(),spawnEn
   if(url.pathname==='/session'){
    if(sessions.size>=2)return json(429,{error:'Two sessions already active'});let child;try{child=spawnEngine();}catch{return json(503,{error:'Stockfish executable missing'});}
    const s={id:crypto.randomBytes(24).toString('hex'),child,origin,buffer:[],fragment:'',at:Date.now(),commands:[]};sessions.set(s.id,s);
-   child.stdout.on('data',chunk=>{s.fragment+=chunk;const lines=s.fragment.split(/\r?\n/);s.fragment=lines.pop();for(const line of lines){if(s.client)s.client.write('data: '+JSON.stringify(line)+'\n\n');else{s.buffer.push(line);s.buffer=s.buffer.slice(-100);}}});
-   child.on('error',()=>destroy(s.id));child.on('exit',()=>destroy(s.id));child.stderr.on('data',()=>{});return json(200,{id:s.id,version:'Stockfish 18 Full'});
+   child.stdout.on('data',chunk=>{s.at=Date.now();s.fragment+=chunk;const lines=s.fragment.split(/\r?\n/);s.fragment=lines.pop();for(const line of lines){if(s.client)s.client.write('data: '+JSON.stringify(line)+'\n\n');else{s.buffer.push(line);s.buffer=s.buffer.slice(-100);}}});
+   child.on('error',()=>destroy(s.id));child.on('exit',()=>destroy(s.id));child.stderr.on('data',()=>{});return json(200,{id:s.id,version:'Stockfish 18 Full',batch:true});
   }
   if(url.pathname==='/command'){
-   const s=sessions.get(body.id);if(!s||s.origin!==origin)return json(403,{error:'Session unavailable'});if(!validCommand(body.command))return json(400,{error:'Command rejected'});
-   s.commands=s.commands.filter(t=>Date.now()-t<1000);if(s.commands.length>=100)return json(429,{error:'Rate limit'});s.commands.push(Date.now());s.at=Date.now();s.child.stdin.write(body.command+'\n');return json(200,{ok:true});
+   const s=sessions.get(body.id);if(!s||s.origin!==origin)return json(403,{error:'Session unavailable'});const commands=body.commands||[body.command];if(!Array.isArray(commands)||!commands.length||commands.length>16||commands.some(c=>!validCommand(c)))return json(400,{error:'Command rejected'});
+   s.commands=s.commands.filter(t=>Date.now()-t<1000);if(s.commands.length+commands.length>100)return json(429,{error:'Rate limit'});s.commands.push(...commands.map(()=>Date.now()));s.at=Date.now();s.child.stdin.write(commands.join('\n')+'\n');return json(200,{ok:true});
   }return json(404,{error:'Unknown endpoint'});
  });const cleanup=setInterval(()=>{for(const s of sessions.values())if(Date.now()-s.at>180000)destroy(s.id);},30000);cleanup.unref();server.on('close',()=>{clearInterval(cleanup);for(const id of sessions.keys())destroy(id);});return server;
 }

@@ -1,5 +1,5 @@
 // Pure review rules. Scores are from the root side to move; UI scores are White POV.
-export const REVIEW_VERSION = 'sf18-review-20261001-speed1';
+export const REVIEW_VERSION = 'sf18-review-20261001-speed2';
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 export const uciOf = m => m.from + m.to + (m.promotion || '');
 export function parseInfo(text) {

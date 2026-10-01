@@ -10,7 +10,7 @@ Sürüm: `20261001-speed1`. Mevcut masaüstü yerleşimi korunur; yeni araçlar 
 - İlk arama 16, kritik kararlar 20, kararsız kararlar 22–28 derinlik. Üç tam kök adayı ve gerektiğinde oynanan hamleyi de içeren ayrı kök karşılaştırması korunur.
 - Kritik konumlar, ilk incelemenin hemen ardından motor belleği sıcakken derinleştirilir. Son aşamada eksik derinlik ve tutarlılık kontrolleri yapılır. Rapor hâlâ gerekli bütün sonuçlar tamamlanmadan açılmaz.
 - Aynı geçmiş, derinlik, adaylar, güç ayarı, oturum ve istek kimliğindeki eşzamanlı hesaplamalar tek istekte birleştirilir.
-- GitHub Pages için aynı kökendeki servis çalışanı izolasyon başlıkları ve motor dosya önbelleği sağlar. Aktif maç veya analiz sırasında zorunlu yeniden yükleme yapılmaz. Uyum sağlanamayan tarayıcı çalışmaya tek çekirdekle devam eder.
+- GitHub Pages için aynı kökendeki servis çalışanı masaüstünde izolasyon başlıkları ve motor dosya önbelleği sağlar. Aktif maç veya analiz sırasında zorunlu yeniden yükleme yapılmaz. Mobil Firebase girişinin dış kimlik çerçeveleri için mobil kullanıcı aracılarında izolasyon uygulanmaz; mobil ve uyumsuz tarayıcı tek çekirdekle devam eder.
 - Ana sayfada yalnızca motor başlatılır; canlı maç sırasında arka planda konum çözülmez.
 - Bekleme ekranındaki süre aralığı cihazda ölçülen sürelerden oluşur. İlk başta sahte geri sayım verilmez.
 - 28 derinlikte sınıra yakın bir karar, aynı derinlikte yeni ve tamamlanan karşılaştırmada kararlıysa doğrulanabilir; kararsız sonuç tamamlandı sayılmaz.

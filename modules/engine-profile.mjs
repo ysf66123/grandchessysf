@@ -4,6 +4,9 @@ export function engineProfile({cores=2,memory=0,mobile=false,isolated=false}={})
  return {threads:isolated&&!mobile?Math.min(2,Math.max(1,Math.floor(cpu/2))):1,
   hash:mobile?32:ram>=8?128:64,depthPolicy:'16 / 20–28',multiPv:3};
 }
+export function calibrationKey({cores=2,memory=0,mobile=false,isolated=false}={},backend='browser'){return 'gm_engine_calibration_v2_'+JSON.stringify([backend,cores,memory,mobile,isolated]);}
+export function calibratedProfile(env={},backend='browser',storage=globalThis.localStorage){const fallback=engineProfile(env);if(backend==='native')fallback.threads=Math.min(2,Math.max(1,Math.floor((env.cores||2)/2)));try{const saved=JSON.parse(storage?.getItem(calibrationKey(env,backend))||'null'),maxThreads=backend==='native'||env.isolated&&!env.mobile?Math.min(4,Math.max(1,(env.cores||2)-1)):1,maxHash=env.mobile?32:env.memory>=8?256:64;
+ if(saved?.version==='sf18-speed2'&&Date.now()-saved.at<30*86400000&&Number.isInteger(saved.threads)&&saved.threads>=1&&saved.threads<=maxThreads&&[32,64,128,256].includes(saved.hash)&&saved.hash<=maxHash&&saved.complete===true)return {...fallback,threads:saved.threads,hash:saved.hash};}catch{}return fallback;}
 export function requestIdentity(fen,o={}) {
  return JSON.stringify([o.position||fen,o.depth||18,o.multiPv||3,o.searchmoves||[],o.legalCount,
   o.mode||'live',o.elo??null,o.skillLevel??20,o.reviewSession??null,o.requestId??null,o.timeoutMs??null]);

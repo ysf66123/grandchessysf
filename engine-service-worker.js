@@ -1,7 +1,9 @@
 const CACHE='gm-engine-18-v1';
 self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+self.addEventListener('message',e=>{if(e.data?.type==='gm-policy-status')e.source?.postMessage({type:'gm-policy-status',version:'speed2'});});
 self.addEventListener('fetch',e=>{
+ if(/Android|iPhone|iPad|iPod|Mobile/i.test(self.navigator.userAgent))return;
  const req=e.request,url=new URL(req.url);if(url.origin!==self.location.origin||req.method!=='GET')return;
  e.respondWith((async()=>{
   const engine=/\/vendor\/stockfish-18-lite(?:-single)?\.(?:js|wasm)$/.test(url.pathname);

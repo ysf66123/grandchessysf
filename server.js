@@ -5,7 +5,7 @@ const port = process.env.PORT || 8080;
 
 app.disable('x-powered-by');
 app.use(require('compression')());
-app.use((req,res,next)=>{res.setHeader('Cross-Origin-Opener-Policy','same-origin');res.setHeader('Cross-Origin-Embedder-Policy','credentialless');next();});
+app.use((req,res,next)=>{if(!/Android|iPhone|iPad|iPod|Mobile/i.test(req.headers['user-agent']||'')){res.setHeader('Cross-Origin-Opener-Policy','same-origin');res.setHeader('Cross-Origin-Embedder-Policy','credentialless');}next();});
 const {mountApi,scheduleUpdates}=require('./server/wild-rift-api.cjs');
 mountApi(app);
 // Serve only public site assets. Credentials, test fixtures and source tools stay private.
