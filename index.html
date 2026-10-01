@@ -31,7 +31,7 @@
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="./styles.css?v=20261001-combat3">
-    <link rel="stylesheet" href="./analysis-premium.css?v=20261001-studio1">
+    <link rel="stylesheet" href="./analysis-premium.css?v=20261001-review2">
 </head>
 
 <body>
@@ -335,7 +335,7 @@
 
         <!-- ===== NEW PREMIUM ANALYSIS VIEW ===== -->
         <div id="view-wild-rift" class="view"><div id="wr-root"></div></div>
-        <div id="view-2v2-analysis" class="view" data-mobile-tab="review">
+        <div id="view-2v2-analysis" class="view" data-mobile-tab="review" data-review-state="ready">
             <header class="studio-header">
                 <div><span class="studio-kicker">GRANDMASTER / MAÇ İNCELEMESİ</span><h2>Her hamlenin bir hikâyesi var.</h2><p>Kararlarını keşfet. Kritik anları öğren. Daha güçlü oyna.</p></div>
                 <div class="studio-header-actions"><span id="sfStatusBadge" class="status-badge"></span><button class="secondary" onclick="document.getElementById('reviewImport').open=!document.getElementById('reviewImport').open">PGN yükle</button><button id="btnShareAnalysis" class="secondary icon-btn" onclick="shareCurrentAnalysisReport()" title="Analizi paylaş" aria-label="Analizi paylaş">↗</button><button class="secondary icon-btn" onclick="switchView('view-dashboard')" title="Analizi kapat" aria-label="Analizi kapat">×</button></div>
@@ -354,7 +354,7 @@
                     <div class="analysis-chart-area"><div class="studio-section-heading"><strong>Maçın akışı</strong><span>Beyaz açısından · bir noktaya dokun</span></div><canvas id="analysisChart" aria-label="Hamlelere göre Stockfish değerlendirme grafiği"></canvas><div class="studio-chart-legend"><span>↑ Beyaz üstün</span><span>— Eşit</span><span>↓ Siyah üstün</span></div></div>
                     <div class="studio-board-note"><span>← → Hamleler arasında gez</span><span>Tahtada alternatif oyna · Esc ile maça dön</span></div>
                     <div class="move-list-container premium-moves studio-desktop-moves">
-                        <div class="move-list-header"><strong>Hamle defteri</strong><span id="analysisMoveCountBadge">0 hamle</span><select id="reviewMoveFilter" aria-label="Hamle filtresi" onchange="filterAnalysisMoves(this.value)"><option value="all">Tüm hamleler</option><option value="errors">Kritik kayıplar</option><option value="brilliant">Parlak hamle</option><option value="great">Harika hamle</option><option value="best">En iyi</option><option value="book">Kitap hamlesi</option><option value="excellent">Mükemmel</option><option value="good">İyi</option><option value="inaccuracy">İsabetsizlik</option><option value="mistake">Hata</option><option value="miss">Kaçırılan fırsat</option><option value="blunder">Büyük hata</option></select><button id="analysisMovesToggle" class="secondary icon-btn" onclick="toggleAnalysisMovesPanel()" title="Hamle listesini daralt"><span id="analysisMovesToggleLabel">Daralt</span><i id="analysisMovesToggleIcon" class="fas fa-chevron-up"></i></button></div>
+                        <div class="move-list-header"><strong>Hamle defteri</strong><span id="analysisMoveCountBadge">0 hamle</span><select id="reviewMoveFilter" aria-label="Hamle filtresi" onchange="filterAnalysisMoves(this.value)"><option value="all">Tüm hamleler</option><option value="errors">Kritik kayıplar</option><option value="brilliant">Parlak</option><option value="great">Harika</option><option value="best">En iyi</option><option value="book">Kitap</option><option value="excellent">Mükemmel</option><option value="good">İyi</option><option value="inaccuracy">Yanlış</option><option value="mistake">Hata</option><option value="miss">Kaçan Fırsat</option><option value="blunder">Gaf</option></select><button id="analysisMovesToggle" class="secondary icon-btn" onclick="toggleAnalysisMovesPanel()" title="Hamle listesini daralt"><span id="analysisMovesToggleLabel">Daralt</span><i id="analysisMovesToggleIcon" class="fas fa-chevron-up"></i></button></div>
                         <div class="move-list" id="analysisMoveList"></div>
                     </div>
                 </div>
@@ -388,7 +388,14 @@
                     <footer class="studio-report-footer"><button class="secondary" onclick="downloadReviewPgn()">Notlu PGN ↓</button><button class="secondary" onclick="downloadAnalysisData()">Motor verisi ↓</button><button class="secondary" onclick="restartAnalysisReview()">Yenile ↻</button></footer>
                     <div class="analysis-hidden-mirrors" aria-hidden="true"><span id="analysisWhiteSummaryName">Beyaz</span><span id="analysisBlackSummaryName">Siyah</span></div>
                 </div>
-                <div id="analysisLoadingOverlay" class="premium-loading-overlay"><div class="loading-card"><div class="loading-spinner">◌</div><h3>Motor hazırlanıyor</h3><p id="analysisLoadingMessage">Stockfish yükleniyor…</p><div class="loading-bar"><div id="analysisLoadingProgressFill" class="loading-fill"></div></div><div id="analysisCountdownNumber" class="loading-count">0/0</div><div id="analysisLoadingSubtext" class="loading-subtext">%0 tamamlandı</div></div></div>
+                <div id="analysisLoadingOverlay" class="premium-loading-overlay"><div class="loading-card" role="status" aria-live="polite">
+                    <div class="loading-engine-emblem">SF<span>18</span></div><span class="studio-kicker">MAÇ İNCELEMESİ</span><h3 id="analysisLoadingTitle">Maçını inceliyoruz</h3>
+                    <p id="analysisLoadingMessage">Motor ve maç hazırlanıyor.</p>
+                    <ol class="review-loading-stages"><li data-loading-stage="prepare" data-state="active"><span>01</span><div><strong>Hazırlık</strong><small>Motor ve maç geçmişi</small></div></li><li data-loading-stage="scan"><span>02</span><div><strong>Hamle analizi</strong><small>Bütün hamlelerin karşılaştırması</small></div></li><li data-loading-stage="verify"><span>03</span><div><strong>Derin doğrulama</strong><small>Kritik anlar ve karar tutarlılığı</small></div></li><li data-loading-stage="finish"><span>04</span><div><strong>Sonuç raporu</strong><small>Doğruluk ve sınıflandırmalar</small></div></li></ol>
+                    <div class="loading-bar"><div id="analysisLoadingProgressFill" class="loading-fill"></div></div><progress id="analysisLoadingProgress" value="0" max="100" aria-label="Maç analiz ilerlemesi"></progress>
+                    <div class="loading-progress-labels"><span id="analysisCountdownNumber">Motor hazırlanıyor</span><strong id="analysisLoadingSubtext">%0 tamamlandı</strong></div><p id="analysisLoadingEngine">Stockfish 18 · motor yükleniyor</p>
+                    <div class="review-loading-actions"><button id="reviewLoadingPause" class="secondary" onclick="toggleReviewPause()">Duraklat</button><button class="secondary" onclick="switchView('view-dashboard')">Çık</button></div><small class="loading-quality-note">Rapor, bütün hamleler ve gerekli derin kontroller tamamlandığında açılır.</small>
+                </div></div>
             </div>
         </div>
 
@@ -1754,7 +1761,7 @@
     </div>
 
     <script src="./site-config.js?v=20261001-combat3"></script>
-    <script type="module" src="./app-v2.js?v=20261001-studio1"></script>
+    <script type="module" src="./app-v2.js?v=20261001-review2"></script>
 
 </body>
 

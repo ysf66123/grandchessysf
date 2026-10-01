@@ -1,4 +1,4 @@
-import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs?v=20261001-studio1';
+import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs?v=20261001-review2';
 
 // One owner of the UCI stream. A task is not released until bestmove or restart.
 export class AnalysisEngine {
@@ -9,6 +9,7 @@ export class AnalysisEngine {
         this.ready = false;
         this.worker = null;
         this.generation = 0;
+        this.searchContext=null;
     }
     async init() {
         if (this.ready) return;
@@ -31,6 +32,7 @@ export class AnalysisEngine {
     fail(message) {
         clearTimeout(this.initTimer);
         this.worker?.terminate(); this.worker = null; this.ready = false;
+        this.searchContext=null;
         const tasks = [this.active, ...this.queue].filter(Boolean);
         this.active = null; this.queue = [];
         for (const task of tasks) {
@@ -123,7 +125,10 @@ export class AnalysisEngine {
         send('setoption name UCI_LimitStrength value ' + (t.elo != null ? 'true' : 'false'));
         if (t.elo != null) send('setoption name UCI_Elo value ' + t.elo);
         send('setoption name Skill Level value ' + (t.skillLevel ?? 20));
-        if (t.mode === 'review') send('setoption name Clear Hash');
+        // Keep transpositions across the same game's increasingly deep searches.
+        // Clear once on game/strength changes, rather than on every candidate.
+        const context=(t.elo ?? 'full')+'|'+(t.skillLevel ?? 20)+'|'+(t.mode==='review'?(t.reviewSession ?? 'unscoped'):'interactive');
+        if(context!==this.searchContext){send('setoption name Clear Hash');this.searchContext=context;}
         send(t.position || 'position fen ' + t.fen);
         send('go depth ' + t.depth + (t.searchmoves?.length ? ' searchmoves ' + t.searchmoves.join(' ') : ''));
         t.timer = setTimeout(()=>this.stop(), t.timeoutMs || (t.mode === 'review' ? 2200 : 3500));

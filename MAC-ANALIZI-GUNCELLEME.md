@@ -1,5 +1,28 @@
 # Maç İnceleme Stüdyosu · 1 Ekim 2026
 
+## Tamamlanma ekranı ve hız güncellemesi · review2
+
+- Hamle adları Parlak, Harika, En İyi, Kitap, Mükemmel, İyi, Yanlış, Hata, Kaçan Fırsat ve Gaf olarak düzenlendi. İsimler raporda, filtrelerde ve notlu PGN çıktısında aynı kaynaktan kullanılır.
+- Maç raporu ve tahta, bütün hamleler ve gerekli derin kontroller tamamlanmadan açılmaz. Hazırlık, bütün hamlelerin incelenmesi, kritik kararların doğrulanması ve rapor oluşturulması ayrı aşamalarda gösterilir. Yüzde tamamlanan iş kapsamını belirtir; kalan süre tahmini değildir.
+- Eksik derinlik, tutarsız karar, motor hatası veya duraklatmada sonuç ekranı açılmaz. Tamamlanan hesaplar korunarak devam edilebilir. Önceden tamamlanmış raporlar, hamle geçmişi de doğrulanarak önbellekten açılır.
+- Aynı maçın aramalarında Stockfish konum belleği korunur; maç veya motor gücü değişince temizlenir. Her aday aramasında belleğin silinmesi kaldırıldı. Tamamlanmış yüksek derinlikli aramalar tekrar kullanılır; eksik aramalar tamamlanmış diye saklanmaz.
+- İlk inceleme 16, kritik kontrol 20, değişen veya sınırdaki kararların doğrulanması 22 hedeflerini korur. Devam edilen kararsız konumlarda yeni ve daha derin hesap yapılır; aynı önbellek sonucu kendisine karşı doğrulama sayılmaz. Tam konum ve aday karşılaştırma derinlikleri ayrı izlenmeye devam eder.
+- Raporun bütün bileşenlerinin her hamlede yeniden çizilmesi kaldırıldı. İnceleme sırasında yalnızca hafif ilerleme bilgisi güncellenir. Motor/açılış hazırlığı ve uygun konumlarda yardımcı oyun sonu verisi sorgusu paralel yürür.
+
+Üç örnek maç, ayrı tarayıcı oturumlarında boş önbellekle gerçek Stockfish WASM üzerinden karşılaştırıldı:
+
+| Örnek | Önce | Sonra |
+| --- | ---: | ---: |
+| Dört yarım hamlelik mat | 17,50 sn | 13,61 sn |
+| Ruy Lopez, 16 yarım hamle | 29,50 sn | 12,15 sn |
+| Vezir kaybı, 6 yarım hamle | 38,30 sn | 18,12 sn |
+
+Toplam süre 85,30 saniyeden 43,88 saniyeye indi: bu üç örnekte yaklaşık %49 hızlanma. Derinlik hedefleri, doğruluk formülü ve karar tutarlılığı eşikleri azaltılmadı. Konum belleğinin korunması motor puanlarını küçük ölçüde değiştirebilir; sonuçlar birebir aynı sayı garantisi veya bütün maçlar için %49 hız garantisi değildir.
+
+Doğrulama: 241 test geçti. Gerçek Stockfish ile tamamlanmadan raporun gizlenmesi, dört aşamalı ilerleme, duraklat/devam et, tamamlanmış rapor önbelleği, iptal, mat ve 390 piksel mobil görünüm kontrol edildi. GitHub Pages paketi gerçek uygulama entegrasyon testinden geçti.
+
+---
+
 Yeni bölüm tamamen Türkçe bir Stockfish 18 çalışma alanı sunar: yeni tahta görünümü, hamle defteri, Genel bakış / Hamle analizi / Kritik anlar sekmeleri, evre raporu ve gerçek motor kanıtları.
 
 ## Kritik düzeltmeler

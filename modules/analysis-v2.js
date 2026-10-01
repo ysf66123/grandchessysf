@@ -1,7 +1,8 @@
-import {AnalysisEngine} from './analysis-engine.mjs?v=20261001-studio1';
-import {REVIEW_VERSION, whiteScore, rootScore, classify, gameAccuracy, pvMoves, sacrificeEvidence, terminalResult, validPosition, uciOf, qualityScore, moveMetrics, comparisonEvidence, reviewIsStable} from './analysis-core.mjs?v=20261001-studio1';
-import {loadOpenings, normalizedOpeningKey, tablebase, tableExpected, explanation} from './analysis-data.mjs?v=20261001-studio1';
-import {reviewInsights, PHASE_LABELS, tacticalEvidence} from './analysis-insights.mjs?v=20261001-studio1';
+import {AnalysisEngine} from './analysis-engine.mjs?v=20261001-review2';
+import {REVIEW_VERSION, whiteScore, rootScore, classify, gameAccuracy, pvMoves, sacrificeEvidence, terminalResult, validPosition, uciOf, qualityScore, moveMetrics, comparisonEvidence, reviewIsStable} from './analysis-core.mjs?v=20261001-review2';
+import {loadOpenings, normalizedOpeningKey, tablebase, tableExpected, explanation} from './analysis-data.mjs?v=20261001-review2';
+import {reviewInsights, PHASE_LABELS, tacticalEvidence} from './analysis-insights.mjs?v=20261001-review2';
+import {REVIEW_STAGES, stageProgress, canRevealReport} from './analysis-progress.mjs?v=20261001-review2';
 // modules/analysis-v2.js - Chess Game Analysis Engine (Chess.com-style review)
 
 const SF_DEPTH_LIVE = 18;
@@ -12,16 +13,16 @@ const ANALYSIS_CACHE_DB = 'grandmaster_analysis_cache_v1';
 const ANALYSIS_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 45;
 
 const MOVE_CATEGORY_META = {
-    brilliant: { tag: '!!', tr: 'Parlak Hamle', en: 'Brilliant' },
-    great: { tag: '!', tr: 'Harika Hamle', en: 'Great' },
+    brilliant: { tag: '!!', tr: 'Parlak', en: 'Brilliant' },
+    great: { tag: '!', tr: 'Harika', en: 'Great' },
     best: { tag: '★', tr: 'En İyi', en: 'Best' },
-    book: { tag: '▤', tr: 'Kitap Hamlesi', en: 'Book' },
+    book: { tag: '▤', tr: 'Kitap', en: 'Book' },
     excellent: { tag: '✓', tr: 'Mükemmel', en: 'Excellent' },
     good: { tag: '✓', tr: 'İyi', en: 'Good' },
-    inaccuracy: { tag: '?!', tr: 'İsabetsizlik', en: 'Inaccuracy' },
+    inaccuracy: { tag: '?!', tr: 'Yanlış', en: 'Inaccuracy' },
     mistake: { tag: '?', tr: 'Hata', en: 'Mistake' },
-    miss: { tag: '✕', tr: 'Kaçırılan Fırsat', en: 'Miss' },
-    blunder: { tag: '??', tr: 'Büyük Hata', en: 'Blunder' },
+    miss: { tag: '✕', tr: 'Kaçan Fırsat', en: 'Miss' },
+    blunder: { tag: '??', tr: 'Gaf', en: 'Blunder' },
     unrated: { tag: '…', tr: 'Yetersiz veri', en: 'Unrated' }
 };
 
@@ -31,6 +32,38 @@ let pendingSharedAnalysisId = null;
 let firestoreApiPromise = null;
 let currentAnalysisReportCacheKey = null;
 let analysisMoveFilter='all';
+const completedEvalMemory=new Map();
+let loadingStage='prepare',loadingDone=0,loadingTotal=1,loadingPercent=0;
+
+function setReviewGate(state) {
+    const view=getAnalysisViewElement();if(!view)return;
+    view.dataset.reviewState=state;view.setAttribute('aria-busy',String(state==='processing'));
+    const overlay=document.getElementById('analysisLoadingOverlay');overlay.style.display=state==='ready'?'none':'flex';
+    const button=document.getElementById('reviewLoadingPause');
+    button.textContent=state==='processing'?'Duraklat':state==='paused'?'Devam et':'Tekrar dene';
+    document.getElementById('btnShareAnalysis').disabled=state!=='ready';
+    if(state==='paused')document.getElementById('analysisLoadingTitle').textContent='Analiz duraklatıldı';
+    if(state==='incomplete'){
+        document.getElementById('analysisLoadingTitle').textContent='Doğrulama henüz tamamlanmadı';
+        document.getElementById('analysisLoadingMessage').textContent='Bazı konumlarda derinlik veya karar tutarlılığı henüz yeterli değil. Sonuçların korunuyor; devam ederek bu konumları yeniden doğrulayabilirsin.';
+    }
+    if(state==='error')document.getElementById('analysisLoadingTitle').textContent='Analiz tamamlanamadı';
+}
+function setReviewStage(stage,done=0,total=1,detail) {
+    loadingStage=stage;loadingDone=done;loadingTotal=total;
+    loadingPercent=stageProgress(stage,done,total);
+    const meta=REVIEW_STAGES.find(s=>s.id===stage);
+    document.getElementById('analysisLoadingTitle').textContent='Maçını inceliyoruz';
+    document.getElementById('analysisLoadingMessage').textContent=detail||meta.detail;
+    document.getElementById('analysisLoadingSubtext').textContent='%'+loadingPercent+' tamamlandı';
+    document.getElementById('analysisLoadingProgressFill').style.width=loadingPercent+'%';
+    document.getElementById('analysisLoadingProgress').value=loadingPercent;
+    document.getElementById('analysisCountdownNumber').textContent=meta.title+(stage==='scan'||stage==='verify'?' · '+done+' / '+total:'');
+    document.querySelectorAll('[data-loading-stage]').forEach((el,index)=>{
+        const active=REVIEW_STAGES.findIndex(s=>s.id===stage);
+        el.dataset.state=index<active?'done':index===active?'active':'waiting';
+    });
+}
 
 function renderAnalysisInsights() {
     const report=reviewInsights(analysisMoveReviews,analysisHistory.length);
@@ -84,11 +117,15 @@ window.filterAnalysisMoves=function(category='all') {
     if(category!=='all')window.setAnalysisMobileTab('moves');
 };
 window.toggleReviewPause=async function() {
-    if(reviewBusy){window.cancelAnalysisReview();reportStatus='Analiz duraklatıldı · mevcut sonuçlar korundu';renderReviewDetails();renderAnalysisInsights();return;}
+    if(reviewBusy || getAnalysisViewElement().dataset.reviewState==='processing'){
+        window.cancelAnalysisReview();reportStatus='Analiz duraklatıldı · mevcut sonuçlar korundu';setReviewGate('paused');
+        document.getElementById('analysisLoadingMessage').textContent='Tamamlanan motor hesapları korundu. Devam ettiğinde yalnızca eksik incelemeler sürdürülür.';return;
+    }
     if(!analysisHistory.length)return;
     const token=analysisReviewToken;
+    setReviewGate('processing');
     try {await initStockfish();if(token!==analysisReviewToken)return;await runDetailedGameReview(token,true);}
-    catch(e){if(token===analysisReviewToken){reportStatus='Analiz tamamlanamadı';showVariationStatus(e.message);}}
+    catch(e){if(token===analysisReviewToken){reportStatus='Analiz tamamlanamadı';setReviewGate('error');document.getElementById('analysisLoadingMessage').textContent=e.message;}}
 };
 window.importReviewPgn=async function() {
     const input=document.getElementById('reviewPgnInput');
@@ -410,26 +447,40 @@ function positionCommand(index, extra = []) {
     return 'position fen ' + (analysisBaseFen || new Chess().fen()) +
         ((index || extra.length) ? ' moves ' + analysisHistory.slice(0,index).map(uciOf).concat(extra).join(' ') : '');
 }
-async function rootEvaluation(index, depth, token, searchmoves) {
+async function rootEvaluation(index, depth, token, searchmoves, fresh=false) {
     if (token !== analysisReviewToken) return null;
     const game = gameAt(index), fen=game.fen(), position=positionCommand(index);
-    const key = buildEvalCacheKey(position + '|moves:' + (searchmoves || []).join(','),depth);
-    const cached = await readCacheStore('evals',key);
+    const identity=position+'|moves:'+(searchmoves||[]).slice().sort().join(',');
+    const key=buildEvalCacheKey(identity,depth),deepKey=buildEvalCacheKey(identity,'deepest');
+    const remembered=completedEvalMemory.get(deepKey);
+    if(!fresh && remembered?.complete && remembered.depth>=depth)return remembered;
+    const candidates=fresh?[]:await Promise.all([readCacheStore('evals',deepKey),readCacheStore('evals',key)]);
+    const cached=candidates.filter(r=>r?.complete).sort((a,b)=>b.depth-a.depth)[0];
     if (token !== analysisReviewToken) return null;
-    if (cached?.complete && cached.depth >= depth) return cached;
+    if (cached?.complete && cached.depth >= depth){completedEvalMemory.set(deepKey,cached);return cached;}
     const result = await queueStockfishEval(fen,{mode:'review', depth, position, searchmoves,
         multiPv:searchmoves ? searchmoves.length : SF_MULTI_PV, requestId:token,
+        reviewSession:currentAnalysisReportCacheKey,
+        onProgress:line=>{if(token===analysisReviewToken && getAnalysisViewElement().dataset.reviewState==='processing')document.getElementById('analysisLoadingEngine').textContent='Stockfish 18 · '+(searchmoves?'Aday karşılaştırması':'Tam konum araması')+' · derinlik '+line.depth+' / '+depth;},
         timeoutMs:depth >= 24 ? 18000 : depth >= 22 ? 12000 : depth >= 20 ? 8000 : 3000});
     if (token !== analysisReviewToken || result.cancelled) return null;
     if (result.fallback || result.depth < 8) throw Error('Yeterli motor verisi alınamadı. Yeniden deneyin.');
-    if (result.complete) await writeCacheStore('evals',key,result);
+    if (result.complete){
+        const existing=completedEvalMemory.get(deepKey);
+        if(!existing || existing.depth<=result.depth){
+            completedEvalMemory.set(deepKey,result);
+            if(completedEvalMemory.size>512)completedEvalMemory.delete(completedEvalMemory.keys().next().value);
+            await writeCacheStore('evals',deepKey,result);
+        }
+        await writeCacheStore('evals',key,result);
+    }
     return result;
 }
 window.cancelAnalysisReview = function() {
     analysisReviewToken++; liveEvalRequestId++; bestPreviewToken++; variationRequest++;
     reviewBusy=false; variation=null; retryReview=null;
     reviewEngine.cancel(t=>['review','live','variation'].includes(t.mode));
-    showLoadingOverlay(false);
+    if(getAnalysisViewElement()?.dataset.reviewState!=='ready')setReviewGate('paused');
 };
 
 function countMoveCategories(reviews) {
@@ -724,8 +775,8 @@ function setAnalysisPosition(index) {
 function showLoadingOverlay(show, totalMoves) {
     const overlay = document.getElementById('analysisLoadingOverlay');
     if (!overlay) return;
-    overlay.style.display = show ? 'flex' : 'none';
-    if (show) updateLoadingProgress(0, totalMoves || 1);
+    if(show){setReviewGate('processing');setReviewStage('prepare',0,1);}
+    else if(getAnalysisViewElement().dataset.reviewState==='ready')overlay.style.display='none';
 }
 
 function updateLoadingProgress(index, total) {
@@ -1160,7 +1211,12 @@ function updateReportSummaryText(text) {
 }
 
 function applyCachedGameReview(payload) {
-    if (!payload || !payload.complete || !Array.isArray(payload.reviews) || payload.reviews.length !== analysisHistory.length) return false;
+    if (!payload?.complete || !Array.isArray(payload.reviews) || !canRevealReport(payload.reviews,analysisHistory.length)) return false;
+    const replay=gameAt(0);
+    for(let i=0;i<analysisHistory.length;i++){
+        if(payload.reviews[i].playedUci!==uciOf(analysisHistory[i]) || payload.reviews[i].beforeFen!==replay.fen())return false;
+        replay.move(getAnalysisReplayMove(analysisHistory[i]));
+    }
     analysisMoveReviews = payload.reviews; reportStatus='Analiz tamamlandı';
     updateAccuracyRing('acc-white', payload.whiteAccuracy);
     updateAccuracyRing('acc-black', payload.blackAccuracy);
@@ -1175,24 +1231,24 @@ function applyCachedGameReview(payload) {
     return true;
 }
 
-async function reviewMove(index, depth, token) {
+async function reviewMove(index, depth, token, fresh=false) {
     const game=gameAt(index), beforeFen=game.fen(), legalCount=game.moves().length;
     const move=analysisHistory[index], playedUci=uciOf(move);
-    const tb=await tablebase(gameAt(index));
-    let result=await rootEvaluation(index,depth,token);
+    const tbPromise=tablebase(game);
+    let result=await rootEvaluation(index,depth,token,undefined,fresh);
     if (!result) return null;
+    const tb=await tbPromise;
     const globalResult=result;
     if(!result.topLines?.length)throw Error('Bu konumda yeterli motor verisi alınamadı. Analizi yeniden başlatabilirsin.');
     if (!result.topLines.some(l=>l.uci === playedUci) || (tb?.moves?.[0] && !result.topLines.some(l=>l.uci===tb.moves[0].uci))) {
         const candidates=[...new Set(result.topLines.map(l=>l.uci).concat(playedUci,tb?.moves?.[0]?.uci || []).filter(Boolean))];
-        result=await rootEvaluation(index,depth,token,candidates);
+        result=await rootEvaluation(index,depth,token,candidates,fresh);
         if (!result) return null;
     }
     const evidence=comparisonEvidence(globalResult,result);
     const lines=result.topLines.map(line=>{
-        const branch=gameAt(index);
-        if(!tryApplyUciMove(branch,line.uci))return line;
-        const terminal=terminalResult(branch);
+        if(!tryApplyUciMove(game,line.uci))return line;
+        const terminal=terminalResult(game);game.undo();
         return terminal?{...line,cp:terminal.mate===0?null:0,mate:terminal.mate===0?1:null,
             wdl:terminal.mate===0?[1000,0,0]:[0,1000,0],terminal:true}:line;
     }).sort((a,b)=>rootScore(b)-rootScore(a));
@@ -1236,6 +1292,7 @@ async function reviewMove(index, depth, token) {
             sacrificeEvidence(Chess,beforeFen,played) || [0.02,0.05,0.1,0.2].some(t=>Math.abs(loss-t)<0.008)};
 }
 function refreshReviewReport() {
+    if(getAnalysisViewElement().dataset.reviewState!=='ready')return;
     updateAccuracyRing('acc-white',calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='w')));
     updateAccuracyRing('acc-black',calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='b')));
     renderMoveList(); highlightMoveRow(); renderQualitySummary(); drawEvaluationChart();
@@ -1249,62 +1306,68 @@ function refreshReviewReport() {
     }
 }
 async function runDetailedGameReview(token,resume=false) {
-    reviewBusy=true;
+    reviewBusy=true;setReviewGate('processing');
     try {
         openings=await loadOpenings();
-        if (token!==analysisReviewToken) return;
+        if(token!==analysisReviewToken)return;
         if(!resume)analysisMoveReviews=new Array(analysisHistory.length);
-        showLoadingOverlay(false);
-        reportStatus='İlk inceleme';
+        reportStatus='Bütün hamleler inceleniyor';setReviewStage('scan',0,analysisHistory.length);
         for(let i=0;i<analysisHistory.length;i++) {
-            if(resume && analysisMoveReviews[i]?.complete)continue;
-            const review=await reviewMove(i,SF_DEPTH_REVIEW,token);
-            if (!review || token!==analysisReviewToken) return;
-            analysisMoveReviews[i]=review;
-            reportStatus='İlk inceleme · '+(i+1)+' / '+analysisHistory.length;
-            refreshReviewReport();
-        }
-        const critical=analysisMoveReviews.filter(r=>(r.critical || !r.complete) && !(resume && r.verified && r.stable===true)).map(r=>r.index);
-        for(let n=0;n<critical.length;n++) {
-            if (token!==analysisReviewToken) return;
-            reportStatus='Kritik konumlar derinleştiriliyor · '+(n+1)+' / '+critical.length;
-            renderReviewDetails();
-            let review=await reviewMove(critical[n],20,token);
-            if (review && token===analysisReviewToken) {
-                const previous=analysisMoveReviews[critical[n]];
-                const shifted=!reviewIsStable(previous,review);
-                const borderline=[0.02,0.05,0.1,0.2].some(t=>Math.abs(review.loss-t)<0.005);
-                if(shifted || borderline) {
-                    reportStatus='Karar doğrulanıyor · '+review.moveNumber+'. '+review.moveSan;
-                    renderReviewDetails();
-                    const confirmed=await reviewMove(critical[n],22,token);
-                    if(confirmed){confirmed.stable=reviewIsStable(review,confirmed);review=confirmed;}
-                } else review.stable=true;
+            if(!resume || !analysisMoveReviews[i]?.complete){
+                const review=await reviewMove(i,SF_DEPTH_REVIEW,token);
+                if(!review || token!==analysisReviewToken)return;
+                analysisMoveReviews[i]=review;
             }
-            if (!review || token!==analysisReviewToken) return;
-            analysisMoveReviews[critical[n]]=review;
-            refreshReviewReport();
+            reportStatus='Bütün hamleler inceleniyor · '+(i+1)+' / '+analysisHistory.length;
+            setReviewStage('scan',i+1,analysisHistory.length);
         }
-        if (token!==analysisReviewToken) return;
-        // Later refinements can alter whether the previous opponent move was a miss.
+        const critical=analysisMoveReviews.filter(r=>(r.critical||!r.complete) && !(resume&&r.verified&&r.stable===true)).map(r=>r.index);
+        setReviewStage('verify',0,critical.length);
+        for(let n=0;n<critical.length;n++) {
+            if(token!==analysisReviewToken)return;
+            const index=critical[n],previous=analysisMoveReviews[index];
+            const target=Math.min(28,previous.depth>=20?previous.depth+2:20);
+            reportStatus='Kritik kararlar doğrulanıyor · '+(n+1)+' / '+critical.length;
+            setReviewStage('verify',n,critical.length,previous.moveNumber+'. '+previous.moveSan+' daha derin karşılaştırılıyor.');
+            let review=await reviewMove(index,target,token,resume && target<=previous.depth);
+            if(!review || token!==analysisReviewToken)return;
+            const shifted=!reviewIsStable(previous,review);
+            const borderline=[0.02,0.05,0.1,0.2].some(t=>Math.abs(review.loss-t)<0.005);
+            if(shifted||borderline){
+                reportStatus='Karar tutarlılığı kontrol ediliyor';
+                setReviewStage('verify',n,critical.length,review.moveNumber+'. '+review.moveSan+' için karar tutarlılığı kontrol ediliyor.');
+                const confirmationDepth=Math.min(28,Math.max(target,review.depth)+2);
+                if(confirmationDepth>review.depth){
+                    const confirmed=await reviewMove(index,confirmationDepth,token);
+                    if(!confirmed || token!==analysisReviewToken)return;
+                    confirmed.stable=reviewIsStable(review,confirmed);review=confirmed;
+                }else review.stable=false;
+            }else review.stable=true;
+            analysisMoveReviews[index]=review;setReviewStage('verify',n+1,critical.length);
+        }
+        if(token!==analysisReviewToken)return;
+        setReviewStage('finish',0,1);
         analysisMoveReviews.forEach((r,i)=>{
             r.category=classify({best:r.bestLine,played:r.playedLine,legalCount:r.legalCount,
-                verified:r.verified && r.stable!==false,sacrifice:r.sacrifice,routineCapture:r.routineCapture,book:!!r.opening,
-                previousOpponentLoss:analysisMoveReviews[i-1]?.loss || 0});
+                verified:r.verified&&r.stable!==false,sacrifice:r.sacrifice,routineCapture:r.routineCapture,book:!!r.opening,
+                previousOpponentLoss:analysisMoveReviews[i-1]?.loss||0});
         });
-        const complete=analysisMoveReviews.every(r=>r?.complete && r.stable!==false);
-        reportStatus=complete?'Analiz tamamlandı':'İnceleme tamamlandı · bazı kararlar geçici';
-        updateReportSummaryText(getWorstMoveSummaryText());
-        refreshReviewReport();
-        if (complete && currentAnalysisReportCacheKey) await writeCacheStore('reports',currentAnalysisReportCacheKey,{
+        const complete=canRevealReport(analysisMoveReviews,analysisHistory.length);
+        reviewBusy=false;
+        if(!complete){reportStatus='Doğrulama henüz tamamlanmadı';setReviewGate('incomplete');return;}
+        reportStatus='Analiz tamamlandı';setReviewStage('finish',1,1);setReviewGate('ready');
+        updateReportSummaryText(getWorstMoveSummaryText());refreshReviewReport();
+        bindBestMovePreviewButton();initChartEvents();drawEvaluationChart();
+        if(currentAnalysisReportCacheKey)await writeCacheStore('reports',currentAnalysisReportCacheKey,{
             complete:true,reviews:analysisMoveReviews,
             whiteAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r.moveColor==='w')),
             blackAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r.moveColor==='b')),
             summaryText:getWorstMoveSummaryText()});
-    } finally { if (token===analysisReviewToken) {reviewBusy=false;updateAccuracyRing('acc-white',calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='w')));updateAccuracyRing('acc-black',calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='b')));renderReviewDetails();renderAnalysisInsights();} }
+    }finally{if(token===analysisReviewToken){reviewBusy=false;if(getAnalysisViewElement().dataset.reviewState==='ready')renderAnalysisInsights();}}
 }
 
 function renderReviewDetails() {
+    if(getAnalysisViewElement().dataset.reviewState!=='ready')return;
     const r=analysisMoveReviews[currentAnalysisIndex-1] || livePositionResult;
     const status=document.getElementById('reviewProgressText');
     if (!status) return;
@@ -1395,6 +1458,7 @@ window.jumpToCriticalMove=function(direction) {
 };
 window.getAnalysisReportSnapshot=function() {
     return JSON.parse(JSON.stringify({version:REVIEW_VERSION,status:reportStatus,
+        progress:{stage:loadingStage,done:loadingDone,total:loadingTotal,percent:loadingPercent,state:getAnalysisViewElement().dataset.reviewState},
         whiteAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='w')),
         blackAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='b')),
         reviews:analysisMoveReviews}));
@@ -1459,6 +1523,7 @@ document.getElementById('analysisBoard')?.addEventListener('click',async functio
 });
 document.addEventListener('keydown',event=>{
     if (window.currentViewId!=='view-2v2-analysis' || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || event.target.isContentEditable) return;
+    if(getAnalysisViewElement()?.dataset.reviewState!=='ready')return;
     const square=event.target.closest('#analysisBoard [data-square]');
     if(square){
         const squares=[...document.querySelectorAll('#analysisBoard [data-square]')],index=squares.indexOf(square);
@@ -1480,6 +1545,7 @@ window.openAnalysis = async function(pgn, players, fallbackFen) {
     const headers=incoming.header();
     if(!Array.isArray(players) || !players.length)players=[{team:'white',name:headers.White||'Beyaz'},{team:'black',name:headers.Black||'Siyah'}];
     window.cancelAnalysisReview();
+    showLoadingOverlay(true);
     window.switchView('view-2v2-analysis');
     window.setAnalysisMobileTab('review');
     window.toggleAnalysisMovesPanel(false);
@@ -1559,6 +1625,7 @@ window.openAnalysis = async function(pgn, players, fallbackFen) {
 
     if (analysisHistory.length === 0 && analysisBaseFen) {
         try { await initStockfish();if(thisReviewToken!==analysisReviewToken)return;
+            setReviewGate('ready');
             setAnalysisPosition(0);renderAnalysisBoard();renderMoveList();reportStatus='Tek konum incelemesi';updateReportSummaryText('Maç geçmişi yok; yalnızca konum inceleniyor.');document.getElementById('report-result').textContent='Konum incelemesi';document.getElementById('analysisResultPill').textContent='Konum';
             document.getElementById('analysisResultBadge').textContent='Konum incelemesi';updateCoachFeedback();renderAnalysisInsights();runStockfish();
         } catch(e){window.showToast(e.message,'error');}return;
@@ -1576,10 +1643,10 @@ window.openAnalysis = async function(pgn, players, fallbackFen) {
     showLoadingOverlay(true, analysisHistory.length);
 
     try {
-        await initStockfish();
+        await Promise.all([initStockfish(),loadOpenings()]);
     } catch (e) {
         window.showToast('Stockfish yüklenemedi, analiz başlatılamıyor.', 'error');
-        showLoadingOverlay(false);
+        if(thisReviewToken===analysisReviewToken){setReviewGate('error');document.getElementById('analysisLoadingMessage').textContent=e.message;}
         return;
     }
 
@@ -1628,7 +1695,7 @@ window.openAnalysis = async function(pgn, players, fallbackFen) {
     const cachedReport = await readCacheStore('reports', currentAnalysisReportCacheKey);
     if (thisReviewToken !== analysisReviewToken) return;
     if (applyCachedGameReview(cachedReport)) {
-        showLoadingOverlay(false);
+        setReviewStage('finish',1,1);setReviewGate('ready');refreshReviewReport();
         // Restore coach feedback from cached report
         if (typeof updateCoachFeedback === 'function') updateCoachFeedback();
         bindBestMovePreviewButton();
@@ -1640,16 +1707,13 @@ window.openAnalysis = async function(pgn, players, fallbackFen) {
     try {
         await runDetailedGameReview(thisReviewToken);
     } catch (error) {
-        if (thisReviewToken === analysisReviewToken) { reportStatus='Analiz tamamlanamadı'; updateReportSummaryText(error.message); renderReviewDetails(); }
+        if (thisReviewToken === analysisReviewToken) { reportStatus='Analiz tamamlanamadı';setReviewGate('error');document.getElementById('analysisLoadingMessage').textContent=error.message; }
     } finally {
         if (thisReviewToken === analysisReviewToken) {
             showLoadingOverlay(false);
         }
     }
 
-    bindBestMovePreviewButton();
-    initChartEvents();
-    drawEvaluationChart();
 };
 
 window.openAnalysisFromEncodedGame = function(encodedGame) {
