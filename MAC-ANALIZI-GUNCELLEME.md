@@ -1,5 +1,7 @@
 # Maç İnceleme Stüdyosu · 1 Ekim 2026
 
+En yeni sürüm: [Mobil arayüz, referans sınıflandırmalar ve maçtan öğrenme güncellemesi](MOBIL-VE-ANALIZ-GUNCELLEME.md). Aşağıdaki bölümler önceki sürümlerin geçmişidir; güncel Türkçe adlar yeni belgede yer alır.
+
 ## Tamamlanma ekranı ve hız güncellemesi · review2
 
 - Hamle adları Parlak, Harika, En İyi, Kitap, Mükemmel, İyi, Yanlış, Hata, Kaçan Fırsat ve Gaf olarak düzenlendi. İsimler raporda, filtrelerde ve notlu PGN çıktısında aynı kaynaktan kullanılır.

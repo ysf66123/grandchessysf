@@ -1,4 +1,4 @@
-import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs?v=20261001-review2';
+import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs?v=20261001-mobile1';
 
 // One owner of the UCI stream. A task is not released until bestmove or restart.
 export class AnalysisEngine {

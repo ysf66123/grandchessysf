@@ -272,3 +272,26 @@ body[data-active-view="view-2v2-analysis"] .app-container {background:#101715;wi
  #view-2v2-analysis .premium-loading-overlay {min-height:500px;padding:10px 0 20px;}
 }
 @media(prefers-reduced-motion:reduce) {#view-2v2-analysis * {transition:none!important;animation:none!important;}}
+/* Shared classification artwork follows the supplied circular reference. */
+#view-2v2-analysis .review-category-icon{width:24px;height:24px;display:inline-block;vertical-align:middle;flex-shrink:0;}
+#view-2v2-analysis .analysis-piece-badge,#view-2v2-analysis .move-tag,#view-2v2-analysis .studio-moment-symbol{background:transparent!important;padding:0!important;border:0;border-radius:50%;color:white;}
+#view-2v2-analysis .analysis-piece-badge .review-category-icon,#view-2v2-analysis .move-tag .review-category-icon{width:100%;height:100%;}
+#view-2v2-analysis .coach-quality .review-category-icon{width:22px;height:22px;margin-right:5px;}
+#view-2v2-analysis .studio-moment-symbol .review-category-icon{width:28px;height:28px;}
+#view-2v2-analysis #analysisBoard{position:relative;}
+#view-2v2-analysis .review-tactic-overlay{position:absolute;inset:0;width:100%;height:100%;z-index:9;pointer-events:none;}
+#view-2v2-analysis .review-tactic-controls{padding:12px;border:1px solid #ffffff12;border-radius:10px;margin:14px 0;}
+#view-2v2-analysis #reviewTacticStatus{display:block;font-size:11px;color:#b3c0b3;line-height:1.6;}
+#view-2v2-analysis .studio-motifs{flex-wrap:wrap;}
+#view-2v2-analysis .studio-motifs button{white-space:normal;line-height:1.5;font-size:10px;padding:7px;}
+#view-2v2-analysis .studio-learning{margin-top:20px;border-top:1px solid #ffffff10;}
+#view-2v2-analysis .studio-learning-section{border-bottom:1px solid #ffffff10;padding:12px 0;}
+#view-2v2-analysis .studio-learning-section summary{font-size:12px;cursor:pointer;color:#cfdbcc;font-weight:600;line-height:1.6;}
+#view-2v2-analysis .studio-learning-section p{font-size:11px;color:#91a694;line-height:1.7;margin:12px 0;}
+#view-2v2-analysis .studio-learning-section select{margin:12px 0;}
+#view-2v2-analysis .studio-learning-section button{white-space:normal;font-size:11px;line-height:1.6;margin:5px 5px 5px 0;}
+#view-2v2-analysis .studio-lesson{display:flex;flex-direction:column;align-items:flex-start;width:100%;padding:12px;text-align:left;gap:4px;}
+#view-2v2-analysis .studio-lesson span{color:#91a694;font-size:10px;}
+#view-2v2-analysis .studio-learning-card{padding:12px;border:1px solid #ffffff10;border-radius:9px;margin-top:10px;font-size:11px;}
+#view-2v2-analysis .studio-learning-row{padding:8px 0;font-size:11px;color:#9ab39d;border-bottom:1px solid #ffffff08;overflow-wrap:anywhere;}
+#view-2v2-analysis [hidden]{display:none!important;}

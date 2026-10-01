@@ -1,3 +1,4 @@
+import {appendMatchClock} from './match-clock.mjs?v=20261001-mobile1';
 import { doc, onSnapshot, setDoc, updateDoc, getDoc, getDocs, collection, query, where, arrayUnion, arrayRemove, serverTimestamp, deleteField, runTransaction, deleteDoc, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const db = window.db;
@@ -761,6 +762,7 @@ async function commit1v1Move(move, sourceData) {
     };
     if (chess1v1.turn() === 'b') updates.whiteTime = Math.max(0, sourceData.whiteTime - timeDiff);
     else updates.blackTime = Math.max(0, sourceData.blackTime - timeDiff);
+    updates.clockHistory=appendMatchClock(sourceData,move,timeDiff,move.color==='w'?updates.whiteTime:updates.blackTime);
 
     if (chess1v1.game_over()) {
         updates.status = 'finished';
@@ -4702,6 +4704,7 @@ async function handleSquareClick(sq, isMyTurn) {
             } else {
                 updates.blackTime = Math.max(0, current2v2Data.blackTime - timeDiff);
             }
+            updates.clockHistory=appendMatchClock(current2v2Data,move,timeDiff,move.color==='w'?updates.whiteTime:updates.blackTime);
 
             if(chess.game_over()) {
                 updates.status = 'finished';
@@ -4807,7 +4810,7 @@ function showGameOverModal(d) {
 window.closeGameOver = () => {
     document.getElementById('gameOverModal').style.display = 'none';
     if(currentGameOverPayload && currentGameOverPayload.pgn) {
-        if (window.openAnalysis) window.openAnalysis(currentGameOverPayload.pgn, currentGameOverPayload.players, currentGameOverPayload.fen || null);
+        if (window.openAnalysis) window.openAnalysis(currentGameOverPayload.pgn, currentGameOverPayload.players, currentGameOverPayload.fen || null,currentGameOverPayload);
     } else if (currentGameOverPayload && currentGameOverPayload.gameMode === '1v1') {
         window.leave1v1Lobby();
     } else {

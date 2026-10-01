@@ -1,5 +1,5 @@
 // Pure review rules. Scores are from the root side to move; UI scores are White POV.
-export const REVIEW_VERSION = 'sf18-review-20261001-studio1';
+export const REVIEW_VERSION = 'sf18-review-20261001-mobile1';
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 export const uciOf = m => m.from + m.to + (m.promotion || '');
 export function parseInfo(text) {
@@ -63,6 +63,17 @@ export function comparisonEvidence(globalResult, comparedResult) {
     return {fullDepth,comparedDepth,depth:Math.min(fullDepth,comparedDepth),complete,
         verified:complete && fullDepth>=20 && comparedDepth>=20};
 }
+export function specialMoveEvidence(globalResult, comparedBest, legalCount){
+    const ranked=(globalResult?.topLines||[]).filter(l=>qualityScore(l)!=null).sort((a,b)=>rootScore(b)-rootScore(a));
+    const best=ranked[0],second=ranked.find(l=>l.uci!==best?.uci);
+    const sameBest=!!best && best.uci===comparedBest?.uci;
+    const expected=qualityScore(comparedBest),alternative=second?qualityScore(second):null;
+    // All legal alternatives are covered in a two-move position; otherwise an
+    // unrestricted MultiPV search must expose at least three ranked candidates.
+    const covered=ranked.length>=Math.min(3,legalCount) && globalResult.complete && globalResult.depth>=20;
+    return {alternativeExpected:sameBest&&covered?alternative:null,
+        unique:sameBest&&covered&&alternative!=null&&expected-alternative>=.15&&alternative<.4};
+}
 export function reviewIsStable(previous, next) {
     if(!previous || !next || !Number.isFinite(previous.loss) || !Number.isFinite(next.loss))return false;
     if(Math.abs(previous.loss-next.loss)>0.025)return false;
@@ -84,7 +95,7 @@ export function classify({ best, played, legalCount, verified, sacrifice, book, 
     // A database can name a trap's final position; a forcing mate is not Book.
     if (book && best.mate==null && played.mate==null && loss < 0.02 && cpl!=null && cpl<=30) return 'book';
     if (verified && sacrifice && nearBest && after>=0.5 &&
-        (before<0.9 || (Number.isFinite(best.alternativeExpected)&&best.alternativeExpected<0.8))) return 'brilliant';
+        Number.isFinite(best.alternativeExpected) && best.alternativeExpected<0.8) return 'brilliant';
     if (verified && isBest && best.unique && after>=0.4 && !routineCapture && played.mate!==1) return 'great';
     if (isBest) return 'best';
     // A new mate is not automatically a blunder if the position was already lost.
