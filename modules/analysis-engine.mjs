@@ -1,9 +1,17 @@
-import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs?v=20261001-mobile1';
+import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs?v=20261001-speed1';
+import {engineProfile,requestIdentity} from './engine-profile.mjs?v=20261001-speed1';
+import {NativeEngineWorker,selectedBackend} from './native-engine-worker.mjs?v=20261001-speed1';
 
 // One owner of the UCI stream. A task is not released until bestmove or restart.
 export class AnalysisEngine {
-    constructor(workerFactory = () => new Worker('vendor/stockfish-18-lite-single.js')) {
-        this.factory = workerFactory;
+    constructor(workerFactory,profile) {
+        const nav=globalThis.navigator||{};
+        this.profile=profile||engineProfile({cores:nav.hardwareConcurrency,memory:nav.deviceMemory,
+            mobile:globalThis.matchMedia?.('(max-width:760px)').matches,isolated:globalThis.crossOriginIsolated});
+        this.profile.backend ||= selectedBackend();
+        if(this.profile.backend==='native')this.profile.threads=Math.min(2,Math.max(1,Math.floor((nav.hardwareConcurrency||2)/2)));
+        this.factory = workerFactory || (() => this.profile.backend==='native'?new NativeEngineWorker():new Worker(this.profile.threads>1?'vendor/stockfish-18-lite.js':'vendor/stockfish-18-lite-single.js'));
+        this.customFactory=!!workerFactory;this.shared=new Map();this.stats={requests:0,shared:0,ms:0,nodes:0};
         this.queue = [];
         this.active = null;
         this.ready = false;
@@ -27,7 +35,17 @@ export class AnalysisEngine {
                 worker.postMessage('uci');
             } catch (e) { this.fail(e.message); }
         });
-        try { await this.initializing; } finally { this.initializing = null; }
+        try { await this.initializing; }
+        catch(error){
+            if(!this.customFactory&&this.profile.backend==='native'){
+                this.profile.backend='browser';this.profile.threads=globalThis.crossOriginIsolated?this.profile.threads:1;
+                try{localStorage.setItem('gm_chess_backend','browser');}catch{}
+                globalThis.window?.showToast?.('Yerel motor bağlantısı kurulamadı. Tarayıcı motoruyla devam ediliyor.','info');
+                this.initializing=null;return this.init();
+            }
+            if(!this.customFactory&&this.profile.threads>1){this.profile.threads=1;this.initializing=null;return this.init();}
+            throw error;
+        } finally { this.initializing = null; }
     }
     fail(message) {
         clearTimeout(this.initTimer);
@@ -45,8 +63,8 @@ export class AnalysisEngine {
     line(text) {
         if (!text) return;
         if (text === 'uciok') {
-            this.worker.postMessage('setoption name Hash value 64');
-            this.worker.postMessage('setoption name Threads value 1');
+            this.worker.postMessage('setoption name Hash value '+this.profile.hash);
+            this.worker.postMessage('setoption name Threads value '+this.profile.threads);
             this.worker.postMessage('setoption name UCI_ShowWDL value true');
             this.worker.postMessage('isready');
             return;
@@ -75,6 +93,7 @@ export class AnalysisEngine {
         clearTimeout(task.timer); clearTimeout(task.watchdog);
         this.active = null;
         const topLines = task.lines.map(line => ({...line, whiteScore:whiteScore(line,task.fen)}));
+        this.stats.ms+=Date.now()-task.started;this.stats.nodes+=Math.max(0,...topLines.map(l=>l.nodes||0));
         const first = topLines[0];
         const reported = text.split(/\s+/)[1];
         task.resolve({ ...first, cp:first?.cp ?? null, mate:first?.mate ?? null,
@@ -84,13 +103,16 @@ export class AnalysisEngine {
             time:Math.max(0,...topLines.map(line=>line.time || 0)),
             complete:!task.cancelled && task.reached >= task.depth,
             cancelled:!!task.cancelled, fallback:!first || !!task.cancelled,
-            source:'Stockfish 18 Lite', version:REVIEW_VERSION,
+            source:this.profile.backend==='native'?'Stockfish 18 Full · yerel':'Stockfish 18 Lite',threads:this.profile.threads,hash:this.profile.hash,version:REVIEW_VERSION,
             fen:task.fen, mode:task.mode, requestId:task.requestId });
         this.next();
     }
     evaluate(fen, options = {}) {
         if (!this.ready) return Promise.resolve({fallback:true,topLines:[],error:'Motor hazır değil.'});
-        return new Promise(resolve => {
+        const identity=requestIdentity(fen,options);
+        if(this.shared.has(identity)){this.stats.shared++;return this.shared.get(identity);}
+        this.stats.requests++;
+        const promise=new Promise(resolve => {
             const task = {fen, depth:18, mode:'live', ...options, resolve,
                 frames:{}, lines:[], reached:0};
             task.priority = options.priority === 'high' ? 1 : Number(options.priority) ||
@@ -101,6 +123,8 @@ export class AnalysisEngine {
             this.queue.sort((a,b)=>a.priority-b.priority);
             this.next();
         });
+        this.shared.set(identity,promise);promise.finally(()=>{if(this.shared.get(identity)===promise)this.shared.delete(identity);});
+        return promise;
     }
     stop() {
         const task = this.active;
@@ -118,8 +142,9 @@ export class AnalysisEngine {
     next() {
         if (!this.ready || this.active || !this.queue.length) return;
         const t = this.active = this.queue.shift();
+        t.started=Date.now();
         const send = message => this.worker.postMessage(message);
-        const mpv = t.mode === 'bot' ? 1 : t.multiPv || 3;
+        const mpv = t.mode === 'bot' ? t.multiPv || 1 : t.multiPv || 3;
         t.expected = Math.min(mpv, t.searchmoves?.length || t.legalCount || 1);
         send('setoption name MultiPV value ' + mpv);
         send('setoption name UCI_LimitStrength value ' + (t.elo != null ? 'true' : 'false'));

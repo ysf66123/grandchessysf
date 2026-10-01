@@ -1,10 +1,8 @@
-import {personalLessons,errorChains,openingInsights,clockInsights,learningRecord,historySummary,trainingResult} from './analysis-learning.mjs?v=20261001-mobile1';
+import {personalLessons,errorChains,openingInsights,clockInsights,learningRecord,historySummary,trainingResult} from './analysis-learning.mjs?v=20261001-speed1';
+import {readLearning as read,writeLearning as write,clearLearning,ensureLearningSync,learningStatus} from './chess-learning-store.mjs?v=20261001-speed1';
+import {openingNameTR} from './chess-opening-names.mjs?v=20261001-speed1';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e;};
 function key(){return 'gm_review_learning_v1_'+(window.currentUser?.uid||'guest');}
-function read(){try{return JSON.parse(localStorage.getItem(key())||'[]')
- .filter(r=>r&&typeof r.id==='string'&&typeof r.pgn==='string'&&r.pgn.length<150000&&['w','b'].includes(r.side)&&Number.isFinite(r.accuracy)&&Array.isArray(r.training)).slice(-50)
- .map(r=>({...r,players:Array.isArray(r.players)?r.players:[],training:r.training.filter(t=>t&&Number.isInteger(t.index)&&t.index>=0&&t.index<600&&/^[a-h][1-8][a-h][1-8][nbrq]?$/.test(t.bestMove)&&Number.isFinite(t.due)&&Number.isFinite(t.loss)).slice(0,8)}));}catch{return [];}}
-function write(records){try{localStorage.setItem(key(),JSON.stringify(records.slice(-50)));return true;}catch{return false;}}
 let activeTraining=null;
 export function finishLearningAttempt(success){
  if(success==null||!activeTraining)return;
@@ -13,6 +11,7 @@ export function finishLearningAttempt(success){
 }
 export function clearLearningAttempt(){activeTraining=null;}
 export function renderLearningUI({id,pgn,players,reviews,insights,providedClocks=[],openTraining}){
+ ensureLearningSync();
  const root=document.getElementById('reviewLearning');if(!root||!reviews.length||reviews.some(r=>!r.complete||r.stable===false))return;
  const uid=window.currentUser?.uid,own=uid?players.find(p=>p.uid===uid||p.id===uid):null;
  const savedSide=read().find(r=>r.id===id+':w'||r.id===id+':b')?.side;
@@ -35,7 +34,7 @@ export function renderLearningUI({id,pgn,players,reviews,insights,providedClocks
  for(const group of groups.slice(0,5)){const card=el('div',null,'studio-learning-card');card.append(el('strong',(group.color==='w'?'Beyaz':'Siyah')+' · '+group.indices.length+' ardışık kritik karar'),el('p','Bu bölümde konum toparlanmadan art arda değerlendirme kayıpları oluştu.'));
   for(const i of group.indices)card.append(action(reviews[i].moveNumber+'. '+reviews[i].moveSan,()=>jump(i)));chains.append(card);}
  const opening=openingInsights(reviews),openingPanel=section('Açılış ve zaman kullanımı','opening');
- openingPanel.append(el('p',opening.name?opening.eco+' · '+opening.name:'Açılış veritabanında eşleşme yok.'));
+ openingPanel.append(el('p',opening.name?opening.eco+' · '+openingNameTR(opening.name):'Açılış veritabanında eşleşme yok.'));
  if(opening.departure!=null)openingPanel.append(action('Bilinen konumların dışına çıkış',()=>jump(opening.departure)),el('p','Veritabanının dışına çıkmak tek başına hata değildir.'));
  if(opening.firstError!=null)openingPanel.append(action('İlk gerçek değerlendirme kaybı',()=>jump(opening.firstError)));
  const clock=clockInsights(pgn,reviews,providedClocks);
@@ -50,7 +49,9 @@ export function renderLearningUI({id,pgn,players,reviews,insights,providedClocks
  for(const theme of history.themes.slice(0,4))progress.append(el('div',theme.name+' · '+theme.count+' kritik konum','studio-learning-row'));
  const names={opening:'Açılış',middle:'Oyun ortası',end:'Oyun sonu'};
  for(const phase of history.phases)progress.append(el('div',names[phase.phase]+' · '+(phase.accuracy==null?'veri yok':'%'+phase.accuracy+' · '+phase.games+' maç'),'studio-learning-row'));
- for(const o of history.openings)progress.append(el('div',o.name+' · '+o.games+' maç · '+o.errors+' açılışta kritik karar','studio-learning-row'));
+ for(const o of history.openings)progress.append(el('div',openingNameTR(o.name)+' · '+o.games+' maç · '+o.errors+' açılışta kritik karar','studio-learning-row'));
  progress.append(el('p','İçe aktarılan maçlarda taraf seçimini kontrol et. Farklı rakip ve sürelerdeki doğruluklar doğrudan güç ölçüsü değildir.'));
- const remove=action('Bu cihazdaki öğrenme geçmişini sil',()=>{localStorage.removeItem(key());root.replaceChildren(el('p','Öğrenme geçmişi silindi. Sonraki tamamlanan analizler yeniden kaydedilir.'));});progress.append(remove);
+ progress.append(el('p',learningStatus()));
+ progress.append(action('Açılış repertuvarı ve gelişim merkezi',()=>window.openChessAcademy?.('repertoire')));
+ const remove=action('Öğrenme geçmişini sil',()=>{clearLearning();root.replaceChildren(el('p','Öğrenme geçmişi silindi. Sonraki tamamlanan analizler yeniden kaydedilir.'));});progress.append(remove);
 }

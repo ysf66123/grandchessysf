@@ -1,7 +1,7 @@
 export const REVIEW_STAGES=[
     {id:'prepare',title:'Motor ve maç hazırlanıyor',detail:'Hamle geçmişi ve açılış verileri yükleniyor.'},
-    {id:'scan',title:'Bütün hamleler inceleniyor',detail:'Oynanan hamleler en güçlü devamlarla karşılaştırılıyor.'},
-    {id:'verify',title:'Kritik kararlar doğrulanıyor',detail:'Kayıplar, fedalar ve sınırdaki kararlar daha derin inceleniyor.'},
+    {id:'scan',title:'Bütün hamleler inceleniyor',detail:'Hamleler karşılaştırılıyor; kritik konumlar motor belleği hazırken derinleştiriliyor.'},
+    {id:'verify',title:'Son kontroller yapılıyor',detail:'Derinlik, kapsam ve karar tutarlılığı kontrol ediliyor; eksik doğrulamalar tamamlanıyor.'},
     {id:'finish',title:'Rapor hazırlanıyor',detail:'Doğruluk ve hamle sınıfları son hesaplardan oluşturuluyor.'}
 ];
 export function stageProgress(stage,done=0,total=1) {

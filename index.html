@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grandmaster Pro | Gelişmiş Oyun Platformu</title>
 
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -31,8 +31,10 @@
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="./styles.css?v=20261001-combat3">
-    <link rel="stylesheet" href="./analysis-premium.css?v=20261001-mobile1">
-    <link rel="stylesheet" href="./mobile-ui.css?v=20261001-mobile1">
+    <link rel="stylesheet" href="./analysis-premium.css?v=20261001-speed1">
+    <link rel="stylesheet" href="./mobile-ui.css?v=20261001-speed1">
+    <link rel="stylesheet" href="./chess-upgrade.css?v=20261001-speed1">
+    <script defer src="./engine-isolation.js?v=20261001-speed1"></script>
 </head>
 
 <body>
@@ -394,7 +396,7 @@
                     <p id="analysisLoadingMessage">Motor ve maç hazırlanıyor.</p>
                     <ol class="review-loading-stages"><li data-loading-stage="prepare" data-state="active"><span>01</span><div><strong>Hazırlık</strong><small>Motor ve maç geçmişi</small></div></li><li data-loading-stage="scan"><span>02</span><div><strong>Hamle analizi</strong><small>Bütün hamlelerin karşılaştırması</small></div></li><li data-loading-stage="verify"><span>03</span><div><strong>Derin doğrulama</strong><small>Kritik anlar ve karar tutarlılığı</small></div></li><li data-loading-stage="finish"><span>04</span><div><strong>Sonuç raporu</strong><small>Doğruluk ve sınıflandırmalar</small></div></li></ol>
                     <div class="loading-bar"><div id="analysisLoadingProgressFill" class="loading-fill"></div></div><progress id="analysisLoadingProgress" value="0" max="100" aria-label="Maç analiz ilerlemesi"></progress>
-                    <div class="loading-progress-labels"><span id="analysisCountdownNumber">Motor hazırlanıyor</span><strong id="analysisLoadingSubtext">%0 tamamlandı</strong></div><p id="analysisLoadingEngine">Stockfish 18 · motor yükleniyor</p>
+                    <div class="loading-progress-labels"><span id="analysisCountdownNumber">Motor hazırlanıyor</span><strong id="analysisLoadingSubtext">%0 tamamlandı</strong></div><p id="analysisTimeEstimate" role="status">Cihazında süre ölçümü yapılıyor.</p><p id="analysisLoadingEngine">Stockfish 18 · motor yükleniyor</p>
                     <div class="review-loading-actions"><button id="reviewLoadingPause" class="secondary" onclick="toggleReviewPause()">Duraklat</button><button class="secondary" onclick="switchView('view-dashboard')">Çık</button></div><small class="loading-quality-note">Rapor, bütün hamleler ve gerekli derin kontroller tamamlandığında açılır.</small>
                 </div></div>
             </div>
@@ -1762,9 +1764,11 @@
     </div>
 
     <script src="./site-config.js?v=20261001-combat3"></script>
-    <script type="module" src="./app-v2.js?v=20261001-mobile1"></script>
+    <script type="module" src="./app-v2.js?v=20261001-speed1"></script>
 
-    <script type="module" src="./modules/mobile-ui.mjs?v=20261001-mobile1"></script>
+    <script type="module" src="./modules/mobile-ui.mjs?v=20261001-speed1"></script>
+    <script type="module" src="./modules/chess-academy.mjs?v=20261001-speed1"></script>
+    <script type="module" src="./modules/chess-design-tools.mjs?v=20261001-speed1"></script>
 </body>
 
 </html>

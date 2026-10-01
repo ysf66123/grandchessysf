@@ -1,8 +1,57 @@
-import {appendMatchClock} from './match-clock.mjs?v=20261001-mobile1';
+import {appendMatchClock} from './match-clock.mjs?v=20261001-speed1';
+import {latestMove,markLastMove,premoveValid,rankStyledCandidates} from './chess-live-tools.mjs?v=20261001-speed1';
 import { doc, onSnapshot, setDoc, updateDoc, getDoc, getDocs, collection, query, where, arrayUnion, arrayRemove, serverTimestamp, deleteField, runTransaction, deleteDoc, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const db = window.db;
 const auth = window.auth;
+const premoves={};let premoveSending=false;
+function liveContext(mode){const data=mode==='1v1'?current1v1Data:current2v2Data,game=mode==='1v1'?chess1v1:chess;
+ const id=mode==='1v1'?current1v1Id:current2v2Id,uid=window.currentUser?.uid;
+ const player=data?.players?.find(p=>p.uid===uid),color=player?.team==='white'?'w':'b';
+ const active=!!player&&game.turn()===color&&(mode==='1v1'||player.index===Math.floor(Math.floor((data.moveCount||0)/2)/(data.movesPerTurn||5))%2);
+ return {data,game,id,uid,player,color,active,count:data?.moveCount||0,status:data?.status};}
+function clearPremove(mode){delete premoves[mode];document.getElementById('premove-'+mode)?.remove();}
+function markPremove(div,square,mode){const p=premoves[mode];div.classList.toggle('premove-square',!!p&&(p.from===square||p.to===square));}
+function queuePremove(mode,square){const c=liveContext(mode);if(!c.player||c.status!=='active'||c.game.turn()===c.color)return;
+ const piece=c.game.get(square),p=premoves[mode];
+ if(piece?.color===c.color){premoves[mode]={id:c.id,uid:c.uid,color:c.color,count:c.count,from:square,promotion:'q'};}
+ else if(p?.from){if(p.to===square){clearPremove(mode);}else p.to=square;}
+ mode==='1v1'?draw1v1Board():drawBoard();
+}
+function updatePremoveUI(mode){const c=liveContext(mode),p=premoves[mode];
+ if(!p)return;if(p.id!==c.id||p.uid!==c.uid||c.status!=='active'||c.count-p.count>2){clearPremove(mode);return;}
+ let row=document.getElementById('premove-'+mode);if(!row){row=document.createElement('div');row.id='premove-'+mode;row.className='premove-status';
+  const board=document.getElementById(mode==='1v1'?'chessBoard1v1':'chessBoard');board.parentElement.after(row);}
+ row.replaceChildren();const text=document.createElement('span');text.textContent=p.to?'Ön hamle: '+p.from+' → '+p.to:'Ön hamle için hedef kareyi seç';row.append(text);
+ if(p.to&&c.game.get(p.from)?.type==='p'&&/^[a-h][18]$/.test(p.to)){
+  const select=document.createElement('select');select.setAttribute('aria-label','Ön hamle terfi taşı');
+  for(const [v,n]of [['q','Vezir'],['r','Kale'],['b','Fil'],['n','At']]){const o=document.createElement('option');o.value=v;o.textContent=n;select.append(o);}select.value=p.promotion;select.onchange=()=>p.promotion=select.value;row.append(select);
+ }
+ const b=document.createElement('button');b.className='secondary';b.textContent='İptal · Esc';b.onclick=()=>{clearPremove(mode);mode==='1v1'?draw1v1Board():drawBoard();};row.append(b);
+}
+function tryPremove(mode){const c=liveContext(mode),p=premoves[mode];if(!p?.to||premoveSending||!c.active||c.count<=p.count)return;
+ const valid=premoveValid(c.game,p,c);clearPremove(mode);if(!valid){window.showToast('Ön hamle yeni konumda geçersiz; iptal edildi.','info');return;}
+ premoveSending=true;queueMicrotask(async()=>{try{
+  const latest=liveContext(mode);if(!latest.active||latest.count!==c.count||latest.id!==c.id)return;
+  if(mode==='1v1'){const move=chess1v1.move({from:p.from,to:p.to,promotion:p.promotion});if(move)await commit1v1Move(move,latest.data);}
+  else{boardSelectedSquare=p.from;boardValidMoves=[p.to];await handleSquareClick(p.to,true,p.promotion);}
+ }finally{premoveSending=false;mode==='1v1'?draw1v1Board():drawBoard();}});
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){for(const mode of ['1v1','2v2'])clearPremove(mode);if(current1v1Data)draw1v1Board();if(current2v2Data)drawBoard();}});
+async function commitLiveUpdate(mode,id,source,updates){
+ try{await runTransaction(db,async tx=>{const ref=doc(db,'games_'+mode,id),snap=await tx.get(ref),fresh=snap.data();
+  if(!snap.exists()||fresh.status!=='active'||fresh.moveCount!==source.moveCount||fresh.fen!==source.fen||fresh.pgn!==source.pgn)throw Error('Konum değişti');
+  const side=fresh.fen.split(' ')[1]==='w'?'white':'black',index=mode==='1v1'?0:Math.floor(Math.floor((fresh.moveCount||0)/2)/(fresh.movesPerTurn||5))%2;
+  const actor=fresh.players.find(p=>p.team===side&&(mode==='1v1'||p.index===index));
+  if(!actor||(isBotPlayer(actor)?fresh.hostId!==window.currentUser?.uid:actor.uid!==window.currentUser?.uid))throw Error('Sıra değişti');
+  tx.update(ref,updates);
+ });return true;}catch{
+  const snap=await getDoc(doc(db,'games_'+mode,id)).catch(()=>null);
+  const c=liveContext(mode);if(snap?.exists()&&c.id===id){const data=snap.data();if(mode==='1v1'){current1v1Data=data;data.pgn?chess1v1.load_pgn(data.pgn):chess1v1.load(data.fen);draw1v1Board();}
+   else{current2v2Data=data;data.pgn?chess.load_pgn(data.pgn):chess.load(data.fen);drawBoard();}}
+  window.showToast('Hamle kaydedilemedi; güncel konum geri yüklendi.','error');return false;
+ }
+}
 
 const BOT_UID_PREFIX = 'bot_1v1_';
 const RECONNECT_GRACE_MS = 30000;
@@ -295,6 +344,7 @@ Object.defineProperties(window, {
 });
 
 function releaseModeListeners(exceptMode) {
+    for(const mode of ['1v1','2v2'])if(exceptMode!==mode)clearPremove(mode);
     if (exceptMode !== 'quiz' && unsubscribeQuiz) {
         unsubscribeQuiz();
         unsubscribeQuiz = null;
@@ -565,11 +615,12 @@ function weightedPick(candidates, weights) {
     return candidates[candidates.length - 1] || null;
 }
 
-function pick1v1BotMoveUci(result, level) {
+function pick1v1BotMoveUci(result, level,fen,style='balanced') {
     var config = getBotConfig(level);
     var candidates = buildBotCandidateLines(result, config);
     if (!candidates.length) return null;
     if (candidates.length === 1) return candidates[0].uci;
+    if(style!=='balanced'&&fen)return rankStyledCandidates(Chess,fen,candidates,style)[0]?.uci;
 
     if (Math.random() < config.randomMoveChance) {
         return candidates[randomInt(0, candidates.length - 1)].uci;
@@ -730,9 +781,10 @@ async function get1v1BotMove(data, botPlayer) {
         elo: config.elo || (botPlayer.botLevel === 'hard' ? 2300 : undefined),
         requestId: data.moveCount + 1,
         skillLevel: config.skillLevel,
+        multiPv:botPlayer.botStyle&&botPlayer.botStyle!=='balanced'?3:1,
         timeoutMs: Math.max(1200, config.thinkDelayRange[1] + 600)
     }) : null;
-    var bestUci = pick1v1BotMoveUci(result, botPlayer.botLevel);
+    var bestUci = pick1v1BotMoveUci(result, botPlayer.botLevel,fen,botPlayer.botStyle);
     if (bestUci) {
         return {
             from: bestUci.slice(0, 2),
@@ -775,8 +827,7 @@ async function commit1v1Move(move, sourceData) {
     if (updates.status === 'finished') {
         warmAnalysisCacheForActiveGame('1v1', updates.pgn, updates.fen, updates.moveCount);
     }
-    await updateDoc(doc(db, 'games_1v1', current1v1Id), updates);
-    return true;
+    return commitLiveUpdate('1v1',current1v1Id,sourceData,updates);
 }
 
 function maybeSchedule1v1BotMove(data) {
@@ -1010,6 +1061,13 @@ function render1v1Lobby(data) {
             + '</div>';
         }
         if (window.appendLobbyFriendButton) window.appendLobbyFriendButton(el, player.uid);
+        if(isBotPlayer(player)){
+            const label=document.createElement('label');label.textContent='Oyun tarzı';
+            const select=document.createElement('select');select.setAttribute('aria-label',(player.team==='white'?'Beyaz':'Siyah')+' bot oyun tarzı');
+            for(const [value,name]of [['balanced','Dengeli'],['attacking','Saldırgan'],['defensive','Savunmacı'],['positional','Konumsal']]){const option=document.createElement('option');option.value=value;option.textContent=name;select.append(option);}
+            select.value=player.botStyle||'balanced';select.disabled=!isHost;select.onclick=e=>e.stopPropagation();
+            select.onchange=e=>{e.stopPropagation();window.set1v1BotStyle(player.team,select.value);};label.append(select);el.append(label);
+        }
     });
 
     const mySeat = data.players.find(function(player) { return player.uid === window.currentUser.uid; });
@@ -1023,6 +1081,10 @@ function render1v1Lobby(data) {
     }
 }
 
+window.set1v1BotStyle=async function(team,style){
+    if(!current1v1Data||current1v1Data.status==='active'||current1v1Data.hostId!==window.currentUser?.uid||!['balanced','attacking','defensive','positional'].includes(style))return;
+    await updateDoc(doc(db,'games_1v1',current1v1Id),{players:current1v1Data.players.map(p=>p.team===team&&isBotPlayer(p)?{...p,botStyle:style}:p)});
+};
 window.join1v1Seat = async (team) => {
     if (!current1v1Data) return;
     const targetSeat = current1v1Data.players.find(function(player) { return player.team === team; });
@@ -4102,6 +4164,7 @@ function render1v1BoardInto(boardEl) {
     const rotate = myPlayer && myPlayer.team === 'black';
     const isMyTurn = current1v1Data.status === 'active' && myPlayer && myPlayer.team === (chess1v1.turn() === 'w' ? 'white' : 'black');
     const boardArray = chess1v1.board();
+    const last=latestMove(chess1v1);
     const needsInit = boardEl.children.length !== 64 || boardEl.dataset.rotate !== String(rotate);
 
     if (needsInit) {
@@ -4142,6 +4205,7 @@ function render1v1BoardInto(boardEl) {
             squareIdx++;
 
             const isSelected = board1v1SelectedSquare === squareName;
+            markLastMove(div,squareName,last);markPremove(div,squareName,'1v1');
             const isHighlight = board1v1ValidMoves.includes(squareName);
             div.classList.toggle('selected', isSelected);
             div.classList.toggle('highlight', isHighlight);
@@ -4175,6 +4239,7 @@ function draw1v1Board() {
     if (activeFullscreenBoardMode === '1v1') {
         render1v1BoardInto(document.getElementById('fullscreenBoard'));
     }
+    updatePremoveUI('1v1');tryPremove('1v1');
 }
 window.draw1v1Board = draw1v1Board;
 
@@ -4205,17 +4270,20 @@ window.refreshFullscreenBoard = function() {
 };
 
 async function handle1v1SquareClick(squareName, isMyTurn) {
+    if(!isMyTurn){queuePremove('1v1',squareName);return;}
     if (!isMyTurn || current1v1Data.status !== 'active') return;
 
     if (board1v1ValidMoves.includes(squareName)) {
+        const source=current1v1Data,from=board1v1SelectedSquare,id=current1v1Id;
         let promotion = 'q';
         if (isPromotionMoveForGame(chess1v1, board1v1SelectedSquare, squareName)) {
             promotion = await chooseSoloPromotion(chess1v1.turn());
             if (!promotion) return;
         }
-        const move = chess1v1.move({ from: board1v1SelectedSquare, to: squareName, promotion: promotion });
+        if(current1v1Id!==id||current1v1Data.moveCount!==source.moveCount||chess1v1.fen()!==source.fen){board1v1SelectedSquare=null;board1v1ValidMoves=[];draw1v1Board();return;}
+        const move = chess1v1.move({ from, to: squareName, promotion: promotion });
         if (move) {
-            await commit1v1Move(move, current1v1Data);
+            await commit1v1Move(move, source);
             return;
         }
     }
@@ -4612,6 +4680,7 @@ function render2v2BoardInto(boardEl, activeIdx, turnColor) {
     const rotate = !isWhiteTeam && current2v2Data.players.find(p => p.uid === window.currentUser.uid)?.team === 'black';
 
     const boardArray = chess.board();
+    const last=latestMove(chess);
     const myP = current2v2Data.players.find(p => p.uid === window.currentUser.uid);
 
     const isMyTurn = myP && (myP.team === (turnColor==='w'?'white':'black')) && (myP.index === activeIdx);
@@ -4626,6 +4695,7 @@ function render2v2BoardInto(boardEl, activeIdx, turnColor) {
 
             const div = document.createElement('div');
             div.className = `square ${(r+c)%2===0 ? 'white' : 'black'}`;
+            div.dataset.sq=squareName;markLastMove(div,squareName,last);markPremove(div,squareName,'2v2');
             if(boardSelectedSquare === squareName) div.classList.add('selected');
             if(boardValidMoves.includes(squareName)) div.classList.add('highlight');
 
@@ -4665,19 +4735,23 @@ function drawBoard(activeIdx, turnColor) {
     if (activeFullscreenBoardMode === '2v2') {
         render2v2BoardInto(document.getElementById('fullscreenBoard'), activeIdx, turnColor);
     }
+    updatePremoveUI('2v2');tryPremove('2v2');
 }
 window.drawBoard = drawBoard;
 
-async function handleSquareClick(sq, isMyTurn) {
+async function handleSquareClick(sq, isMyTurn,queuedPromotion) {
+    if(!isMyTurn){queuePremove('2v2',sq);return;}
     if(!isMyTurn || current2v2Data.status !== 'active') return;
 
     if(boardValidMoves.includes(sq)) {
+        const source=current2v2Data,from=boardSelectedSquare,id=current2v2Id;
         let promotion = 'q';
         if (isPromotionMoveForGame(chess, boardSelectedSquare, sq)) {
-            promotion = await chooseSoloPromotion(chess.turn());
+            promotion = queuedPromotion || await chooseSoloPromotion(chess.turn());
             if (!promotion) return;
         }
-        const move = chess.move({ from: boardSelectedSquare, to: sq, promotion: promotion });
+        if(current2v2Id!==id||current2v2Data.moveCount!==source.moveCount||chess.fen()!==source.fen){boardSelectedSquare=null;boardValidMoves=[];drawBoard();return;}
+        const move = chess.move({ from, to: sq, promotion: promotion });
         if(move) {
             const newFen = chess.fen();
             const now = Date.now();
@@ -4720,7 +4794,7 @@ async function handleSquareClick(sq, isMyTurn) {
             drawBoard();
             warmAnalysisCacheForActiveGame('2v2', updates.pgn, updates.fen, updates.moveCount);
 
-            await updateDoc(doc(db, "games_2v2", current2v2Id), updates);
+            await commitLiveUpdate('2v2',current2v2Id,source,updates);
             return;
         }
     }

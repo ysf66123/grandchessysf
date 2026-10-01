@@ -1,0 +1,15 @@
+Stockfish.js 18.0.5 (unmodified Lite single-threaded and Lite multi-threaded builds)
+Copyright 2026 Chess.com, LLC / Stockfish contributors. GPLv3.
+License: stockfish-GPLv3.txt
+Exact corresponding source revision:
+https://github.com/nmrugg/stockfish.js/tree/082eeba46b0c5f8f8065e5386750aa0ecfa2062c
+Source archive:
+https://github.com/nmrugg/stockfish.js/archive/082eeba46b0c5f8f8065e5386750aa0ecfa2062c.tar.gz
+Build instructions: upstream README and scripts in that revision.
+Original distribution: https://registry.npmjs.org/stockfish/-/stockfish-18.0.5.tgz
+
+The optional native helper downloads the unmodified Stockfish 18 AVX2 release:
+https://github.com/official-stockfish/Stockfish/releases/tag/sf_18
+Native source and build instructions:
+https://github.com/official-stockfish/Stockfish/tree/sf_18
+Native executables are not included in the public static site.

@@ -1,12 +1,15 @@
-import {AnalysisEngine} from './analysis-engine.mjs?v=20261001-mobile1';
-import {REVIEW_VERSION, whiteScore, rootScore, classify, gameAccuracy, pvMoves, sacrificeEvidence, terminalResult, validPosition, uciOf, qualityScore, moveMetrics, comparisonEvidence, specialMoveEvidence, reviewIsStable} from './analysis-core.mjs?v=20261001-mobile1';
-import {loadOpenings, normalizedOpeningKey, tablebase, tableExpected, explanation} from './analysis-data.mjs?v=20261001-mobile1';
-import {reviewInsights, PHASE_LABELS} from './analysis-insights.mjs?v=20261001-mobile1';
-import {REVIEW_STAGES, stageProgress, canRevealReport} from './analysis-progress.mjs?v=20261001-mobile1';
-import {MOVE_CATEGORY_META,categorySvg} from './analysis-labels.mjs?v=20261001-mobile1';
-import {tacticalSequence} from './analysis-tactics.mjs?v=20261001-mobile1';
-import {acceptTrainingMove} from './analysis-learning.mjs?v=20261001-mobile1';
-import {renderLearningUI,finishLearningAttempt,clearLearningAttempt} from './analysis-learning-ui.mjs?v=20261001-mobile1';
+import {AnalysisEngine} from './analysis-engine.mjs?v=20261001-speed1';
+import {REVIEW_VERSION, whiteScore, rootScore, classify, gameAccuracy, pvMoves, sacrificeEvidence, terminalResult, validPosition, uciOf, qualityScore, moveMetrics, comparisonEvidence, specialMoveEvidence, reviewIsStable} from './analysis-core.mjs?v=20261001-speed1';
+import {loadOpenings, normalizedOpeningKey, tablebase, tableExpected, explanation} from './analysis-data.mjs?v=20261001-speed1';
+import {reviewInsights, PHASE_LABELS} from './analysis-insights.mjs?v=20261001-speed1';
+import {REVIEW_STAGES, stageProgress, canRevealReport} from './analysis-progress.mjs?v=20261001-speed1';
+import {MOVE_CATEGORY_META,categorySvg} from './analysis-labels.mjs?v=20261001-speed1';
+import {tacticalSequence} from './analysis-tactics.mjs?v=20261001-speed1';
+import {acceptTrainingMove} from './analysis-learning.mjs?v=20261001-speed1';
+import {renderLearningUI,finishLearningAttempt,clearLearningAttempt} from './analysis-learning-ui.mjs?v=20261001-speed1';
+import {AnalysisTiming} from './engine-profile.mjs?v=20261001-speed1';
+import {openingNameTR} from './chess-opening-names.mjs?v=20261001-speed1';
+const analysisTiming=new AnalysisTiming();
 // modules/analysis-v2.js - Chess Game Analysis Engine (Chess.com-style review)
 
 const SF_DEPTH_LIVE = 18;
@@ -27,6 +30,7 @@ let loadingStage='prepare',loadingDone=0,loadingTotal=1,loadingPercent=0;
 let tacticPlayback=null,tacticTimer=null,practiceHintLevel=0,analysisClockHistory=[];
 
 function setReviewGate(state) {
+    if(state==='ready'&&!analysisTiming.completed)analysisTiming.completed=Date.now();
     const view=getAnalysisViewElement();if(!view)return;
     view.dataset.reviewState=state;view.setAttribute('aria-busy',String(state==='processing'));
     const overlay=document.getElementById('analysisLoadingOverlay');overlay.style.display=state==='ready'?'none':'flex';
@@ -50,6 +54,9 @@ function setReviewStage(stage,done=0,total=1,detail) {
     document.getElementById('analysisLoadingProgressFill').style.width=loadingPercent+'%';
     document.getElementById('analysisLoadingProgress').value=loadingPercent;
     document.getElementById('analysisCountdownNumber').textContent=meta.title+(stage==='scan'||stage==='verify'?' · '+done+' / '+total:'');
+    const eta=analysisTiming.estimate(stage,total-done),estimate=document.getElementById('analysisTimeEstimate');
+    if(estimate)estimate.textContent=eta?`Bu aşama için yaklaşık ${eta.min}–${eta.max} saniye${stage==='scan'?' · kritik konumlara göre süre değişebilir':''}`:
+        stage==='finish'?'Rapor hazırlanıyor':stage==='prepare'?'Motor hazırlanıyor; derinlik hedefleri korunuyor.':'Süre tahmini için cihazında ölçüm yapılıyor.';
     document.querySelectorAll('[data-loading-stage]').forEach((el,index)=>{
         const active=REVIEW_STAGES.findIndex(s=>s.id===stage);
         el.dataset.state=index<active?'done':index===active?'active':'waiting';
@@ -330,10 +337,10 @@ function hashText(value) {
     return (hash >>> 0).toString(16);
 }
 
-function buildEvalCacheKey(position, depth) { return [REVIEW_VERSION, depth, position].join('|'); }
+function buildEvalCacheKey(position, depth) { return [REVIEW_VERSION,reviewEngine.profile.backend,depth,position].join('|'); }
 
 function buildReportCacheKey(pgn, fallbackFen) {
-    return [ANALYSIS_CACHE_VERSION, 'report', 'd' + SF_DEPTH_REVIEW, hashText((pgn || '') + '|' + (fallbackFen || ''))].join('|');
+    return [ANALYSIS_CACHE_VERSION,reviewEngine.profile.backend,'report','d' + SF_DEPTH_REVIEW,hashText((pgn || '') + '|' + (fallbackFen || ''))].join('|');
 }
 
 function materialEvalWhiteCpFromFen(fen) {
@@ -390,7 +397,10 @@ let reportStatus = 'Hazır';
 
 async function initStockfish() {
     setStockfishStatus('loading');
-    try { await reviewEngine.init(); sfWorker = reviewEngine.worker; isSfReady = true; setStockfishStatus('active'); }
+    try { await reviewEngine.init(); sfWorker = reviewEngine.worker; isSfReady = true; setStockfishStatus('active');
+        if(currentSharedAnalysisPayload)currentAnalysisReportCacheKey=buildReportCacheKey(currentSharedAnalysisPayload.pgn||'',currentSharedAnalysisPayload.fen||'');
+        const selector=document.getElementById('chessEngineBackend');if(selector)selector.value=reviewEngine.profile.backend;
+    }
     catch (error) { sfWorker = null; isSfReady = false; setStockfishStatus('fallback'); throw error; }
 }
 function queueStockfishEval(fen, opts = {}) {
@@ -1272,6 +1282,35 @@ function refreshReviewReport() {
         updateEvalBarUI(terminal?terminal.cp:r.cpAfter*(analysisChess.turn()==='w'?1:-1),terminal?terminal.mate:mate,analysisChess.fen());
     }
 }
+async function verifyReviewMove(index,token,resume,stage='verify',done=0,total=1){
+            const previous=analysisMoveReviews[index];
+            const target=Math.min(28,previous.depth>=20?previous.depth+2:20);
+            reportStatus='Kritik kararlar doğrulanıyor';
+            setReviewStage(stage,done,total,previous.moveNumber+'. '+previous.moveSan+' daha derin karşılaştırılıyor.');
+            let review=await reviewMove(index,target,token,resume && target<=previous.depth);
+            if(!review || token!==analysisReviewToken)return null;
+            const shifted=!reviewIsStable(previous,review);
+            const borderline=[0.02,0.05,0.1,0.2].some(t=>Math.abs(review.loss-t)<0.005);
+            if(shifted||borderline){
+                reportStatus='Karar tutarlılığı kontrol ediliyor';
+                setReviewStage(stage,done,total,review.moveNumber+'. '+review.moveSan+' için karar tutarlılığı kontrol ediliyor.');
+                const confirmationDepth=Math.min(28,Math.max(target,review.depth)+2);
+                if(confirmationDepth>review.depth){
+                    const confirmed=await reviewMove(index,confirmationDepth,token);
+                    if(!confirmed || token!==analysisReviewToken)return null;
+                    confirmed.stable=reviewIsStable(review,confirmed);review=confirmed;
+                }else review.stable=review.complete&&previous.depth>=28&&reviewIsStable(previous,review);
+            }else review.stable=true;
+            while(review.complete&&review.stable===false&&review.depth<28){
+                const nextDepth=Math.min(28,Math.max(target,review.depth)+2);
+                setReviewStage(stage,done,total,review.moveNumber+'. '+review.moveSan+' için daha derin tutarlılık kontrolü · hedef '+nextDepth);
+                const deeper=await reviewMove(index,nextDepth,token);
+                if(!deeper||token!==analysisReviewToken)return null;
+                deeper.stable=reviewIsStable(review,deeper);review=deeper;
+            }
+
+return review;
+}
 async function runDetailedGameReview(token,resume=false) {
     reviewBusy=true;setReviewGate('processing');
     try {
@@ -1280,44 +1319,34 @@ async function runDetailedGameReview(token,resume=false) {
         if(!resume)analysisMoveReviews=new Array(analysisHistory.length);
         reportStatus='Bütün hamleler inceleniyor';setReviewStage('scan',0,analysisHistory.length);
         for(let i=0;i<analysisHistory.length;i++) {
+            const scanStarted=performance.now();
             if(!resume || !analysisMoveReviews[i]?.complete){
                 const review=await reviewMove(i,SF_DEPTH_REVIEW,token);
                 if(!review || token!==analysisReviewToken)return;
                 analysisMoveReviews[i]=review;
             }
+            const candidate=analysisMoveReviews[i];
+            if((candidate.critical||!candidate.complete)&&!(candidate.verified&&candidate.stable===true)){
+                const verified=await verifyReviewMove(i,token,resume,'scan',i,analysisHistory.length);
+                if(!verified||token!==analysisReviewToken)return;
+                analysisMoveReviews[i]=verified;
+            }
+            analysisTiming.add('scan',performance.now()-scanStarted);
             reportStatus='Bütün hamleler inceleniyor · '+(i+1)+' / '+analysisHistory.length;
             setReviewStage('scan',i+1,analysisHistory.length);
             if((i+1)%4===0)await saveReviewCheckpoint();
         }
-        const critical=analysisMoveReviews.filter(r=>(r.critical||!r.complete) && !(resume&&r.verified&&r.stable===true)).map(r=>r.index);
+        // Work backwards: the just-deepened child positions remain in the hash
+        // when their parent is searched. All targets and candidate coverage stay.
+        const critical=analysisMoveReviews.filter(r=>(r.critical||!r.complete) && !(r.verified&&r.stable===true)).map(r=>r.index).reverse();
         setReviewStage('verify',0,critical.length);
         for(let n=0;n<critical.length;n++) {
+            const started=performance.now();
             if(token!==analysisReviewToken)return;
-            const index=critical[n],previous=analysisMoveReviews[index];
-            const target=Math.min(28,previous.depth>=20?previous.depth+2:20);
-            reportStatus='Kritik kararlar doğrulanıyor · '+(n+1)+' / '+critical.length;
-            setReviewStage('verify',n,critical.length,previous.moveNumber+'. '+previous.moveSan+' daha derin karşılaştırılıyor.');
-            let review=await reviewMove(index,target,token,resume && target<=previous.depth);
-            if(!review || token!==analysisReviewToken)return;
-            const shifted=!reviewIsStable(previous,review);
-            const borderline=[0.02,0.05,0.1,0.2].some(t=>Math.abs(review.loss-t)<0.005);
-            if(shifted||borderline){
-                reportStatus='Karar tutarlılığı kontrol ediliyor';
-                setReviewStage('verify',n,critical.length,review.moveNumber+'. '+review.moveSan+' için karar tutarlılığı kontrol ediliyor.');
-                const confirmationDepth=Math.min(28,Math.max(target,review.depth)+2);
-                if(confirmationDepth>review.depth){
-                    const confirmed=await reviewMove(index,confirmationDepth,token);
-                    if(!confirmed || token!==analysisReviewToken)return;
-                    confirmed.stable=reviewIsStable(review,confirmed);review=confirmed;
-                }else review.stable=false;
-            }else review.stable=true;
-            while(review.complete&&review.stable===false&&review.depth<28){
-                const nextDepth=Math.min(28,Math.max(target,review.depth)+2);
-                setReviewStage('verify',n,critical.length,review.moveNumber+'. '+review.moveSan+' için daha derin tutarlılık kontrolü · hedef '+nextDepth);
-                const deeper=await reviewMove(index,nextDepth,token);
-                if(!deeper||token!==analysisReviewToken)return;
-                deeper.stable=reviewIsStable(review,deeper);review=deeper;
-            }
+            const index=critical[n];
+            const review=await verifyReviewMove(index,token,resume,'verify',n,critical.length);
+            if(!review||token!==analysisReviewToken)return;
+            analysisTiming.add('verify',performance.now()-started);
             analysisMoveReviews[index]=review;setReviewStage('verify',n+1,critical.length);
             await saveReviewCheckpoint();
         }
@@ -1355,7 +1384,7 @@ function renderReviewDetails() {
     document.getElementById('reviewDeepen').disabled=!analysisMoveReviews[currentAnalysisIndex-1] || reviewBusy;
     document.getElementById('report-best').disabled=!!retryReview;
     if(retryReview)document.getElementById('report-best').textContent='Hamleni bul';
-    document.getElementById('reviewOpening').textContent=r?.opening ? r.opening.eco+' · '+r.opening.name : '';
+    document.getElementById('reviewOpening').textContent=r?.opening ? r.opening.eco+' · '+openingNameTR(r.opening.name) : '';
     const motifs=document.getElementById('reviewMotifs');
     if(motifs){motifs.replaceChildren();if(!retryReview){
         const sequence=tacticalSequence(Chess,r);
@@ -1489,6 +1518,7 @@ window.jumpToCriticalMove=function(direction) {
 };
 window.getAnalysisReportSnapshot=function() {
     return JSON.parse(JSON.stringify({version:REVIEW_VERSION,status:reportStatus,selectedIndex:currentAnalysisIndex,
+        performance:{elapsedMs:(analysisTiming.completed||Date.now())-analysisTiming.started,backend:reviewEngine.profile.backend,threads:reviewEngine.profile.threads,hash:reviewEngine.profile.hash,engineTotals:reviewEngine.stats},
         progress:{stage:loadingStage,done:loadingDone,total:loadingTotal,percent:loadingPercent,state:getAnalysisViewElement().dataset.reviewState},
         whiteAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='w')),
         blackAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='b')),
@@ -1570,6 +1600,7 @@ document.addEventListener('keydown',event=>{
 });
 
 window.openAnalysis = async function(pgn, players=[], fallbackFen, metadata={}) {
+    analysisTiming.reset();
     const incoming=new Chess();let accepted=false;
     try{accepted=typeof pgn==='string' && pgn.trim()?incoming.load_pgn(pgn.trim()):!!fallbackFen && validPosition(Chess,fallbackFen);}catch{}
     if(accepted && incoming.header()?.SetUp==='1')accepted=validPosition(Chess,incoming.header().FEN);
@@ -1995,6 +2026,15 @@ if (document.readyState === 'loading') {
 }
 
 window.initStockfish = initStockfish;
+window.cancelChessAcademyEngine=()=>reviewEngine.cancel(t=>t.mode==='academy');
+window.setChessEngineBackend=async function(backend){
+    if(reviewBusy||reviewEngine.active){window.showToast('Motor seçimini hesaplama bittikten sonra değiştirebilirsin.','info');return;}
+    const value=backend==='native'?'native':'browser';localStorage.setItem('gm_chess_backend',value);
+    reviewEngine.worker?.terminate();reviewEngine.worker=null;reviewEngine.ready=false;reviewEngine.searchContext=null;
+    reviewEngine.profile.backend=value;
+    reviewEngine.profile.threads=value==='native'?2:globalThis.crossOriginIsolated&&!matchMedia('(max-width:760px)').matches?2:1;
+    completedEvalMemory.clear();try{await initStockfish();window.showToast(value==='native'&&reviewEngine.profile.backend==='native'?'Yerel Stockfish bağlandı.':'Tarayıcı motoru hazır.','success');}catch{window.showToast('Motor başlatılamadı.','error');}
+};
 window.queueStockfishEval = queueStockfishEval;
 window.warmAnalysisCacheForFen = warmAnalysisCacheForFen;
 window.warmAnalysisCacheForGame = warmAnalysisCacheForGame;

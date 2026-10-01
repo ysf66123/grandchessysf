@@ -1,5 +1,5 @@
-import {gameAccuracy,qualityScore} from './analysis-core.mjs?v=20261001-mobile1';
-import {gamePhase} from './analysis-insights.mjs?v=20261001-mobile1';
+import {gameAccuracy,qualityScore} from './analysis-core.mjs?v=20261001-speed1';
+import {gamePhase} from './analysis-insights.mjs?v=20261001-speed1';
 export const LEARNING_VERSION=1;
 const themes={fork:'Çatal',pin:'Açmaz',skewer:'Şiş',defender:'Savunucunun kaldırılması',mate:'Mat',capture:'Taş kaybı',promotion:'Terfi',check:'Şah güvenliği'};
 export function errorChains(reviews){
@@ -96,5 +96,8 @@ export function learningRecord(id,pgn,players,reviews,side,phases,now=Date.now()
  for(const r of own.filter(r=>r.loss>=.05))for(const type of new Set(r.motifTypes||[]))themes[type]=(themes[type]||0)+1;
  return {id,pgn,players,side,at:now,accuracy:gameAccuracy(own,reviews),errors:own.filter(r=>r.loss>=.05).length,
   openingErrors:own.filter(r=>r.loss>=.05&&gamePhase(r.beforeFen,!!r.opening)==='opening').length,
-  opening:openingInsights(reviews).name,themes,phases,training:selectTraining(reviews,side).map(r=>({...r,due:now,streak:0,attempts:0}))};
+  opening:openingInsights(reviews).name,themes,phases,
+  timeControl:String(pgn||'').match(/\[TimeControl\s+"([^"]+)"\]/)?.[1]||'unknown',
+  openingMoves:reviews.filter(r=>r.index<24&&r.moveColor===side).map(r=>({index:r.index,fen:r.beforeFen,uci:r.playedUci,san:r.moveSan,loss:r.loss,accuracy:r.moveAccuracy,best:r.bestMove})),
+  training:selectTraining(reviews,side).map(r=>({...r,due:now,streak:0,attempts:0}))};
 }
