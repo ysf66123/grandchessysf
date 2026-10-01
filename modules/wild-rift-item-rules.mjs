@@ -1,4 +1,4 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20261001-interactions1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20261001-combat2';
 export const PHASES={draft:'Seçim aşaması / genel plan',lane:'Koridor ve ilk eşyalar',team:'Takım savaşları'};
 export const BUILD_PRIORITIES={balanced:'Dengeli',survive:'Hayatta kalma öncelikli',damage:'Hasar düzenini koru'};
 export const NEED_LABELS={heal:'İyileşme',shield:'Kalkan',magic:'Büyü hasarı',physical:'Fiziksel hasar',cc:'Kontrol etkileri',burst:'Ani hasar',tank:'Dayanıklı hedef',health:'Can yatırımı',trueDamage:'Gerçek hasar',attack:'Normal saldırılar',critical:'Kritik vuruş yatırımı',armor:'Zırh yatırımı',magicResist:'Büyü direnci yatırımı'};
@@ -22,6 +22,7 @@ export function itemFacts(data,id,now=Date.now()){
  if(official){Object.assign(stats,official);sources.push('riot');}
  if(valid(i.effectsPatch,i.effectsCheckedAt)){for(const k of Object.keys(effects))delete effects[k];Object.assign(effects,i.effects);}
  if(valid(i.mechanicsPatch,i.mechanicsCheckedAt)){for(const k of Object.keys(mechanics))delete mechanics[k];Object.assign(mechanics,i.mechanics);}
+ if(mechanics.penetration)mechanics.penetration=mechanics.penetration.filter(p=>p.trigger!=='permanent'||!conflicts.includes(p.channel==='physical'?'armorPen':'magicPen'));
  return {stats,effects,mechanics,conflicts,sources,passives:valid(i.passivesPatch,i.passivesCheckedAt)?i.passives||[]:[],known:!!(fire||core||official),effectsKnown:!!core||valid(i.effectsPatch,i.effectsCheckedAt)};
 }
 // This interpretation must be reviewed when the gameplay patch changes. Raw

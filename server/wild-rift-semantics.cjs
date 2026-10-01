@@ -16,10 +16,11 @@ function damagePackets(text){
   const tail=text.slice(match.index,match.index+100).split(/[.!;]/)[0],scope=clause+' '+tail;
   const healthBasis=/target.{0,15}(?:max|maximum)\s*health/i.test(scope)?'targetMaximum':/target.{0,15}missing\s*health/i.test(scope)?'targetMissing':/target.{0,15}current\s*health/i.test(scope)?'targetCurrent':null;
   // A bonus-stat ratio describes scaling, not an activation condition.
+  const levelRange=/\d+\s*[-–]\s*\d+\s*\(based on level\)/i.test(clause);
   const triggerClause=clause.replace(/\([^)]*\)/g,''),conditional=/\b(?:if|when|only|every|additional|bonus|critically|out of combat|against isolated|empowered|next (?:basic )?attack)\b/i.test(triggerClause);
   const repeats=scope.match(/\b(\d+) (?:times|hits|strikes|bolts)|(?:each|per) (?:second|hit|strike)/i);
   const crit=scope.match(/(?:critically strikes? for|critical strikes? (?:deal|dealing))\s*(\d+(?:\.\d+)?)%\s*(?:damage|AD|Attack Damage)/i);
-  packets.push({type:match[1].toLowerCase(),...(bases.length&&bases.length<=5?{baseValues:bases,baseUnit:percent?'percent':'flat'}:{}),scalings,...(healthBasis?{healthBasis}:{}),attackTriggered:/\b(?:basic attacks?|attacks?) (?:deal|inflict)/i.test(clause),conditional,...(repeats?{repeated:true,...(repeats[1]?{maxHits:Number(repeats[1])}:{}),unit:/second/i.test(repeats[0])?'perSecond':'perHit'}:{}),...(crit?{criticalMultiplier:Number(crit[1])/100}:{}),parsed:!!formula});
+  packets.push({type:match[1].toLowerCase(),...(levelRange?{levelRange:true}:{}),...(bases.length&&bases.length<=5?{baseValues:bases,baseUnit:percent?'percent':'flat'}:{}),scalings,...(healthBasis?{healthBasis}:{}),attackTriggered:/\b(?:basic attacks?|attacks?) (?:deal|inflict)/i.test(clause),conditional,...(repeats?{repeated:true,...(repeats[1]?{maxHits:Number(repeats[1])}:{}),unit:/second/i.test(repeats[0])?'perSecond':'perHit'}:{}),...(crit?{criticalMultiplier:Number(crit[1])/100}:{}),parsed:!!formula});
  }
  return packets;
 }
@@ -32,9 +33,13 @@ function passiveFacts(text){
  if(/out.of.combat/i.test(text))conditions.push('outOfCombat');
  if(/below \d+%|above \d+%/i.test(text))conditions.push('healthThreshold');
  const duration=Number(text.match(/\bfor (\d+(?:\.\d+)?) (?:seconds|s\b)/i)?.[1]);
- const maxStacks=Number(text.match(/(?:stack(?:s|ing)?[^.]{0,50}up to |maximum of |stacks? )(\d+)\b|\( stacks (\d+) times\)/i)?.slice(1).find(Boolean));
+ const maxStacks=Number(text.match(/(?:stack(?:s|ing)?[^.]{0,50}up to |maximum of |stacks? )(\d+)\b(?!%)|\( stacks (\d+) times\)/i)?.slice(1).find(Boolean));
  const cooldown=Number(text.match(/\b(\d+(?:\.\d+)?)(?:s |[- ]second )cooldown\b|\bcooldown:?\s*(\d+(?:\.\d+)?)\s*s\b/i)?.slice(1).find(Boolean));
  const stacksPerTrigger=Number(text.match(/(?:grant|gain)(?:s)? (\d+) [\w -]*stack/i)?.[1]);
  return {trigger,conditions,...(duration>0&&duration<=120?{duration}:{}),...(maxStacks>1&&maxStacks<=100?{maxStacks}:{}),...(cooldown>0&&cooldown<=300?{cooldown}:{}),...(stacksPerTrigger>0&&stacksPerTrigger<=10?{stacksPerTrigger}:{}),uptime:'conditional'};
 }
-module.exports={damagePackets,passiveFacts};
+function selfMobility(text){
+ const clean=text.replace(/\b(?:interrupt(?:s|ing)?|stops?|cancels?)\s+(?:their |enemy |enemies['’] )?(?:dash(?:es)?|blinks?|leaps?)\b/gi,'');
+ return /\b(?:dash(?:es)?|blinks?|leaps?)\b/i.test(clean);
+}
+module.exports={damagePackets,passiveFacts,selfMobility};

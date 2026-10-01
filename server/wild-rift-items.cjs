@@ -13,7 +13,7 @@ async function enrichItems(items,{previous={},onProgress=()=>{}}={}){
         Object.assign(items[entry.id],details,{costPatch:catalog.patch,costCheckedAt:checkedAt,statsPatch:catalog.patch,statsCheckedAt:checkedAt,effectsPatch:catalog.patch,effectsCheckedAt:checkedAt,effectsSource:url,mechanicsPatch:catalog.patch,mechanicsCheckedAt:checkedAt,passivesPatch:catalog.patch,passivesCheckedAt:checkedAt});
       }catch{
         failures.push(entry.id);const old=previous[entry.id];
-        if(old?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats','statsPatch','statsCheckedAt','effects','effectsPatch','effectsCheckedAt','effectsSource','mechanics','mechanicsPatch','mechanicsCheckedAt','coreFacts','passives','passivesPatch','passivesCheckedAt'])items[entry.id][key]=old[key];
+        if(old?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats','statUnits','statsPatch','statsCheckedAt','effects','effectsPatch','effectsCheckedAt','effectsSource','mechanics','mechanicsPatch','mechanicsCheckedAt','coreFacts','passives','passivesPatch','passivesCheckedAt'])items[entry.id][key]=old[key];
       }
       onProgress(++done,entries.length,entry.id);
       await new Promise(resolve=>setTimeout(resolve,160));

@@ -1,7 +1,7 @@
-import {itemFacts,BOOTS} from './wild-rift-item-rules.mjs?v=20261001-interactions1';
-import {finalItemAvailable} from './wild-rift-evidence.mjs?v=20261001-interactions1';
-import {incompatibleItem} from './wild-rift-build-fit.mjs?v=20261001-interactions1';
-import {itemName} from './wild-rift-tr.mjs?v=20261001-interactions1';
+import {itemFacts,BOOTS} from './wild-rift-item-rules.mjs?v=20261001-combat2';
+import {finalItemAvailable} from './wild-rift-evidence.mjs?v=20261001-combat2';
+import {incompatibleItem} from './wild-rift-build-fit.mjs?v=20261001-combat2';
+import {itemName} from './wild-rift-tr.mjs?v=20261001-combat2';
 const caches=new WeakMap();
 // Hypotheses live only inside cloned drafts. Source gear is never installed
 // as observed enemy gear in the real draft or returned context.

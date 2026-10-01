@@ -69,7 +69,7 @@ function parseBootChain(pages,patch,checkedAt){
 }
 async function refreshModelEvidence(data,fetchPage,checkedAt=new Date().toISOString()){
  const currentUrl=patchUrl(data.latestPatch.version);
- try{data.patchImpact=patchImpact(await fetchPage(currentUrl),data,currentUrl,checkedAt);}catch{data.patchImpact={patch:data.latestPatch.version,checkedAt,scopeVerified:false,champions:[],items:[],ruleVersion:null};}
+ try{const html=await fetchPage(currentUrl);data.patchImpact=patchImpact(html,data,currentUrl,checkedAt);await require('./wild-rift-combat-review.cjs').refreshCombatReview(data,()=>html,checkedAt);}catch{data.patchImpact={patch:data.latestPatch.version,checkedAt,scopeVerified:false,champions:[],items:[],ruleVersion:null};}
  if(!PATCHES.includes(data.latestPatch.version)){data.bootUpgrades={patch:data.latestPatch.version,checkedAt,byParent:{},error:'Yeni yama için bot kuralları yeniden doğrulanmalı.'};return;}
  try{
   const pages=[];for(const patch of PATCHES.slice(0,PATCHES.indexOf(data.latestPatch.version)+1)){const url=patchUrl(patch);pages.push({url,html:await fetchPage(url)});}

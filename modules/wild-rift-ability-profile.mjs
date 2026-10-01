@@ -12,7 +12,7 @@ export function abilityProfile(combat,stats,attack,base,stageInputs=null){
    const rank=a.slot==='P'?1:ranks[a.slot]||0;if(!rank)continue;
    for(const p of a.damagePackets||[]){
     if(!p.parsed)continue;
-    if(p.conditional||p.healthBasis||p.baseUnit==='percent'||p.attackTriggered||p.repeated){excluded++;continue;}
+    if(a.numericExcluded||p.levelRange||p.conditional||p.healthBasis||p.baseUnit==='percent'||p.attackTriggered||p.repeated){excluded++;continue;}
     const pick=values=>values?.[Math.min(rank-1,values.length-1)]||0;
     let contribution=p.baseUnit==='flat'?pick(p.baseValues):0;
     for(const r of p.scalings){scalingStats.add(r.stat);contribution+=pick(r.coefficients)*((equipment[r.stat]||0)+(r.bonus?0:native[r.stat]||0));}

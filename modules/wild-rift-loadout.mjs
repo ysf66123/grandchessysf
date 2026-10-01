@@ -1,7 +1,7 @@
-import {traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20261001-interactions1';
-import {rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-interactions1';
-import {termName} from './wild-rift-tr.mjs?v=20261001-interactions1';
-import {ageInDays} from './wild-rift-quality.mjs?v=20261001-interactions1';
+import {traits,BOOT_UPGRADES} from './wild-rift-knowledge.mjs?v=20261001-combat2';
+import {rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-combat2';
+import {termName} from './wild-rift-tr.mjs?v=20261001-combat2';
+import {ageInDays} from './wild-rift-quality.mjs?v=20261001-combat2';
 // These are guide suitability signals, not independent match statistics.
 export function sourceConditionFit(guide,context,draft,profile){
  const conditions=guide.usageConditions||[],matched=[],unmatched=[];

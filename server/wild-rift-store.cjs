@@ -104,7 +104,7 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
     const changed=champions.filter(c=>c.contentHash!==old?.champions.find(x=>x.id===c.id)?.contentHash).map(c=>c.id);
     let itemCatalog;
     try{itemCatalog=await enrichItems(items,{previous:old?.items,onProgress:(n,total)=>Object.assign(status,{phase:'Eşya fiyatları',completed:n,total})});}
-    catch{itemCatalog={...(old?.itemCatalog||{}),refreshFailed:true};for(const [id,item] of Object.entries(items))if(old?.items[id]?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats','statsPatch','statsCheckedAt','effects','effectsPatch','effectsCheckedAt','effectsSource','mechanics','mechanicsPatch','mechanicsCheckedAt','coreFacts','passives','passivesPatch','passivesCheckedAt'])item[key]=old.items[id][key];}
+    catch{itemCatalog={...(old?.itemCatalog||{}),refreshFailed:true};for(const [id,item] of Object.entries(items))if(old?.items[id]?.cost)for(const key of ['cost','costSource','costPatch','costCheckedAt','stats','statUnits','statsPatch','statsCheckedAt','effects','effectsPatch','effectsCheckedAt','effectsSource','mechanics','mechanicsPatch','mechanicsCheckedAt','coreFacts','passives','passivesPatch','passivesCheckedAt'])item[key]=old.items[id][key];}
     const data={schema:1,checkedAt,latestPatch,stats,champions,items,itemCatalog,changes:changed,failures,source:source.BASE,methodologyVersion:2};
     for(const [id,item] of Object.entries(items)){if(old?.items[id]?.official)item.official=old.items[id].official;if(old?.items[id]?.removedIn)item.removedIn=old.items[id].removedIn;}
     data.attackRules=old?.attackRules;data.advancedEvidence=old?.advancedEvidence;
@@ -116,7 +116,7 @@ async function updateSnapshot({force=false,onProgress=()=>{}}={}) {
     data.itemRegistry=require('./wild-rift-registry.cjs').buildRegistry(data);
     require('./wild-rift-audit.cjs').auditSnapshot(data);
     await require('./wild-rift-advanced-source.cjs').collectAdvancedEvidence(data,source.fetchText,{onProgress:(n,total)=>Object.assign(status,{phase:'Menzil kanıtları',completed:n,total})});
-    data.methodologyVersion=8;data.localRevisionAt=new Date().toISOString();
+    data.methodologyVersion=9;data.localRevisionAt=new Date().toISOString();
     validateSnapshot(data);
     await fs.mkdir(path.dirname(DATA_FILE),{recursive:true});
     await require('./wild-rift-update-guard.cjs').publishSnapshot(DATA_FILE,old,data);current=data;

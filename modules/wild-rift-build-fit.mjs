@@ -1,15 +1,16 @@
-import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-interactions1';
-import {traits} from './wild-rift-knowledge.mjs?v=20261001-interactions1';
-import {ageInDays} from './wild-rift-quality.mjs?v=20261001-interactions1';
-import {abilityProfile} from './wild-rift-ability-profile.mjs?v=20261001-interactions1';
-import {attackModel} from './wild-rift-attack-model.mjs?v=20261001-interactions1';
+import {itemFacts,BOOTS,SUPPORT_ITEMS,rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-combat2';
+import {traits} from './wild-rift-knowledge.mjs?v=20261001-combat2';
+import {ageInDays} from './wild-rift-quality.mjs?v=20261001-combat2';
+import {abilityProfile} from './wild-rift-ability-profile.mjs?v=20261001-combat2';
+import {attackModel} from './wild-rift-attack-model.mjs?v=20261001-combat2';
+import {verifiedCombat,targetApplication} from './wild-rift-combat-evaluation.mjs?v=20261001-combat2';
 export function itemTotals(data,ids){
  const totals={},unknown=[],uncertainStats=new Set();
  for(const id of ids){const f=itemFacts(data,id);if(!f.known||f.conflicts.length)unknown.push(id);if(!f.known)uncertainStats.add('*');for(const key of f.conflicts)uncertainStats.add(key);for(const [k,n] of Object.entries(f.stats))if(Number.isFinite(n))totals[k]=(totals[k]||0)+n;}
- return {stats:totals,unknown,uncertainStats:[...uncertainStats],scalingCrit:rulesUsable(data)&&ids.includes('yun-tal-wildarrows')?25:0};
+ return {stats:totals,unknown,uncertainStats:[...uncertainStats],scalingCrit:rulesUsable(data)?ids.reduce((n,id)=>n+(itemFacts(data,id).mechanics.growth?.critical?.maximum||0),0):0};
 }
 export function combatFacts(data,champion,level){
- const f=champion?.combatFacts;
+ const f=verifiedCombat(data,champion);
  if(!f||f.patch!==data.latestPatch.version||ageInDays(f.checkedAt)>7)return null;
  const stats={};if(Number.isInteger(level)&&level>=1&&level<=15)for(const [k,v] of Object.entries(f.stats))stats[k]=v.base+v.growth*(level-1);
  return {...f,level:level||null,atLevel:stats};
@@ -35,6 +36,7 @@ export function championProfile(data,champion,base){
   signature:core.filter(id=>itemFacts(data,id).mechanics.spellblade||['guinsoos-rageblade','nashors-tooth'].includes(id)),evidence:combat?.source||base.source};
 }
 export function application(data,id,profile,need){
+ if(['heal','shield'].includes(need))return targetApplication(data,id,profile,need);
  const facts=itemFacts(data,id),trigger=facts.mechanics[need==='heal'?'antiHeal':'antiShield'];
  if(!['heal','shield'].includes(need))return {factor:1,reason:''};
  if(!facts.effects[need==='heal'?'antiHeal':'antiShield'])return {factor:0,reason:'Güncel karşı etki doğrulanmadı.'};
@@ -78,6 +80,7 @@ export function buildFit(data,items,profile){
  if(current.unknown.length>profile.unknown.length)penalty+=.45;
  if(profile.usesMana===false&&(s.mana||0)>(b.mana||0))penalty+=.8;
  const warnings=uncertainStats.length?['Yeni sette '+uncertainStats.join(', ')+' toplamı doğrulanamadı; katkı kaybı kesin sayı olarak gösterilmiyor.']:[];
+ if(current.scalingCrit>0){if(profile.kind==='crit')penalty+=.3;warnings.push('Birikimle kazanılacak kritik, yeni eşyanın hazır kritik niteliğine eklenmez; tamamlanma koşulu ayrı değerlendirilir.');}
  if(rulesUsable(data)){
   if(profile.native?.attackReset&&profile.spellblade&&!items.some(id=>itemFacts(data,id).mechanics.spellblade)){penalty+=.5;warnings.push('Kaynakta saldırı sıfırlama var; güçlendirilmiş saldırı düzeninin kaybı ek maliyet taşıyor.');}
   if(profile.native?.completedItemEvolution&&profile.champion?.id==='kaisa'&&profile.signature.some(id=>!items.includes(id))){penalty+=.5;warnings.push('Tam eşya ile yetenek gelişimi düzeni değişiyor; kaynak ana eşyalarını ve tamamlama zamanını koru.');}

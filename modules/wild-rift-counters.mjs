@@ -1,8 +1,9 @@
-import {relationshipEvidence} from './wild-rift-evidence.mjs?v=20261001-interactions1';
-import {ageInDays} from './wild-rift-quality.mjs?v=20261001-interactions1';
-import {traits} from './wild-rift-knowledge.mjs?v=20261001-interactions1';
-import {rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-interactions1';
-import {combatFacts} from './wild-rift-build-fit.mjs?v=20261001-interactions1';
+import {relationshipEvidence} from './wild-rift-evidence.mjs?v=20261001-combat2';
+import {ageInDays} from './wild-rift-quality.mjs?v=20261001-combat2';
+import {traits} from './wild-rift-knowledge.mjs?v=20261001-combat2';
+import {rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-combat2';
+import {combatFacts} from './wild-rift-build-fit.mjs?v=20261001-combat2';
+import {duoAbilityPlan,verifiedCombat} from './wild-rift-combat-evaluation.mjs?v=20261001-combat2';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 // Recommendation weights, not measured probabilities or combat simulation.
 export function evaluateMatchup(data,candidate,enemy,role,now=Date.now()){
@@ -46,6 +47,9 @@ export function duoContext(data,draft,candidate,byId){
  const synergy=[...relationshipEvidence(data,candidate.id,partner.id,draft.role,'synergy'),...relationshipEvidence(data,partner.id,candidate.id,other,'synergy')];
  if(synergy.length){score+=4;reasons.push(`${partner.name} ile kaynakta uyum var; bu, rakip ikiliye karşı ölçülmüş oran değildir.`);}
  if(rulesUsable(data)){
+  const candidateFacts=verifiedCombat(data,candidate),partnerFacts=verifiedCombat(data,partner),plan=duoAbilityPlan(data,{...draft,blue:{...draft.blue,[draft.role]:candidate.id}});
+  const ownControl=candidateFacts?.abilityFacts.some(a=>a.flags.control),partnerControl=partnerFacts?.abilityFacts.some(a=>a.flags.control),ownDamage=candidateFacts?.abilityFacts.some(a=>a.damageTypes.length),partnerDamage=partnerFacts?.abilityFacts.some(a=>a.damageTypes.length);
+  if(plan&&(ownControl&&partnerDamage||partnerControl&&ownDamage)){score+=1;reasons.push('Kaynak yeteneklerinden ortak takas planı: '+plan.steps[0].text+' '+plan.steps[1].text);}
   if(t.peel&&p.scaling&&opponents.some(e=>e.engage||e.burst)){score+=4;reasons.push(`${partner.name} güçlenirken rakip ikilinin girişine karşı koruma sağlar.`);}
   if(t.engage&&p.poke&&opponents.some(e=>e.engage)){score-=2;risks.push('Partnerin uzaktan baskı isterken giriş yapmak onu rakibin karşı girişine açık bırakabilir.');}
   if(opponents.some(e=>e.poke)&&!t.heal&&!p.heal&&!t.shield&&!p.shield&&!t.mobile){score-=3;risks.push('Bu ikili menzilli baskıda can korumakta zorlanabilir.');}

@@ -14,8 +14,8 @@ async function main(){const file=process.env.WR_DATA_FILE||path.join(__dirname,'
   applyOfficial(data,await collectOfficial(data,fetchText));
   }
   await collectBuildSources(data,{previous,onProgress:(n,total)=>{if(n%20===0)console.log('Dizilimler '+n+'/'+total);}});
-  await require('../server/wild-rift-advanced-source.cjs').collectAdvancedEvidence(data,fetchText);
-  data.itemRegistry=buildRegistry(data);data.methodologyVersion=8;data.localRevisionAt=new Date().toISOString();validateSnapshot(data);
+  await require('../server/wild-rift-advanced-source.cjs').collectAdvancedEvidence(data,fetchText);await require('../server/wild-rift-combat-review.cjs').refreshCombatReview(data,fetchText);
+  data.itemRegistry=buildRegistry(data);data.methodologyVersion=9;data.localRevisionAt=new Date().toISOString();validateSnapshot(data);
   await require('../server/wild-rift-update-guard.cjs').publishSnapshot(file,previous,data);await syncSnapshot(file);
   console.log(JSON.stringify({registry:Object.keys(data.itemRegistry.items).length,builds:data.buildSources}));
  });}

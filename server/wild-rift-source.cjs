@@ -112,7 +112,7 @@ function parseChampionFacts(html,champion){
   if(flags.control&&/\b(?:stun(?:s|ning)?|charm(?:s|ing)?|root(?:s|ing)?|taunt(?:s|ing)?|fear(?:s|ing)?|silenc(?:es|ing))\s+(?:the |an? |all |nearby |enemy|enemies|target|them|for)/i.test(text))flags.cleanseableControl=true;
   if(/\bheals?\s+(?:for|himself|herself|themselves|her|him|them|allies|an? |nearby|the |his |your )|\brestore(?:s)? (?:his |her |their |your )?(?:own )?health\b/i.test(text))flags.heal=true;
   if(/\b(?:gains?|grants?|receive(?:s)?|generates?)\b.{0,90}\bshield\b/i.test(text))flags.shield=true;
-  if(/\b(?:dash(?:es)?|blinks?|leaps?)\b/i.test(text))flags.mobility=true;
+  if(require('./wild-rift-semantics.cjs').selfMobility(text)){flags.mobility=true;if(/(?:dash(?:es)?|leaps?) (?:to|toward|towards|onto) [^.]{0,50}enemy|dash(?:es)? to the last enemy/i.test(text))flags.mobilityRequiresEnemy=true;}
   if(/(?:basic attacks|attacks) deal.{0,90}(?:bonus )?magic damage/i.test(text))flags.magicOnAttack=true;
   if(/\b(?:on.hit|on hit effects)\b/i.test(text))flags.onHit=true;
   if(/cannot pass through enemy units/i.test(text)||(/first enemy hit|first unit hit|collid(?:es|ing) with/i.test(text)&&!/pierc(?:es|ing)|enemies hit after|subsequent (?:enemies|targets)|other enemies|pass(?:es|ing)? through/i.test(text)))flags.collision=true;
@@ -126,7 +126,7 @@ function parseChampionFacts(html,champion){
   const cooldown=n.find('.cooldown > span').map((_,x)=>Number($(x).text().trim())).get().filter(v=>Number.isFinite(v)&&v>0&&v<=300);
   const formTitle=n.closest('.statsBlock.abilities').parent().find('.statsBlock.champion h2').first().text();
   const form=/Shadow Assassin/i.test(formTitle)?'shadow':/Rhaast/i.test(formTitle)?'darkin':null;
-  abilityFacts.push({slot,name,flags,controlTypes,damageTypes,damagePackets:require('./wild-rift-semantics.cjs').damagePackets(text),...(form?{form}:{}),...(cooldown.length&&cooldown.length<=4?{baseCooldown:cooldown}:{})});
+  abilityFacts.push({slot,name,flags,controlTypes,damageTypes,damagePackets:require('./wild-rift-semantics.cjs').damagePackets(text),...(champion.id==='hwei'&&['1','2','3'].includes(slot)?{exclusiveChoices:true}:{}),...(form?{form}:{}),...(cooldown.length&&cooldown.length<=4?{baseCooldown:cooldown}:{})});
  });
  if(abilityFacts.some(a=>a.flags.onHit))mechanics.onHit=true;
  if(abilityFacts.some(a=>a.flags.heal))mechanics.heal=true;
@@ -218,10 +218,10 @@ function parseItemDetails(html,entry){
   const raw=$('.tt__info__cost span').first().text().trim();
   if(id!==entry.id||!/^\d{2,5}$/.test(raw))throw Error('Eşya kimliği veya fiyatı doğrulanamadı.');
   const cost=Number(raw);if(cost<100||cost>10000)throw Error('Eşya fiyatı aralık dışında.');
-  const stats={},keys={'Armor':'armor','Magic Resistance':'magicResist','Magic Resist':'magicResist','Critical Strike Chance':'crit','Health':'health','Mana':'mana','Attack Damage':'ad','Ability Power':'ap','Attack Speed':'attackSpeed','Ability Haste':'haste','Armor Penetration':'armorPen','Magic Penetration':'magicPen','Physical Vamp':'physicalVamp','Omnivamp':'omniVamp','Lifesteal':'lifesteal'};
+  const stats={},units={},keys={'Armor':'armor','Magic Resistance':'magicResist','Magic Resist':'magicResist','Critical Strike Chance':'crit','Health':'health','Mana':'mana','Attack Damage':'ad','Ability Power':'ap','Attack Speed':'attackSpeed','Ability Haste':'haste','Armor Penetration':'armorPen','Magic Penetration':'magicPen','Physical Vamp':'physicalVamp','Omnivamp':'omniVamp','Lifesteal':'lifesteal'};
   $('.tt__info__stats > span').each((_,e)=>{
     const value=$(e).find('span').first().text().trim(),label=$(e).clone().children().remove().end().text().trim(),key=keys[label];
-    if(key&&/^\+?\d+(?:\.\d+)?%?$/.test(value)){const n=Number(value.replace(/[+%]/g,''));if(n>=0&&n<=2000)stats[key]=n;}
+    if(key&&/^\+?\d+(?:\.\d+)?%?$/.test(value)){const n=Number(value.replace(/[+%]/g,''));if(n>=0&&n<=2000){stats[key]=n;units[key]=value.includes('%')?'percent':'flat';}}
   });
   const text=$('.tt__info').text().replace(/\s+/g,' '),passives=[];
   $('.tt__info__uniques > span').each((_,e)=>{
@@ -233,6 +233,7 @@ function parseItemDetails(html,entry){
      passives.push({key:title.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-'),effects:facts.effects,mechanics:facts.mechanics,...require('./wild-rift-semantics.cjs').passiveFacts(text)});
     }
   });
-  return {cost,stats,passives,...parseEffectText(text),costSource:BASE+`/ajax/tooltip?relation_type=Item&relation_id=${entry.sourceId}&lang=en`};
+  const facts=parseEffectText(text);Object.assign(facts.mechanics,require('./wild-rift-item-mechanics.cjs').numericItemMechanics(text,stats,units));
+  return {cost,stats,statUnits:units,passives,...facts,costSource:BASE+`/ajax/tooltip?relation_type=Item&relation_id=${entry.sourceId}&lang=en`};
 }
 module.exports={BASE,PATCH_URL,fetchText,parseStats,parseCatalog,parsePatch,parseGuide,parseChampionFacts,parseItemCatalog,parseItemDetails,parseEffectText,comparePatch,hash};

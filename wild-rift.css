@@ -125,3 +125,22 @@ body[data-active-view="view-wild-rift"] .app-container{max-width:1440px}
 .wr-swap-assessment{margin-top:12px;padding:12px;border-left:2px solid #54c7b3;background:#142a3b;border-radius:0 8px 8px 0}.wr-swap-assessment summary{font-size:12px}.wr-swap-assessment dl div{display:flex;justify-content:space-between;gap:12px;font-size:12px;margin:8px 0}.wr-swap-assessment dd{margin:0;color:#a3e3d7;white-space:nowrap}
 .wr-history-card h3{font-size:16px}.wr-update-history{margin-top:24px}.wr-attack-model .wr-chips{margin:12px 0}.wr-advanced-proof h3{margin-top:0}
 @media(max-width:600px){.wr-defense-plan,.wr-advanced-proof{padding:14px}.wr-defense-grid,.wr-scenario-grid{grid-template-columns:1fr}.wr-swap-assessment dl div{flex-wrap:wrap}}
+/* Source-based combat comparisons stay optional and readable on mobile. */
+.wr-growth-grid,.wr-application-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px;margin:14px 0}
+.wr-growth-grid article,.wr-application-grid article{padding:16px;border:1px solid #344e61;border-radius:14px;background:linear-gradient(140deg,#182c3d,#122331)}
+.wr-growth-grid small,.wr-application-grid small{display:block;color:#90b6cb;margin:7px 0}
+.wr-growth-grid dl{margin:12px 0}.wr-growth-grid dl div{display:flex;justify-content:space-between;gap:10px;margin:8px 0}.wr-growth-grid dd{margin:0;color:#8be3ce;font-weight:700}
+.wr-combat-evaluation table th small{display:block;font-weight:400;color:#93b4c8;margin:5px 0;font-size:11px}
+.wr-duo-ability-plan{margin:18px 0;padding:20px;border:1px solid #385c64;border-radius:18px;background:linear-gradient(130deg,#18353a,#172a3b)}
+
+.wr-combat-evaluation table caption{text-align:left;white-space:normal;line-height:1.6}.wr-combat-evaluation .wr-table-scroll{margin:12px 0}.wr-combat-evaluation h3{margin-top:22px}
+@media(max-width:600px){
+ .wr-combat-evaluation .wr-table-scroll{display:none}
+ .wr-resistance-cards{display:grid;gap:10px;margin:16px 0}
+ .wr-resistance-cards article{padding:14px;background:#152838;border:1px solid #304959;border-radius:12px;min-width:0}
+ .wr-resistance-cards small{display:block;font-size:11px;color:#9cb9cb;line-height:1.6;margin:6px 0}
+ .wr-resistance-values{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;border-top:1px solid #344e61;margin-top:10px;padding-top:10px}
+ .wr-resistance-values b{display:block;font-size:18px;color:#8be3ce}
+ .wr-combat-evaluation .wr-table-hint{display:none}
+}
+@media(min-width:601px){.wr-resistance-cards{display:none}}

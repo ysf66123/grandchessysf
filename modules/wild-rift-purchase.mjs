@@ -1,8 +1,8 @@
-import {ageInDays} from './wild-rift-quality.mjs?v=20261001-interactions1';
-import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20261001-interactions1';
-import {itemFacts,itemFamily,BOOTS,SUPPORT_ITEMS,TRANSFORM_FROM,rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-interactions1';
-import {coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20261001-interactions1';
-import {application} from './wild-rift-build-fit.mjs?v=20261001-interactions1';
+import {ageInDays} from './wild-rift-quality.mjs?v=20261001-combat2';
+import {priceEvidence,itemAvailability} from './wild-rift-evidence.mjs?v=20261001-combat2';
+import {itemFacts,itemFamily,BOOTS,SUPPORT_ITEMS,TRANSFORM_FROM,rulesUsable} from './wild-rift-item-rules.mjs?v=20261001-combat2';
+import {coverage,contextUtility} from './wild-rift-build-planner.mjs?v=20261001-combat2';
+import {application} from './wild-rift-build-fit.mjs?v=20261001-combat2';
 export function itemCost(data,id,now=Date.now()){
   return priceEvidence(data,id,now).cost;
 }

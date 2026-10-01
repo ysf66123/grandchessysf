@@ -1,16 +1,16 @@
-import {sourceConditionFit,loadoutAdvice,bootUpgradeAdvice} from './wild-rift-loadout.mjs?v=20261001-interactions1';
-import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20261001-interactions1';
-import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-interactions1';
-import {planBuild,buildContext,coverage,contextUtility,robustAssessment} from './wild-rift-build-planner.mjs?v=20261001-interactions1';
-import {decisionConditions} from './wild-rift-decision-conditions.mjs?v=20261001-interactions1';
-import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20261001-interactions1';
-import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20261001-interactions1';
-import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20261001-interactions1';
-import {traits} from './wild-rift-knowledge.mjs?v=20261001-interactions1';
+import {sourceConditionFit,loadoutAdvice,bootUpgradeAdvice} from './wild-rift-loadout.mjs?v=20261001-combat2';
+import {championBuilds,guideQuality} from './wild-rift-quality.mjs?v=20261001-combat2';
+import {finalBuildAvailable} from './wild-rift-evidence.mjs?v=20261001-combat2';
+import {planBuild,buildContext,coverage,contextUtility,robustAssessment} from './wild-rift-build-planner.mjs?v=20261001-combat2';
+import {decisionConditions} from './wild-rift-decision-conditions.mjs?v=20261001-combat2';
+import {championProfile,buildFit,itemTotals} from './wild-rift-build-fit.mjs?v=20261001-combat2';
+import {rulesUsable,BOOTS,SUPPORT_ITEMS} from './wild-rift-item-rules.mjs?v=20261001-combat2';
+import {completionCost,itemCost} from './wild-rift-purchase.mjs?v=20261001-combat2';
+import {traits} from './wild-rift-knowledge.mjs?v=20261001-combat2';
 
 // Compare complete, attributed templates against one stable champion/role
 // reference. A candidate must not grade its own lost damage as zero.
-export function selectMetaBuild(data,draft,champion,reference,scenarios){
+export function selectMetaBuild(data,draft,champion,reference,scenarios,previous=null){
  const fallback=()=>planBuild(data,draft,champion,reference,scenarios);
  if(!rulesUsable(data))return fallback();
  const primary=champion.builds.find(b=>b.role===draft.role&&guideQuality(data,champion,b.role,Date.now(),b.guideId).usable&&finalBuildAvailable(data,b.final))||reference;
@@ -27,7 +27,7 @@ export function selectMetaBuild(data,draft,champion,reference,scenarios){
    (!nativeAlternative&&profile.kind==='crit'&&(candidateProfile.stats.crit||0)+candidateProfile.scalingCrit<((profile.stats.crit||0)+profile.scalingCrit)*.6)||
    (profile.kind==='onHit'&&!candidateProfile.attack);
   if(wrongStyle&&guide.guideId!==draft.variant){excluded.push({guideId:guide.guideId,reason:'Şampiyonun bu roldeki hasar veya takım görevi değişiyor.'});continue;}
-  const r=planBuild(data,draft,champion,guide,scenarios,context);
+  const r=planBuild(data,draft,champion,guide,scenarios,context,previous);
   if(r.missing){excluded.push({guideId:guide.guideId,reason:'Satın aldığın eşyalar bu kaynak setine yerleştirilemiyor.'});continue;}
   const styleChanged=candidateProfile.style!==profile.style;
   // An attributed alternative native play style has its own stat goals. Charge
@@ -57,6 +57,8 @@ export function selectMetaBuild(data,draft,champion,reference,scenarios){
  // inventory is feasible, preventing needless switching on marginal signals.
  const primaryCandidate=evaluated.find(c=>c.guideId===primary.guideId);
  if(!draft.variant&&primaryCandidate&&winner.score-primaryCandidate.score<.8)winner=primaryCandidate;
+ const priorCandidate=!draft.variant&&previous?evaluated.find(c=>c.guideId===previous.guideId&&c.final.join()===previous.final?.join()):null;
+ if(priorCandidate&&winner.score-priorCandidate.score<.8){winner=priorCandidate;winner.result.continuity={...winner.result.continuity,retained:true,reason:'Önceki geçerli set, kaynaklar arasındaki küçük puan farkında korundu.'};}
  winner.result.bootUpgrade=bootUpgradeAdvice(data,winner.result);
  winner.result.loadoutAdvice=loadoutAdvice(winner.result.base,winner.result.context,draft);
  const alternatives=evaluated.filter(c=>c!==winner&&[...c.final].sort().join()!==[...winner.final].sort().join()).slice(0,2),result=winner.result;

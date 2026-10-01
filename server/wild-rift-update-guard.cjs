@@ -8,6 +8,10 @@ function assessUpdate(previous,next){
  const before=previous?metrics(previous):null,after=metrics(next),errors=[];
  if(!previous)return {ok:true,before,after,errors};
  const patch=next.latestPatch?.version,same=patch===previous.latestPatch?.version;
+ if(same){
+  const oldReview=Object.keys(previous.combatReview?.champions||{}).length,newReview=Object.keys(next.combatReview?.champions||{}).length;
+  if(oldReview>5&&newReview<oldReview*.85)errors.push('Resmî şampiyon sayısal kontrol kapsamı beklenmedik biçimde azaldı.');
+ }
  if(comparePatch(patch,previous.latestPatch.version)<0)errors.push('Yama geriye gidiyor.');
  for(const key of ['champions','builds','abilities','packets','passives','relationships']){
   const floor=key==='champions'?.95:same?.85:.65;
