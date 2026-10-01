@@ -241,3 +241,6 @@ Canlı yayın doğrulandı: 74a08712c87e21fa9fcfdf903d0cf5a432fc5b50. GitHub Pag
 
 
 Canlı yayın doğrulaması — 20261001-combat2: Commit 06d5aac5e406a7a6d692e9afa1ff32c205ea26fa. Aynı commit için GitHub Pages başarıyla tamamlandı: https://github.com/ysf66123/grandchessysf/actions/runs/36794632348. 24/24 kritik canlı dosya yerel sürümle SHA-256 (satır sonu normalleştirilmiş) eşleşti. Doğrulama: 2026-10-01T00:08:47.506Z. Bu yayın kanıtı yerel not dosyasına dağıtımdan sonra eklendi; yalnızca not için ikinci yayın yapılmadı.
+
+
+Canlı yayın doğrulaması — 20261001-combat3: Commit 9a7b28e95a37081d4692f91baec0e772641300d8. Aynı commit için Pages başarılı: https://github.com/ysf66123/grandchessysf/actions/runs/36795268703. 24/24 kritik canlı dosya yerel sürümle SHA-256 eşleşti. Doğrulama: 2026-10-01T00:16:40.806Z. Bu kanıt dağıtım sonrası yerel not dosyasına eklendi; yalnızca not için ikinci dağıtım yapılmadı.

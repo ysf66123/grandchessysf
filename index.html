@@ -31,7 +31,7 @@
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="./styles.css?v=20261001-combat3">
-    <link rel="stylesheet" href="./analysis-premium.css?v=20260923d">
+    <link rel="stylesheet" href="./analysis-premium.css?v=20261001-studio1">
 </head>
 
 <body>
@@ -336,163 +336,59 @@
         <!-- ===== NEW PREMIUM ANALYSIS VIEW ===== -->
         <div id="view-wild-rift" class="view"><div id="wr-root"></div></div>
         <div id="view-2v2-analysis" class="view" data-mobile-tab="review">
+            <header class="studio-header">
+                <div><span class="studio-kicker">GRANDMASTER / MAÇ İNCELEMESİ</span><h2>Her hamlenin bir hikâyesi var.</h2><p>Kararlarını keşfet. Kritik anları öğren. Daha güçlü oyna.</p></div>
+                <div class="studio-header-actions"><span id="sfStatusBadge" class="status-badge"></span><button class="secondary" onclick="document.getElementById('reviewImport').open=!document.getElementById('reviewImport').open">PGN yükle</button><button id="btnShareAnalysis" class="secondary icon-btn" onclick="shareCurrentAnalysisReport()" title="Analizi paylaş" aria-label="Analizi paylaş">↗</button><button class="secondary icon-btn" onclick="switchView('view-dashboard')" title="Analizi kapat" aria-label="Analizi kapat">×</button></div>
+            </header>
+            <details id="reviewImport" class="studio-import">
+                <summary>Başka bir maçı incele</summary><div class="studio-import-body"><label for="reviewPgnInput">PGN hamlelerini yapıştır veya dosya seç</label><textarea id="reviewPgnInput" rows="4" placeholder="1. e4 e5 2. Nf3 Nc6 …" spellcheck="false"></textarea><div class="review-actions"><input type="file" id="reviewPgnFile" accept=".pgn,.txt" aria-label="PGN dosyası seç"><button onclick="importReviewPgn()">Maçı incele</button></div><p id="reviewImportError" role="alert"></p></div>
+            </details>
             <div class="analysis-premium-layout">
-                <!-- MAIN COLUMN: BOARD -->
                 <div class="analysis-main-col">
                     <div class="analysis-topbar premium-topbar">
-                        <div class="players-matchup">
-                            <span id="an-black-player" class="player-name dark">Siyah</span>
-                            <span class="vs-badge">VS</span>
-                            <span id="an-white-player" class="player-name light">Beyaz</span>
-                            <span id="analysisPlayersLabel" class="analysis-inline-meta">Siyah vs Beyaz</span>
-                        </div>
-                        <div class="top-actions">
-                            <span id="analysisResultPill" class="analysis-result-pill">Hazirlaniyor</span>
-                            <button id="btnShareAnalysis" class="secondary icon-btn" onclick="shareCurrentAnalysisReport()" title="Analizi paylaş" aria-label="Analizi paylaş">↗</button>
-                            <div id="sfStatusBadge" class="status-badge"><i class="fas fa-microchip"></i></div>
-                            <button class="secondary icon-btn" onclick="switchView('view-dashboard')" title="Analizi kapat" aria-label="Analizi kapat">×</button>
-                        </div>
+                        <div class="players-matchup"><span class="studio-player-dot dark"></span><span id="an-black-player" class="player-name dark">Siyah</span><span class="vs-badge">/</span><span class="studio-player-dot light"></span><span id="an-white-player" class="player-name light">Beyaz</span><span id="analysisPlayersLabel" class="analysis-inline-meta">Beyaz / Siyah</span></div>
+                        <span id="analysisResultPill" class="analysis-result-pill">Hazırlanıyor</span>
                     </div>
-
-                    <div class="analysis-position-strip">
-                        <div>
-                            <span>Pozisyon</span>
-                            <strong id="analysisCurrentMoveLabel">Baslangic konumu</strong>
-                        </div>
-                        <div>
-                            <span>Sira</span>
-                            <strong id="analysisCurrentTurnLabel">Beyaz oynar</strong>
-                        </div>
-                        <div>
-                            <span>Durum</span>
-                            <strong id="analysisPositionLabel">Baslangic</strong>
-                        </div>
-                    </div>
-
-                    <div class="analysis-board-area">
-                        <div class="eval-bar-container premium-eval">
-                            <div id="analysisEvalFill" class="eval-fill premium-fill"></div>
-                            <div id="analysisEvalScore" class="eval-score">0.0</div>
-                        </div>
-                        <div class="board-container premium-board" id="analysisBoard"></div>
-                    </div>
-
-                    <div class="analysis-controls premium-controls">
-                        <button onclick="navAnalysis('start')" title="İlk konum" aria-label="İlk konum">⏮</button>
-                        <button onclick="navAnalysis('prev')" title="Önceki hamle" aria-label="Önceki hamle">‹</button>
-                        <button onclick="navAnalysis('next')" title="Sonraki hamle" aria-label="Sonraki hamle">›</button>
-                        <button onclick="navAnalysis('end')" title="Son konum" aria-label="Son konum">⏭</button>
-                        <button onclick="flipAnalysisBoard()" title="Tahtayı çevir" aria-label="Tahtayı çevir">↻</button>
-                    </div>
-
-                    <div class="analysis-chart-area">
-                        <canvas id="analysisChart"></canvas>
+                    <div class="analysis-board-area"><div class="eval-bar-container premium-eval"><div id="analysisEvalFill" class="eval-fill premium-fill"></div><div id="analysisEvalScore" class="eval-score">—</div></div><div class="board-container premium-board" id="analysisBoard" aria-label="Etkileşimli analiz tahtası"></div></div>
+                    <div class="analysis-controls premium-controls"><button onclick="navAnalysis('start')" title="İlk konum · Home" aria-label="İlk konum">⏮</button><button onclick="navAnalysis('prev')" title="Önceki hamle · Sol ok" aria-label="Önceki hamle">‹</button><div class="studio-position"><strong id="analysisCurrentMoveLabel">Başlangıç konumu</strong><span id="analysisCurrentTurnLabel">Beyaz oynar</span><span id="analysisPositionLabel" class="analysis-hidden-mirrors">Başlangıç</span></div><button onclick="navAnalysis('next')" title="Sonraki hamle · Sağ ok" aria-label="Sonraki hamle">›</button><button onclick="navAnalysis('end')" title="Son konum · End" aria-label="Son konum">⏭</button><button onclick="flipAnalysisBoard()" title="Tahtayı çevir" aria-label="Tahtayı çevir">↻</button></div>
+                    <div class="analysis-chart-area"><div class="studio-section-heading"><strong>Maçın akışı</strong><span>Beyaz açısından · bir noktaya dokun</span></div><canvas id="analysisChart" aria-label="Hamlelere göre Stockfish değerlendirme grafiği"></canvas><div class="studio-chart-legend"><span>↑ Beyaz üstün</span><span>— Eşit</span><span>↓ Siyah üstün</span></div></div>
+                    <div class="studio-board-note"><span>← → Hamleler arasında gez</span><span>Tahtada alternatif oyna · Esc ile maça dön</span></div>
+                    <div class="move-list-container premium-moves studio-desktop-moves">
+                        <div class="move-list-header"><strong>Hamle defteri</strong><span id="analysisMoveCountBadge">0 hamle</span><select id="reviewMoveFilter" aria-label="Hamle filtresi" onchange="filterAnalysisMoves(this.value)"><option value="all">Tüm hamleler</option><option value="errors">Kritik kayıplar</option><option value="brilliant">Parlak hamle</option><option value="great">Harika hamle</option><option value="best">En iyi</option><option value="book">Kitap hamlesi</option><option value="excellent">Mükemmel</option><option value="good">İyi</option><option value="inaccuracy">İsabetsizlik</option><option value="mistake">Hata</option><option value="miss">Kaçırılan fırsat</option><option value="blunder">Büyük hata</option></select><button id="analysisMovesToggle" class="secondary icon-btn" onclick="toggleAnalysisMovesPanel()" title="Hamle listesini daralt"><span id="analysisMovesToggleLabel">Daralt</span><i id="analysisMovesToggleIcon" class="fas fa-chevron-up"></i></button></div>
+                        <div class="move-list" id="analysisMoveList"></div>
                     </div>
                 </div>
-
-                <!-- SIDEBAR COLUMN: TABS & DETAILS -->
                 <div class="analysis-sidebar-col">
-                    <div class="premium-mobile-tabs">
-                        <button class="mob-tab-btn active" data-tab="review" onclick="setAnalysisMobileTab('review')"><i class="fas fa-chart-pie"></i> İnceleme</button>
-                        <button class="mob-tab-btn" data-tab="moves" onclick="setAnalysisMobileTab('moves')"><i class="fas fa-list"></i> Hamleler</button>
-                    </div>
-
+                    <div class="studio-report-top"><div><span class="studio-kicker">MOTOR RAPORU</span><strong id="analysisResultBadge">Hazırlanıyor</strong><small id="report-result">Analiz bekleniyor</small></div><span class="studio-engine-mark">SF<span>18</span></span></div>
+                    <div class="review-progress" role="status" aria-live="polite"><div><span class="review-live-dot"></span><span id="reviewProgressText">Analiz hazırlanıyor</span><button id="reviewPause" onclick="toggleReviewPause()" class="secondary">Duraklat</button></div><progress id="reviewProgress" max="100" value="0" aria-label="Maç analiz ilerlemesi"></progress></div>
+                    <div class="premium-mobile-tabs" role="tablist" aria-label="Analiz panelleri"><button id="reviewTab" role="tab" aria-controls="reviewPanel" aria-selected="true" class="mob-tab-btn active" data-tab="review" onclick="setAnalysisMobileTab('review')">Genel bakış</button><button id="focusTab" role="tab" aria-controls="focusPanel" aria-selected="false" class="mob-tab-btn" data-tab="focus" onclick="setAnalysisMobileTab('focus')">Hamle analizi</button><button id="momentsTab" role="tab" aria-controls="momentsPanel" aria-selected="false" class="mob-tab-btn" data-tab="moments" onclick="setAnalysisMobileTab('moments')">Kritik anlar</button><button class="mob-tab-btn studio-moves-tab" data-tab="moves" onclick="setAnalysisMobileTab('moves')">Hamleler</button></div>
                     <div class="premium-sidebar-content">
-                        <!-- REVIEW BLOCK -->
-                        <div class="sidebar-block block-review active">
-                            <div class="analysis-report-hero">
-                                <span>Mac Sonucu</span>
-                                <strong id="analysisResultBadge">Hazirlaniyor</strong>
-                                <small id="report-result">Analiz bekleniyor</small>
-                            </div>
-                            <div class="analysis-hidden-mirrors" aria-hidden="true">
-                                <span id="analysisWhiteSummaryName">Beyaz</span>
-                                <span id="analysisBlackSummaryName">Siyah</span>
-                            </div>
-                            <div class="accuracy-showcase">
-                                <div class="acc-player">
-                                    <div class="acc-ring" id="acc-white-ring" style="--val: 0deg;"><span id="acc-white">--</span></div>
-                                    <div class="acc-name">Beyaz Doğruluk</div>
-                                </div>
-                                <div class="acc-player">
-                                    <div class="acc-ring" id="acc-black-ring" style="--val: 0deg;"><span id="acc-black">--</span></div>
-                                    <div class="acc-name">Siyah Doğruluk</div>
-                                </div>
-                            </div>
-
-                            <div id="analysisQualitySummary" class="premium-quality-summary"></div>
-                            <div id="analysisQualityFootnote" class="analysis-quality-footnote">Degerler Beyaz / Siyah sirasiyla gosterilir.</div>
-
-                            <div class="review-progress" role="status" aria-live="polite">
-                                <span class="review-live-dot"></span><span id="reviewProgressText">Analiz hazırlanıyor</span>
-                                <progress id="reviewProgress" max="100" value="0" aria-label="Maç analiz ilerlemesi"></progress>
-                            </div>
-                            <div class="review-actions">
-                                <button class="secondary" onclick="jumpToCriticalMove(-1)" title="Önceki kritik hamle">← Kritik</button>
-                                <button class="secondary" onclick="jumpToCriticalMove(1)" title="Sonraki kritik hamle">Kritik →</button>
-                                <button class="secondary" id="reviewRetry" onclick="retryAnalysisMove()">Yeniden dene</button>
-                                <button class="secondary" onclick="restartAnalysisReview()" title="Maçı yeniden analiz et">Analizi yenile</button>
-                            </div>
+                        <section id="reviewPanel" role="tabpanel" aria-labelledby="reviewTab" class="sidebar-block block-review active" data-review-panel="review">
+                            <div class="studio-section-heading"><strong>Oyun doğruluğu</strong><span>Stockfish tabanlı</span></div>
+                            <div class="accuracy-showcase"><div class="acc-player"><div class="acc-ring" id="acc-white-ring"><span id="acc-white">—</span></div><div class="acc-name">Beyaz doğruluk</div></div><div class="acc-player"><div class="acc-ring" id="acc-black-ring"><span id="acc-black">—</span></div><div class="acc-name">Siyah doğruluk</div></div></div>
+                            <div class="studio-trust"><span id="reviewTrust" data-level="pending">İnceleme bekleniyor</span><span id="reviewDepthRange">Motor hazırlanıyor</span><small id="reviewCoverage">0 hamle incelendi</small></div>
+                            <div id="reviewPlayerStats" class="studio-player-stats"></div>
+                            <div class="studio-section-heading"><strong>Hamle kalitesi</strong><span>Beyaz / Siyah</span></div><div id="analysisQualitySummary" class="premium-quality-summary"></div><p id="analysisQualityFootnote" class="analysis-quality-footnote">Bir sınıfa dokunarak ilgili hamleleri filtrele.</p>
+                            <div class="studio-section-heading"><strong>Evrelere göre doğruluk</strong><span>Beyaz / Siyah</span></div><div id="reviewPhases" class="studio-phases"></div><p class="studio-fineprint">Evreler konumun materyaline ve hamle numarasına göre belirlenir. Karar doğruluğu, zorunlu ve kitap hamleleri dışındaki seçimleri ölçer. Mat değerlendirmeleri ortalama piyon kaybına katılmaz.</p>
+                            <details class="review-method"><summary>Doğruluk ve etiketlerin hesabı</summary><p>Stockfish 18, en güçlü adayları ve oynanan hamleyi aynı başlangıç konumunda karşılaştırır. Gerçek tam arama ve aday karşılaştırma derinlikleri ayrı takip edilir; süre sınırındaki sonuçlar geçicidir. Parlak hamle için doğrulanmış taş fedası, harika hamle için kritik bir alternatif farkı gerekir.</p><p>Doğruluk, Lichess’in yayımladığı CP dönüşümü ve doğruluk eğrisinden hesaplanır. Maç puanı, değişkenlik ağırlıklı ortalama ile harmonik ortalamanın birleşimidir. Bu kendi analiz puanımızdır; Chess.com CAPS2 puanı, kişisel kazanma ihtimali veya Elo tahmini değildir.</p><p>İlk inceleme 16, kritik konumlar 20, değişen kararlar 22 derinlik hedefler. Açılışlar Lichess CC0, ek oyun sonu kanıtı Syzygy kaynağından gelir. Evre ve taktik notları sezgiseldir; motorun hesapladığı devamlar ayrıca gösterilir.</p><a href="https://lichess.org/page/accuracy" target="_blank" rel="noopener noreferrer">Açık doğruluk formülü ↗</a><a href="https://support.chess.com/en/articles/8572705-how-are-moves-classified-what-is-a-blunder-or-brilliant-etc" target="_blank" rel="noopener noreferrer">Hamle sınıflarının açıklaması ↗</a></details>
+                        </section>
+                        <section id="focusPanel" role="tabpanel" aria-labelledby="focusTab" class="sidebar-block block-focus" data-review-panel="focus">
+                            <div class="studio-focus-head"><span>SEÇİLİ HAMLE</span><strong id="reviewFocusNumber">Konumu incele</strong></div>
+                            <div class="coach-feedback-box"><div class="coach-avatar">✦</div><div class="coach-message"><strong id="coachMoveQuality" class="coach-quality">Konumu incele</strong><span id="coachFeedbackText">Bir hamle seçerek değerlendirmeyi ve önerilen devamları inceleyebilirsin.</span></div></div>
+                            <div id="reviewMotifs" class="studio-motifs"></div>
+                            <div class="engine-best-box"><span>Motorun tercihi</span><button id="report-best" class="engine-best-btn" onclick="previewBestVsPlayedMove()">—</button><strong id="report-eval-display" class="engine-eval-chip">—</strong></div>
+                            <div id="reviewEvidence" class="variation-status studio-evidence" aria-live="polite"></div>
+                            <div class="review-actions"><button class="secondary" id="reviewRetry" onclick="retryAnalysisMove()">Daha iyisini bul</button><button class="secondary" id="reviewDeepen" onclick="deepenAnalysisMove()">Derin doğrula</button></div>
                             <div id="reviewOpening" class="review-opening"></div>
-
-                            <div class="coach-feedback-box">
-                                <div class="coach-avatar"><i class="fas fa-graduation-cap"></i></div>
-                                <div class="coach-message">
-                                    <strong id="coachMoveQuality" class="coach-quality">Analiz Başlıyor</strong>
-                                    <span id="coachFeedbackText">Hamleler motor tarafından inceleniyor.</span>
-                                </div>
-                            </div>
-
-                            <div class="engine-best-box">
-                                <span><i class="fas fa-lightbulb"></i> En İyi Hamle:</span>
-                                <button id="report-best" class="engine-best-btn" onclick="previewBestVsPlayedMove()">-</button>
-                                <strong id="report-eval-display" class="engine-eval-chip">0.0</strong>
-                            </div>
-                            <div id="reviewEvidence" class="variation-status" aria-live="polite"></div>
-                            <div id="report-blunder" class="analysis-worst-line">Kritik hata raporu analiz sonunda guncellenir.</div>
-                            <div class="review-engine-panel">
-                                <div class="review-engine-heading"><strong>Aday devamlar</strong><span id="reviewDepth">—</span></div>
-                                <div id="reviewLines" class="review-lines"></div>
-                                <div id="variationStatus" class="variation-status" role="status">Tahtada bir taşa, ardından hedef kareye tıklayarak alternatif deneyebilirsin.</div>
-                                <div class="review-actions">
-                                    <button class="secondary" onclick="undoAnalysisVariation()">Geri al</button>
-                                    <button class="secondary" onclick="returnToAnalysisGame()">Maça dön</button>
-                                    <button class="secondary" id="reviewDeepen" onclick="deepenAnalysisMove()">Daha derin incele</button>
-                                    <button class="secondary" onclick="downloadAnalysisData()">Motor verisini indir</button>
-                                    <label class="review-promotion">Terfi <select id="reviewPromotion" aria-label="Terfi taşı"><option value="q">Vezir</option><option value="r">Kale</option><option value="b">Fil</option><option value="n">At</option></select></label>
-                                </div>
-                                <details class="review-method"><summary>Bu değerlendirme nasıl hesaplanıyor?</summary><p>Hamle notu tamamen aynı konumda karşılaştırılan Stockfish hamlelerine ve CP/mat puanlarına dayanır. “En iyi”, motorun birinci tercihidir. Diğer hamleler değerlendirme kaybına göre sınıflandırılır. Doğrulukta Lichess’in yayımladığı CP dönüşümü kullanılır; WDL olasılıkları doğrudan hamle notuna çevrilmez.</p><p>Maç doğruluğu, konumların değişkenliğiyle ağırlıklandırılmış ortalama ile harmonik ortalamanın birleşimidir. Etiketler yüzdelere müdahale etmez. Bu değer kişisel kazanma olasılığı, oyun gücü veya Chess.com CAPS2 puanı değildir. Çok kısa maçlarda az sayıdaki hamleye dayanır.</p><p>İlk inceleme derinlik 16, kritik konumlar 20 hedefler. Değişen veya sınırdaki kararlar 22’de tekrar kontrol edilir. Süre sınırındaki sonuçlar geçici olarak gösterilir. Açılış adları Lichess CC0 verisinden, ek oyun sonu bilgisi Syzygy’den gelir; bu kaynaklar doğruluk puanını değiştirmez. <a href="https://lichess.org/page/accuracy" target="_blank" rel="noopener noreferrer">Hesaplama yönteminin kaynağı</a></p></details>
-                            </div>
-                        </div>
-
-                        <!-- MOVES BLOCK -->
-                        <div class="sidebar-block block-moves">
-                            <div class="move-list-container premium-moves">
-                                <div class="move-list-header">
-                                    <strong>Hamleler</strong>
-                                    <span id="analysisMoveCountBadge">0 hamle</span>
-                                    <button id="analysisMovesToggle" class="secondary icon-btn" onclick="toggleAnalysisMovesPanel()" title="Hamle listesini daralt">
-                                        <span id="analysisMovesToggleLabel">Daralt</span>
-                                        <i id="analysisMovesToggleIcon" class="fas fa-chevron-up"></i>
-                                    </button>
-                                </div>
-                                <div class="move-list" id="analysisMoveList"></div>
-                            </div>
-                        </div>
+                            <div class="review-engine-panel"><div class="review-engine-heading"><strong>Aday devamlar</strong><span id="reviewDepth">—</span></div><div id="reviewLines" class="review-lines"></div><div id="variationStatus" class="variation-status" role="status">Bir taşa, ardından hedef kareye dokunarak alternatif deneyebilirsin.</div><div class="review-actions"><button class="secondary" onclick="undoAnalysisVariation()">Geri al</button><button class="secondary" onclick="returnToAnalysisGame()">Maça dön</button><label class="review-promotion">Terfi <select id="reviewPromotion" aria-label="Terfi taşı"><option value="q">Vezir</option><option value="r">Kale</option><option value="b">Fil</option><option value="n">At</option></select></label></div></div>
+                        </section>
+                        <section id="momentsPanel" role="tabpanel" aria-labelledby="momentsTab" class="sidebar-block block-moments" data-review-panel="moments"><div class="studio-section-heading"><strong>Maçın dönüm noktaları</strong><span>En yüksek kayıp önce</span></div><p class="studio-fineprint">Bir kartı seç. Konuma dön, motorun devamını incele ve daha güçlü hamleyi dene.</p><div id="reviewMoments" class="studio-moments"></div><div id="report-blunder" class="analysis-worst-line">Kritik hata raporu inceleme sırasında güncellenir.</div><div class="review-actions"><button class="secondary" onclick="jumpToCriticalMove(-1);setAnalysisMobileTab('focus')">← Önceki kritik</button><button class="secondary" onclick="jumpToCriticalMove(1);setAnalysisMobileTab('focus')">Sonraki kritik →</button></div></section>
+                        <section id="reviewMovesMobile" class="sidebar-block block-moves" data-review-panel="moves" aria-label="Hamle defteri"></section>
                     </div>
+                    <footer class="studio-report-footer"><button class="secondary" onclick="downloadReviewPgn()">Notlu PGN ↓</button><button class="secondary" onclick="downloadAnalysisData()">Motor verisi ↓</button><button class="secondary" onclick="restartAnalysisReview()">Yenile ↻</button></footer>
+                    <div class="analysis-hidden-mirrors" aria-hidden="true"><span id="analysisWhiteSummaryName">Beyaz</span><span id="analysisBlackSummaryName">Siyah</span></div>
                 </div>
-
-                <!-- LOADING OVERLAY -->
-                <div id="analysisLoadingOverlay" class="premium-loading-overlay">
-                    <div class="loading-card">
-                        <div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i></div>
-                        <h3>Maç Analiz Ediliyor</h3>
-                        <p id="analysisLoadingMessage">Motor hamleleri değerlendiriyor...</p>
-                        <div class="loading-bar"><div id="analysisLoadingProgressFill" class="loading-fill"></div></div>
-                        <div id="analysisCountdownNumber" class="loading-count">0/0</div>
-                        <div id="analysisLoadingSubtext" class="loading-subtext">%0 tamamlandi</div>
-                    </div>
-                </div>
+                <div id="analysisLoadingOverlay" class="premium-loading-overlay"><div class="loading-card"><div class="loading-spinner">◌</div><h3>Motor hazırlanıyor</h3><p id="analysisLoadingMessage">Stockfish yükleniyor…</p><div class="loading-bar"><div id="analysisLoadingProgressFill" class="loading-fill"></div></div><div id="analysisCountdownNumber" class="loading-count">0/0</div><div id="analysisLoadingSubtext" class="loading-subtext">%0 tamamlandı</div></div></div>
             </div>
         </div>
 
@@ -1858,7 +1754,7 @@
     </div>
 
     <script src="./site-config.js?v=20261001-combat3"></script>
-    <script type="module" src="./app-v2.js?v=20261001-combat3"></script>
+    <script type="module" src="./app-v2.js?v=20261001-studio1"></script>
 
 </body>
 

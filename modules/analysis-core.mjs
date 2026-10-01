@@ -1,5 +1,5 @@
 // Pure review rules. Scores are from the root side to move; UI scores are White POV.
-export const REVIEW_VERSION = 'sf18-review-20260923-4-cp';
+export const REVIEW_VERSION = 'sf18-review-20261001-studio1';
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 export const uciOf = m => m.from + m.to + (m.promotion || '');
 export function parseInfo(text) {
@@ -54,6 +54,24 @@ export function moveMetrics(best, played) {
     const loss=sameMove ? 0 : Math.max(0,before-after);
     return {loss,expectedBest:before,expectedPlayed:after,moveAccuracy:accuracyFromLoss(loss),
         cpl:Number.isFinite(best.cp)&&Number.isFinite(played.cp)?Math.max(0,best.cp-played.cp):null};
+}
+// Special labels need evidence from a full, unrestricted search as well as the
+// same-root comparison. Restricted candidate searches cannot prove uniqueness.
+export function comparisonEvidence(globalResult, comparedResult) {
+    const fullDepth=Number(globalResult?.depth)||0, comparedDepth=Number(comparedResult?.depth)||0;
+    const complete=!!globalResult?.complete && !!comparedResult?.complete;
+    return {fullDepth,comparedDepth,depth:Math.min(fullDepth,comparedDepth),complete,
+        verified:complete && fullDepth>=20 && comparedDepth>=20};
+}
+export function reviewIsStable(previous, next) {
+    if(!previous || !next || !Number.isFinite(previous.loss) || !Number.isFinite(next.loss))return false;
+    if(Math.abs(previous.loss-next.loss)>0.025)return false;
+    // A changed mate outcome or crossing a classification boundary matters even
+    // when a saturated numerical evaluation makes the loss look unchanged.
+    const outcome=r=>r.mateAfter==null?'cp':r.mateAfter>0?'win':'loss';
+    if(outcome(previous)!==outcome(next))return false;
+    const band=x=>[0.02,0.05,0.1,0.2].filter(t=>x>=t).length;
+    return band(previous.loss)===band(next.loss);
 }
 export function classify({ best, played, legalCount, verified, sacrifice, book, routineCapture=false, previousOpponentLoss = 0 }) {
     const metrics=moveMetrics(best,played);
@@ -154,5 +172,20 @@ export function validPosition(Chess, fen) {
     if([...board[0],...board[7]].some(p=>p?.type==='p'))return false;
     const kings=[];
     board.forEach((row,r)=>row.forEach((p,c)=>{if(p?.type==='k')kings.push([r,c]);}));
-    return Math.max(Math.abs(kings[0][0]-kings[1][0]),Math.abs(kings[0][1]-kings[1][1]))>1;
+    if(Math.max(Math.abs(kings[0][0]-kings[1][0]),Math.abs(kings[0][1]-kings[1][1]))<=1)return false;
+    const fields=fen.split(' '),other=new Chess();
+    const flipped=[...fields];flipped[1]=fields[1]==='w'?'b':'w';flipped[3]='-';
+    if(!other.load(flipped.join(' ')) || other.in_check())return false;
+    const home={K:['e1','h1','w'],Q:['e1','a1','w'],k:['e8','h8','b'],q:['e8','a8','b']};
+    for(const right of fields[2]){
+        if(right==='-')continue;
+        const [king,rook,color]=home[right]||[];
+        if(game.get(king)?.type!=='k'||game.get(king)?.color!==color||game.get(rook)?.type!=='r'||game.get(rook)?.color!==color)return false;
+    }
+    if(fields[3]!=='-'){
+        const ep=fields[3],white=fields[1]==='w';
+        const pawn=game.get(ep[0]+(white?'5':'4'));
+        if(ep[1]!== (white?'6':'3')||game.get(ep)||pawn?.type!=='p'||pawn.color===(white?'w':'b'))return false;
+    }
+    return true;
 }

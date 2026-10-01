@@ -83,7 +83,7 @@ const [
         import(`./modules/admin-access.mjs?v=${cacheBuster}`),
         import(`./modules/auth-social-v2.js?v=${cacheBuster}`),
         import(`./modules/story-mode-v2.js?v=${cacheBuster}`),
-        import(`./modules/analysis-v2.js?v=${cacheBuster}`),
+        import(`./modules/analysis-v2.js?v=20261001-studio1`),
         import(`./modules/game-modes-v2.js?v=${cacheBuster}`)
     ]);
 
