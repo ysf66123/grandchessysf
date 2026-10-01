@@ -1,5 +1,5 @@
-import {appendMatchClock} from './match-clock.mjs?v=20261001-speed3';
-import {latestMove,markLastMove,premoveValid,rankStyledCandidates} from './chess-live-tools.mjs?v=20261001-speed3';
+import {appendMatchClock} from './match-clock.mjs?v=20261001-speed3a';
+import {latestMove,markLastMove,premoveValid,rankStyledCandidates} from './chess-live-tools.mjs?v=20261001-speed3a';
 import { doc, onSnapshot, setDoc, updateDoc, getDoc, getDocs, collection, query, where, arrayUnion, arrayRemove, serverTimestamp, deleteField, runTransaction, deleteDoc, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const db = window.db;

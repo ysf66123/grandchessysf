@@ -12,10 +12,12 @@ Site GitHub Pages üzerinde kalır. Hesaplama, bilgisayarda yalnızca `127.0.0.1
 - **Maçlar arası ortak önbellek:** aynı motor, ağ, politika ve tam hamle geçmişiyle ulaşılmış açılış konumlarının tamamlanan hesapları farklı maçlarda da kullanılabilir. Tekrar/beraberlik geçmişi farklı konumlar birleştirilmez.
 - **Kalıcı raporlar:** tamamlanan rapor ve ara hesaplar bilgisayarda `.cache/chess-review` altında saklanır. Rapor dosyaları 30 gün, en fazla 64 kayıt / 128 MB; ortak hesap dosyası en fazla 32 MB ile sınırlandırılır. Dosyalar geçici dosyadan atomik olarak değiştirilir. Disk hatası değerlendirmeyi değiştirmez; o oturumdaki bellek kaydı korunur.
 - **Duraklatma ve devam:** tamamlanan sonuçlar saklanır. İptal edilen arama boşaltılır, çalışan süreçler kapatılır; eksik incelemeler daha sonra sürer. Aktif maç ve gizlenen sekme, maç sonrası otomatik hazırlığı durdurur.
-- **Otomatik seçim:** Ayarlar → Analiz motoru → Otomatik seçeneği, yardımcı açıksa yerel tam motoru tercih eder. Kullanıcı özellikle tarayıcı motorunu seçmişse bu tercih korunur. Eski yardımcıda toplu hizmet yoksa standart motor akışı çalışır.
+- **Otomatik seçim:** Ayarlar → Analiz motoru → Otomatik seçeneği, yardımcı açıksa ve tarayıcı izni verilmişse yerel tam motoru tercih eder. Kullanıcı özellikle tarayıcı motorunu seçmişse bu tercih korunur. Eski yardımcıda toplu hizmet yoksa standart motor akışı çalışır.
 - **Windows başlangıcı:** `SATRANC-YEREL-MOTOR.bat` kurulum ve gizli otomatik başlatmayı etkinleştirir. `SATRANC-YEREL-MOTOR-OTOMATIK-KAPAT.bat` başlangıç kaydını kaldırır. Yardımcının sağlıklı olduğu durumda tekrar çalıştırmak ikinci bir yardımcı açmaz. Bu bilgisayarda kurulum ve başlangıç kaydı yapıldı.
 
 ## Gerçek ölçümler
+
+İlk bağlantıda **Ayarlar → Okunabilirlik ve analiz motoru → Yerel motoru bağla** düğmesine bas. Tarayıcı yerel ağ erişimi isterse izin ver. Reddedilmişse adres çubuğundaki site izinlerinden yerel ağ erişimini açıp tekrar dene. Bu izin, internet sitesinin bilgisayardaki yardımcıya ulaşması içindir; bilgisayarı ağdaki diğer cihazlara açmaz. Yardımcı bu bilgisayarda kuruldu ve Windows başlangıcına eklendi. Başka bir bilgisayarda önce `SATRANC-YEREL-MOTOR.bat` çalıştırılmalıdır. Chrome'un bu izin gereksinimi için [resmî açıklama](https://developer.chrome.com/blog/local-network-access).
 
 Aynı bilgisayarda, aynı resmî tam Stockfish ağıyla yapılan üç maç ölçümü:
 

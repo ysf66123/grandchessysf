@@ -1,10 +1,10 @@
-import {ReviewReplay,evalKey,rememberIterations,sameReviewBackend} from './analysis-runtime.mjs?v=20261001-speed3';
-import {REVIEW_VERSION,classify} from './analysis-core.mjs?v=20261001-speed3';
-import {computeMoveReview,verifyDecision} from './analysis-review.mjs?v=20261001-speed3';
-import {loadOpenings} from './analysis-data.mjs?v=20261001-speed3';
-import {canRevealReport} from './analysis-progress.mjs?v=20261001-speed3';
-import {tacticalSequence} from './analysis-tactics.mjs?v=20261001-speed3';
-import {NativeReviewClient} from './native-review-client.mjs?v=20261001-speed3';
+import {ReviewReplay,evalKey,rememberIterations,sameReviewBackend} from './analysis-runtime.mjs?v=20261001-speed3a';
+import {REVIEW_VERSION,classify} from './analysis-core.mjs?v=20261001-speed3a';
+import {computeMoveReview,verifyDecision} from './analysis-review.mjs?v=20261001-speed3a';
+import {loadOpenings} from './analysis-data.mjs?v=20261001-speed3a';
+import {canRevealReport} from './analysis-progress.mjs?v=20261001-speed3a';
+import {tacticalSequence} from './analysis-tactics.mjs?v=20261001-speed3a';
+import {NativeReviewClient} from './native-review-client.mjs?v=20261001-speed3a';
 export class BackgroundReview {
  constructor({Chess,engine,cache,isSafe,reportKey,onStatus=()=>{}}){Object.assign(this,{Chess,engine,cache,isSafe,reportKey,onStatus});this.token=0;this.job=null;this.running=null;this.nativeClient=new NativeReviewClient();}
  schedule(pgn){if(!pgn)return;if(this.job?.pgn===pgn){this.wake();return;}this.suspend();this.job={pgn};this.onStatus('Maç analizi uygun zamanda hazırlanacak.');this.wake();}

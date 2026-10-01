@@ -4,12 +4,12 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import {spawn} from 'node:child_process';
 import {createRequire} from 'node:module';
-import {AnalysisEngine} from '../modules/analysis-engine.mjs?v=20261001-speed3';
-import {ReviewReplay,evalKey,rememberIterations,sameReviewBackend} from '../modules/analysis-runtime.mjs?v=20261001-speed3';
-import {computeMoveReview,verifyDecision} from '../modules/analysis-review.mjs?v=20261001-speed3';
-import {REVIEW_VERSION,classify,validPosition} from '../modules/analysis-core.mjs?v=20261001-speed3';
-import {canRevealReport} from '../modules/analysis-progress.mjs?v=20261001-speed3';
-import {tacticalSequence} from '../modules/analysis-tactics.mjs?v=20261001-speed3';
+import {AnalysisEngine} from '../modules/analysis-engine.mjs?v=20261001-speed3a';
+import {ReviewReplay,evalKey,rememberIterations,sameReviewBackend} from '../modules/analysis-runtime.mjs?v=20261001-speed3a';
+import {computeMoveReview,verifyDecision} from '../modules/analysis-review.mjs?v=20261001-speed3a';
+import {REVIEW_VERSION,classify,validPosition} from '../modules/analysis-core.mjs?v=20261001-speed3a';
+import {canRevealReport} from '../modules/analysis-progress.mjs?v=20261001-speed3a';
+import {tacticalSequence} from '../modules/analysis-tactics.mjs?v=20261001-speed3a';
 
 const require=createRequire(import.meta.url),{Chess}=require('../vendor/chess-0.10.3.js');
 const root=path.resolve(import.meta.dirname,'..'),TTL=30*86400000;

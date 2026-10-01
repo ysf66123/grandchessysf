@@ -1,4 +1,4 @@
-import {openingKey, pvMoves} from './analysis-core.mjs?v=20261001-speed3';
+import {openingKey, pvMoves} from './analysis-core.mjs?v=20261001-speed3a';
 let openingPromise;
 export async function loadOpenings() {
     if (!openingPromise) openingPromise = fetch('./vendor/openings.json').then(r=> {

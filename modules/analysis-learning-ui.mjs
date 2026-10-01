@@ -1,6 +1,6 @@
-import {personalLessons,errorChains,openingInsights,clockInsights,learningRecord,historySummary,trainingResult} from './analysis-learning.mjs?v=20261001-speed3';
-import {readLearning as read,writeLearning as write,clearLearning,ensureLearningSync,learningStatus} from './chess-learning-store.mjs?v=20261001-speed3';
-import {openingNameTR} from './chess-opening-names.mjs?v=20261001-speed3';
+import {personalLessons,errorChains,openingInsights,clockInsights,learningRecord,historySummary,trainingResult} from './analysis-learning.mjs?v=20261001-speed3a';
+import {readLearning as read,writeLearning as write,clearLearning,ensureLearningSync,learningStatus} from './chess-learning-store.mjs?v=20261001-speed3a';
+import {openingNameTR} from './chess-opening-names.mjs?v=20261001-speed3a';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e;};
 function key(){return 'gm_review_learning_v1_'+(window.currentUser?.uid||'guest');}
 let activeTraining=null;

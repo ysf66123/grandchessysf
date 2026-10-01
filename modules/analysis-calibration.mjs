@@ -1,5 +1,5 @@
-import {AnalysisEngine} from './analysis-engine.mjs?v=20261001-speed3';
-import {calibrationKey} from './engine-profile.mjs?v=20261001-speed3';
+import {AnalysisEngine} from './analysis-engine.mjs?v=20261001-speed3a';
+import {calibrationKey} from './engine-profile.mjs?v=20261001-speed3a';
 export const CALIBRATION_POSITIONS=[{fen:'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 3',legalCount:33},{fen:'r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1',legalCount:48}];
 export function calibrationCandidates(env,backend){const mobile=env.mobile,canThread=backend==='native'||env.isolated&&!mobile,max=Math.min(4,Math.max(1,(env.cores||2)-1)),hash=mobile?32:env.memory>=8?128:64;const rows=[{threads:1,hash}];if(canThread&&max>=2){rows.push({threads:2,hash});if(env.memory>=8)rows.push({threads:2,hash:64},{threads:2,hash:256});}if(canThread&&max>=4)rows.push({threads:4,hash});return rows;}
 export async function calibrateDevice({env,backend,isSafe=()=>true,onProgress=()=>{},signal,storage=globalThis.localStorage}){const rows=[];let engine;const check=()=>{if(signal?.aborted||!isSafe())throw new Error('Ölçüm ertelendi; devam eden oyun korunuyor.');};

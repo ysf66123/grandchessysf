@@ -1,7 +1,7 @@
-import {readLearning,ensureLearningSync,learningStatus,syncLearning} from './chess-learning-store.mjs?v=20261001-speed3';
-import {buildRepertoire,progressGroups,TIME_NAMES,ENDGAME_LESSONS} from './chess-academy-core.mjs?v=20261001-speed3';
-import {tablebase} from './analysis-data.mjs?v=20261001-speed3';
-import {openingNameTR} from './chess-opening-names.mjs?v=20261001-speed3';
+import {readLearning,ensureLearningSync,learningStatus,syncLearning} from './chess-learning-store.mjs?v=20261001-speed3a';
+import {buildRepertoire,progressGroups,TIME_NAMES,ENDGAME_LESSONS} from './chess-academy-core.mjs?v=20261001-speed3a';
+import {tablebase} from './analysis-data.mjs?v=20261001-speed3a';
+import {openingNameTR} from './chess-opening-names.mjs?v=20261001-speed3a';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e;},
  button=(text,fn)=>{const b=el('button',text,'secondary');b.type='button';b.onclick=fn;return b;};
 const view=el('div',null,'view');view.id='view-chess-academy';document.querySelector('.app-container').append(view);

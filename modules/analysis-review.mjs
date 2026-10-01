@@ -1,5 +1,5 @@
-import {uciOf,terminalResult,rootScore,whiteScore,qualityScore,moveMetrics,comparisonEvidence,specialMoveEvidence,sacrificeEvidence,classify,reviewIsStable} from './analysis-core.mjs?v=20261001-speed3';
-import {tablebase,tableExpected,normalizedOpeningKey} from './analysis-data.mjs?v=20261001-speed3';
+import {uciOf,terminalResult,rootScore,whiteScore,qualityScore,moveMetrics,comparisonEvidence,specialMoveEvidence,sacrificeEvidence,classify,reviewIsStable} from './analysis-core.mjs?v=20261001-speed3a';
+import {tablebase,tableExpected,normalizedOpeningKey} from './analysis-data.mjs?v=20261001-speed3a';
 export async function verifyDecision(previous,{compute,resume=false,onProgress=()=>{},minDepth=20}){
  const target=Math.min(28,Math.max(minDepth,previous.depth>=20?previous.depth+2:20));onProgress(target);
  let review=await compute(target,target<=previous.depth);if(!review)return null;

@@ -1,19 +1,19 @@
-import {computeMoveReview,verifyDecision} from './analysis-review.mjs?v=20261001-speed3';
-import {AnalysisEngine} from './analysis-engine.mjs?v=20261001-speed3';
-import {REVIEW_VERSION, whiteScore, rootScore, classify, gameAccuracy, pvMoves, sacrificeEvidence, terminalResult, validPosition, uciOf, qualityScore, moveMetrics, comparisonEvidence, specialMoveEvidence, reviewIsStable} from './analysis-core.mjs?v=20261001-speed3';
-import {loadOpenings, normalizedOpeningKey, tablebase, tableExpected, explanation} from './analysis-data.mjs?v=20261001-speed3';
-import {reviewInsights, PHASE_LABELS} from './analysis-insights.mjs?v=20261001-speed3';
-import {REVIEW_STAGES, stageProgress, canRevealReport} from './analysis-progress.mjs?v=20261001-speed3';
-import {MOVE_CATEGORY_META,categorySvg} from './analysis-labels.mjs?v=20261001-speed3';
-import {tacticalSequence} from './analysis-tactics.mjs?v=20261001-speed3';
-import {acceptTrainingMove} from './analysis-learning.mjs?v=20261001-speed3';
-import {renderLearningUI,finishLearningAttempt,clearLearningAttempt} from './analysis-learning-ui.mjs?v=20261001-speed3';
-import {AnalysisTiming,calibratedProfile,calibrationKey} from './engine-profile.mjs?v=20261001-speed3';
-import {openingNameTR} from './chess-opening-names.mjs?v=20261001-speed3';
-import {ReviewCache,ReviewMetrics,ReviewReplay,evalKey,engineSignature,rememberIterations,sameReviewBackend} from './analysis-runtime.mjs?v=20261001-speed3';
-import {BackgroundReview} from './analysis-background.mjs?v=20261001-speed3';
-import {NativeReviewClient} from './native-review-client.mjs?v=20261001-speed3';
-import {backendPreference} from './native-engine-worker.mjs?v=20261001-speed3';
+import {computeMoveReview,verifyDecision} from './analysis-review.mjs?v=20261001-speed3a';
+import {AnalysisEngine} from './analysis-engine.mjs?v=20261001-speed3a';
+import {REVIEW_VERSION, whiteScore, rootScore, classify, gameAccuracy, pvMoves, sacrificeEvidence, terminalResult, validPosition, uciOf, qualityScore, moveMetrics, comparisonEvidence, specialMoveEvidence, reviewIsStable} from './analysis-core.mjs?v=20261001-speed3a';
+import {loadOpenings, normalizedOpeningKey, tablebase, tableExpected, explanation} from './analysis-data.mjs?v=20261001-speed3a';
+import {reviewInsights, PHASE_LABELS} from './analysis-insights.mjs?v=20261001-speed3a';
+import {REVIEW_STAGES, stageProgress, canRevealReport} from './analysis-progress.mjs?v=20261001-speed3a';
+import {MOVE_CATEGORY_META,categorySvg} from './analysis-labels.mjs?v=20261001-speed3a';
+import {tacticalSequence} from './analysis-tactics.mjs?v=20261001-speed3a';
+import {acceptTrainingMove} from './analysis-learning.mjs?v=20261001-speed3a';
+import {renderLearningUI,finishLearningAttempt,clearLearningAttempt} from './analysis-learning-ui.mjs?v=20261001-speed3a';
+import {AnalysisTiming,calibratedProfile,calibrationKey} from './engine-profile.mjs?v=20261001-speed3a';
+import {openingNameTR} from './chess-opening-names.mjs?v=20261001-speed3a';
+import {ReviewCache,ReviewMetrics,ReviewReplay,evalKey,engineSignature,rememberIterations,sameReviewBackend} from './analysis-runtime.mjs?v=20261001-speed3a';
+import {BackgroundReview} from './analysis-background.mjs?v=20261001-speed3a';
+import {NativeReviewClient} from './native-review-client.mjs?v=20261001-speed3a';
+import {backendPreference} from './native-engine-worker.mjs?v=20261001-speed3a';
 const analysisTiming=new AnalysisTiming();
 const reviewCache=new ReviewCache(),reviewMetrics=new ReviewMetrics();
 let replayPlan=null;
@@ -2010,15 +2010,36 @@ if (document.readyState === 'loading') {
 
 window.initStockfish = initStockfish;
 window.cancelChessAcademyEngine=()=>reviewEngine.cancel(t=>t.mode==='academy');
+const nativeConnectionStatus=text=>window.dispatchEvent(new CustomEvent('chess-native-status',{detail:text}));
+let nativeConnectionPending=null;
+window.connectNativeChessEngine=function(){
+    if(nativeConnectionPending)return nativeConnectionPending;
+    if(reviewBusy||reviewEngine.active){nativeConnectionStatus('Hesaplama tamamlandıktan sonra yerel motoru bağlayabilirsin.');return Promise.resolve(false);}
+    nativeConnectionPending=(async()=>{
+        nativeConnectionStatus('Bağlanıyor… Tarayıcı yerel ağ izni isterse izin ver.');
+        try{
+            // A user-triggered main-document request can display the browser permission prompt.
+            // Give the user time to respond; never bypass a denied permission.
+            const response=await fetch('http://127.0.0.1:8766/health',{headers:{'X-GM-Engine':'1'},signal:AbortSignal.timeout(30000)});
+            const health=response.ok?await response.json():null;
+            if(!health?.ready)throw Error('unavailable');
+            nativeReviewClient.probeAt=0;
+            return await window.setChessEngineBackend('native');
+        }catch{
+            nativeConnectionStatus('Bağlantı kurulamadı. Bilgisayarda SATRANC-YEREL-MOTOR.bat dosyasını çalıştır; site izinlerinde yerel ağ erişimini kontrol edip tekrar dene.');
+            return false;
+        }finally{nativeConnectionPending=null;}
+    })();return nativeConnectionPending;
+};
 window.setChessEngineBackend=async function(backend){
     if(performanceCalibrating){calibrationController?.abort();await calibrationFinished;}
-    if(reviewBusy||reviewEngine.active){window.showToast('Motor seçimini hesaplama bittikten sonra değiştirebilirsin.','info');return;}
+    if(reviewBusy||reviewEngine.active){window.showToast('Motor seçimini hesaplama bittikten sonra değiştirebilirsin.','info');nativeConnectionStatus('Motor seçimi hesaplama tamamlandıktan sonra değiştirilebilir.');return false;}
     const value=['native','browser'].includes(backend)?backend:'auto';localStorage.setItem('gm_chess_backend',value);
     await backgroundReview.suspend();
     reviewEngine.worker?.terminate();reviewEngine.worker=null;reviewEngine.ready=false;reviewEngine.searchContext=null;reviewEngine.options.clear();
     const initial=value==='native'?'native':'browser';reviewEngine.nativeRetryAt=0;
     reviewEngine.profile={...calibratedProfile(reviewEngine.environment,initial),backend:initial};
-    completedEvalMemory.clear();try{await initStockfish();window.showToast(reviewEngine.profile.backend==='native'?'Yerel Stockfish bağlandı.':'Tarayıcı motoru hazır.','success');}catch{window.showToast('Motor başlatılamadı.','error');}
+    completedEvalMemory.clear();try{await initStockfish();const native=reviewEngine.profile.backend==='native';nativeConnectionStatus(native?'Yerel tam Stockfish 18 bağlı · hesaplama bu bilgisayarda yapılır.':value==='native'?'Yerel motor bağlanamadı; tarayıcı motoru hazır. Yardımcıyı ve site izinlerindeki yerel ağ erişimini kontrol et.':'Tarayıcıdaki Stockfish hazır.');window.showToast(native?'Yerel Stockfish bağlandı.':'Tarayıcı motoru hazır.','success');return value!=='native'||native;}catch{nativeConnectionStatus('Motor başlatılamadı. Tekrar bağlanmayı deneyebilirsin.');window.showToast('Motor başlatılamadı.','error');return false;}
 };
 window.calibrateChessEngine=async function(automatic=false){
  if(reviewBusy||reviewEngine.active||performanceCalibrating||!noActiveChessGame()||!['view-dashboard','view-settings'].includes(document.body.dataset.activeView))return;
@@ -2030,7 +2051,7 @@ window.calibrateChessEngine=async function(automatic=false){
  const safe=()=>noActiveChessGame()&&!document.hidden&&['view-dashboard','view-settings'].includes(document.body.dataset.activeView)&&!reviewBusy;
  const watch=new MutationObserver(()=>{if(!safe())controller.abort();});watch.observe(document.body,{attributes:true,attributeFilter:['data-active-view']});
  const notify=text=>window.dispatchEvent(new CustomEvent('chess-performance-status',{detail:text}));
- try{const {calibrateDevice}=await import('./analysis-calibration.mjs?v=20261001-speed3');const result=await calibrateDevice({env:reviewEngine.environment,backend,isSafe:safe,signal:controller.signal,onProgress:p=>notify('Cihaz ölçülüyor · '+p.threads+' işlem parçacığı · '+p.hash+' MB')});
+ try{const {calibrateDevice}=await import('./analysis-calibration.mjs?v=20261001-speed3a');const result=await calibrateDevice({env:reviewEngine.environment,backend,isSafe:safe,signal:controller.signal,onProgress:p=>notify('Cihaz ölçülüyor · '+p.threads+' işlem parçacığı · '+p.hash+' MB')});
   if(reviewEngine.active||!safe())return;reviewEngine.worker?.terminate();reviewEngine.ready=false;reviewEngine.worker=null;reviewEngine.options.clear();reviewEngine.searchContext=null;reviewEngine.profile={...calibratedProfile(reviewEngine.environment,backend),backend};
   await initStockfish();notify('Ölçüm tamamlandı · '+result.threads+' işlem parçacığı · '+result.hash+' MB');
  }catch(error){notify(error.message);}finally{watch.disconnect();performanceCalibrating=false;calibrationController=null;finishCalibration();backgroundReview.wake();}

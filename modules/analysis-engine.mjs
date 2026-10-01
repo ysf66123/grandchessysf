@@ -1,6 +1,6 @@
-import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs?v=20261001-speed3';
-import {calibratedProfile,requestIdentity} from './engine-profile.mjs?v=20261001-speed3';
-import {NativeEngineWorker,selectedBackend,backendPreference} from './native-engine-worker.mjs?v=20261001-speed3';
+import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs?v=20261001-speed3a';
+import {calibratedProfile,requestIdentity} from './engine-profile.mjs?v=20261001-speed3a';
+import {NativeEngineWorker,selectedBackend,backendPreference} from './native-engine-worker.mjs?v=20261001-speed3a';
 
 // One owner of the UCI stream. A task is not released until bestmove or restart.
 export class AnalysisEngine {
