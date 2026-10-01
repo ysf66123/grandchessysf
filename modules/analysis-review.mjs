@@ -1,7 +1,7 @@
-import {uciOf,terminalResult,rootScore,whiteScore,qualityScore,moveMetrics,comparisonEvidence,specialMoveEvidence,sacrificeEvidence,classify,reviewIsStable} from './analysis-core.mjs?v=20261001-speed2';
-import {tablebase,tableExpected,normalizedOpeningKey} from './analysis-data.mjs?v=20261001-speed2';
-export async function verifyDecision(previous,{compute,resume=false,onProgress=()=>{}}){
- const target=Math.min(28,previous.depth>=20?previous.depth+2:20);onProgress(target);
+import {uciOf,terminalResult,rootScore,whiteScore,qualityScore,moveMetrics,comparisonEvidence,specialMoveEvidence,sacrificeEvidence,classify,reviewIsStable} from './analysis-core.mjs?v=20261001-speed3';
+import {tablebase,tableExpected,normalizedOpeningKey} from './analysis-data.mjs?v=20261001-speed3';
+export async function verifyDecision(previous,{compute,resume=false,onProgress=()=>{},minDepth=20}){
+ const target=Math.min(28,Math.max(minDepth,previous.depth>=20?previous.depth+2:20));onProgress(target);
  let review=await compute(target,target<=previous.depth);if(!review)return null;
  const shifted=!reviewIsStable(previous,review),borderline=[.02,.05,.1,.2].some(t=>Math.abs(review.loss-t)<.005);
  if(shifted||borderline){const confirmation=Math.min(28,Math.max(target,review.depth)+2);if(confirmation>review.depth){onProgress(confirmation);const next=await compute(confirmation);if(!next)return null;next.stable=reviewIsStable(review,next);review=next;}else review.stable=review.complete&&previous.depth>=28&&reviewIsStable(previous,review);}else review.stable=true;
@@ -9,18 +9,25 @@ export async function verifyDecision(previous,{compute,resume=false,onProgress=(
 }
 function tryApplyUciMove(game,u){try{return !!game.move({from:u.slice(0,2),to:u.slice(2,4),...(u.length>4?{promotion:u[4]}:{})});}catch{return false;}}
 function formatEngineMove(Chess,u,fen){const g=new Chess(fen);return tryApplyUciMove(g,u)?g.history().at(-1):u;}
-export async function computeMoveReview({Chess,game,move,index,depth,evaluate,openings,previousOpponentLoss=0,isCurrent=()=>true,fresh=false}) {
+export async function computeMoveReview({Chess,game,move,index,depth,evaluate,openings,previousOpponentLoss=0,isCurrent=()=>true,fresh=false,selective=false}) {
     const beforeFen=game.fen(),legalCount=game.moves().length,playedUci=uciOf(move);
     const tbPromise=tablebase(game);
-    let result=await evaluate(depth,undefined,fresh);
+    let seed=null,useSingle=false;
+    if(selective&&depth>=20){seed=await evaluate(16,undefined,false,3);if(!seed)return null;const best=seed.topLines?.[0],played=seed.topLines?.find(l=>l.uci===playedUci),m=moveMetrics(best,played);useSingle=seed.complete&&(!played||m&&m.loss>=.025&&Number.isFinite(best.cp)&&Number.isFinite(played.cp)&&best.cp-played.cp>60);}
+    let result=await evaluate(depth,undefined,fresh,useSingle?1:3);
     if (!result) return null;
     const tb=await tbPromise;
-    const globalResult=result;
+    let globalResult=result;
     if(!result.topLines?.length)throw Error('Bu konumda yeterli motor verisi alınamadı. Analizi yeniden başlatabilirsin.');
-    if (!result.topLines.some(l=>l.uci === playedUci) || (tb?.moves?.[0] && !result.topLines.some(l=>l.uci===tb.moves[0].uci))) {
-        const candidates=[...new Set(result.topLines.map(l=>l.uci).concat(playedUci,tb?.moves?.[0]?.uci || []).filter(Boolean))];
+    if (useSingle||!result.topLines.some(l=>l.uci === playedUci) || (tb?.moves?.[0] && !result.topLines.some(l=>l.uci===tb.moves[0].uci))) {
+        const candidates=[...new Set(result.topLines.map(l=>l.uci).concat(useSingle?seed.topLines.map(l=>l.uci):[],playedUci,tb?.moves?.[0]?.uci || []).filter(Boolean))];
         result=await evaluate(depth,candidates,fresh);
         if (!result) return null;
+    }
+    if(useSingle){const ranked=[...result.topLines].sort((a,b)=>rootScore(b)-rootScore(a)),played=ranked.find(l=>l.uci===playedUci),metrics=moveMetrics(ranked[0],played),near=played?.uci===ranked[0]?.uci||metrics&&metrics.cpl!=null&&metrics.cpl<=15&&metrics.loss<.01;
+        // Unrestricted three-line evidence is mandatory whenever a special
+        // label could apply. Never infer uniqueness from restricted candidates.
+        if(near){globalResult=await evaluate(depth,undefined,fresh,3);if(!globalResult)return null;result=globalResult;if(!result.topLines.some(l=>l.uci===playedUci)||(tb?.moves?.[0]&&!result.topLines.some(l=>l.uci===tb.moves[0].uci))){result=await evaluate(depth,[...new Set(globalResult.topLines.map(l=>l.uci).concat(playedUci,tb?.moves?.[0]?.uci||[]).filter(Boolean))],fresh);if(!result)return null;}}
     }
     const evidence=comparisonEvidence(globalResult,result);
     const lines=result.topLines.map(line=>{

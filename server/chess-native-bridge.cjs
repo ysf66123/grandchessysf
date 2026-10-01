@@ -9,6 +9,8 @@ function validCommand(command){if(typeof command!=='string'||command.length>1600
  const go=command.match(/^go depth (\d+)(?: searchmoves(?: [a-h][1-8][a-h][1-8][nbrq]?){1,8})?$/);return !!go&&Number(go[1])>=1&&Number(go[1])<=40;
 }
 function createBridge({binary=process.env.STOCKFISH_BINARY||findBinary(),spawnEngine=()=>spawn(binary,[],{windowsHide:true,stdio:['pipe','pipe','pipe']})}={}){
+ const reviewCapable=!!binary&&fs.existsSync(binary);let reviewService;
+ const getReviewService=async()=>{if(!reviewService)reviewService=import('./chess-review-service.mjs').then(({NativeReviewService})=>new NativeReviewService({binary,selective:true}));return reviewService;};
  const sessions=new Map();const destroy=id=>{const s=sessions.get(id);if(s){s.client?.end();s.child.kill();sessions.delete(id);}};
  const server=http.createServer(async(req,res)=>{
   const origin=req.headers.origin;if(!allowedOrigin(origin)){res.writeHead(403);return res.end('Origin rejected');}
@@ -22,11 +24,16 @@ function createBridge({binary=process.env.STOCKFISH_BINARY||findBinary(),spawnEn
    for(const line of s.buffer)res.write('data: '+JSON.stringify(line)+'\n\n');s.buffer=[];req.on('close',()=>destroy(s.id));return;
   }
   if(req.headers['x-gm-engine']!=='1')return json(403,{error:'Header required'});
-  if(url.pathname==='/health'&&req.method==='GET')return json(200,{ready:true,batch:true});
+  if(url.pathname==='/health'&&req.method==='GET')return json(200,{ready:true,batch:true,review:reviewCapable?'native-pool-v1':false});
+  if(url.pathname==='/review'&&reviewCapable&&(req.method==='GET'||req.method==='DELETE')){
+   try{const service=await getReviewService(),id=url.searchParams.get('id');if(req.method==='DELETE'){const cancelled=await service.cancel(id,origin);return json(cancelled?200:404,{cancelled});}const job=service.get(id,origin);return json(job?200:404,job||{error:'Analiz bulunamadı.'});}catch(error){return json(503,{error:error.message});}
+  }
   if(url.pathname==='/session'&&req.method==='DELETE'){const s=sessions.get(url.searchParams.get('id'));if(s?.origin===origin)destroy(s.id);return json(200,{closed:true});}
   if(req.method!=='POST')return json(404,{error:'Unknown endpoint'});
-  let raw='';try{for await(const chunk of req){raw+=chunk;if(raw.length>20000)return json(413,{error:'Too large'});}}catch{return;}
+  let raw='';try{for await(const chunk of req){raw+=chunk;if(raw.length>(url.pathname==='/review'?270000:20000))return json(413,{error:'Too large'});}}catch{return;}
   let body;try{body=JSON.parse(raw);}catch{return json(400,{error:'Invalid JSON'});}
+  if(!body||typeof body!=='object'||Array.isArray(body))return json(400,{error:'Invalid object'});
+  if(url.pathname==='/review'&&reviewCapable){try{return json(200,await (await getReviewService()).start(body.pgn,origin,body.id));}catch(error){return json(error.status||400,{error:error.message});}}
   if(url.pathname==='/session'){
    if(sessions.size>=2)return json(429,{error:'Two sessions already active'});let child;try{child=spawnEngine();}catch{return json(503,{error:'Stockfish executable missing'});}
    const s={id:crypto.randomBytes(24).toString('hex'),child,origin,buffer:[],fragment:'',at:Date.now(),commands:[]};sessions.set(s.id,s);
@@ -37,7 +44,7 @@ function createBridge({binary=process.env.STOCKFISH_BINARY||findBinary(),spawnEn
    const s=sessions.get(body.id);if(!s||s.origin!==origin)return json(403,{error:'Session unavailable'});const commands=body.commands||[body.command];if(!Array.isArray(commands)||!commands.length||commands.length>16||commands.some(c=>!validCommand(c)))return json(400,{error:'Command rejected'});
    s.commands=s.commands.filter(t=>Date.now()-t<1000);if(s.commands.length+commands.length>100)return json(429,{error:'Rate limit'});s.commands.push(...commands.map(()=>Date.now()));s.at=Date.now();s.child.stdin.write(commands.join('\n')+'\n');return json(200,{ok:true});
   }return json(404,{error:'Unknown endpoint'});
- });const cleanup=setInterval(()=>{for(const s of sessions.values())if(Date.now()-s.at>180000)destroy(s.id);},30000);cleanup.unref();server.on('close',()=>{clearInterval(cleanup);for(const id of sessions.keys())destroy(id);});return server;
+ });const cleanup=setInterval(()=>{for(const s of sessions.values())if(Date.now()-s.at>180000)destroy(s.id);reviewService?.then(s=>s.sweep()).catch(()=>{});},30000);cleanup.unref();server.on('close',()=>{clearInterval(cleanup);for(const id of sessions.keys())destroy(id);reviewService?.then(s=>s.close()).catch(()=>{});});return server;
 }
 function findBinary(){const root=path.resolve(__dirname,'../.cache/stockfish-native/stockfish');try{return fs.readdirSync(root).filter(n=>/^stockfish.*\.exe$/.test(n)).map(n=>path.join(root,n))[0];}catch{return undefined;}}
 if(require.main===module){const binary=findBinary();if(!binary){console.error('Yerel Stockfish eksik. scripts/setup-native-engine.ps1 dosyasını çalıştır.');process.exitCode=1;}else createBridge({binary}).listen(8766,'127.0.0.1',()=>console.log('Stockfish 18 yerel motor hazır: 127.0.0.1:8766 · site ayarlarından seçebilirsin.'));}

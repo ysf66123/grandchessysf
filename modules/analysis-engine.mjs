@@ -1,6 +1,6 @@
-import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs?v=20261001-speed2';
-import {calibratedProfile,requestIdentity} from './engine-profile.mjs?v=20261001-speed2';
-import {NativeEngineWorker,selectedBackend} from './native-engine-worker.mjs?v=20261001-speed2';
+import {parseInfo, whiteScore, REVIEW_VERSION} from './analysis-core.mjs?v=20261001-speed3';
+import {calibratedProfile,requestIdentity} from './engine-profile.mjs?v=20261001-speed3';
+import {NativeEngineWorker,selectedBackend,backendPreference} from './native-engine-worker.mjs?v=20261001-speed3';
 
 // One owner of the UCI stream. A task is not released until bestmove or restart.
 export class AnalysisEngine {
@@ -20,7 +20,7 @@ export class AnalysisEngine {
         this.searchContext=null;
     }
     async init() {
-        if(this.autoReconnect!==false&&!this.customFactory&&selectedBackend()==='native'&&this.profile.backend==='browser'&&!this.active&&!this.queue.length&&Date.now()>=this.nativeRetryAt){
+        if(this.autoReconnect!==false&&!this.customFactory&&(backendPreference()==='native'||backendPreference()==='auto'&&!this.environment.mobile)&&this.profile.backend==='browser'&&!this.active&&!this.queue.length&&Date.now()>=this.nativeRetryAt){
             this.nativeRetryAt=Date.now()+45000;
             try{const r=await fetch('http://127.0.0.1:8766/health',{headers:{'X-GM-Engine':'1'},signal:AbortSignal.timeout(900)});if(r.ok){this.worker?.terminate();this.worker=null;this.ready=false;this.options.clear();this.searchContext=null;this.profile={...calibratedProfile(this.environment,'native'),backend:'native'};}}catch{}
         }

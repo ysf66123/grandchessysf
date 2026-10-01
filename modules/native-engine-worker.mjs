@@ -18,4 +18,5 @@ export class NativeEngineWorker {
  }
  terminate(){this.stopped=true;this.events?.close();this.controller.abort();if(this.id)fetch(this.base+'/session?id='+encodeURIComponent(this.id),{method:'DELETE',headers:{'X-GM-Engine':'1'},keepalive:true}).catch(()=>{});}
 }
-export function selectedBackend(){try{return localStorage.getItem('gm_chess_backend')==='native'?'native':'browser';}catch{return 'browser';}}
+export function backendPreference(){try{const value=localStorage.getItem('gm_chess_backend');return ['native','browser'].includes(value)?value:'auto';}catch{return 'auto';}}
+export function selectedBackend(){return backendPreference()==='native'?'native':'browser';}

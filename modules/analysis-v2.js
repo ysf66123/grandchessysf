@@ -1,21 +1,25 @@
-import {computeMoveReview,verifyDecision} from './analysis-review.mjs?v=20261001-speed2';
-import {AnalysisEngine} from './analysis-engine.mjs?v=20261001-speed2';
-import {REVIEW_VERSION, whiteScore, rootScore, classify, gameAccuracy, pvMoves, sacrificeEvidence, terminalResult, validPosition, uciOf, qualityScore, moveMetrics, comparisonEvidence, specialMoveEvidence, reviewIsStable} from './analysis-core.mjs?v=20261001-speed2';
-import {loadOpenings, normalizedOpeningKey, tablebase, tableExpected, explanation} from './analysis-data.mjs?v=20261001-speed2';
-import {reviewInsights, PHASE_LABELS} from './analysis-insights.mjs?v=20261001-speed2';
-import {REVIEW_STAGES, stageProgress, canRevealReport} from './analysis-progress.mjs?v=20261001-speed2';
-import {MOVE_CATEGORY_META,categorySvg} from './analysis-labels.mjs?v=20261001-speed2';
-import {tacticalSequence} from './analysis-tactics.mjs?v=20261001-speed2';
-import {acceptTrainingMove} from './analysis-learning.mjs?v=20261001-speed2';
-import {renderLearningUI,finishLearningAttempt,clearLearningAttempt} from './analysis-learning-ui.mjs?v=20261001-speed2';
-import {AnalysisTiming,calibratedProfile,calibrationKey} from './engine-profile.mjs?v=20261001-speed2';
-import {openingNameTR} from './chess-opening-names.mjs?v=20261001-speed2';
-import {ReviewCache,ReviewMetrics,ReviewReplay,evalKey,engineSignature,rememberIterations,sameReviewBackend} from './analysis-runtime.mjs?v=20261001-speed2';
-import {BackgroundReview} from './analysis-background.mjs?v=20261001-speed2';
+import {computeMoveReview,verifyDecision} from './analysis-review.mjs?v=20261001-speed3';
+import {AnalysisEngine} from './analysis-engine.mjs?v=20261001-speed3';
+import {REVIEW_VERSION, whiteScore, rootScore, classify, gameAccuracy, pvMoves, sacrificeEvidence, terminalResult, validPosition, uciOf, qualityScore, moveMetrics, comparisonEvidence, specialMoveEvidence, reviewIsStable} from './analysis-core.mjs?v=20261001-speed3';
+import {loadOpenings, normalizedOpeningKey, tablebase, tableExpected, explanation} from './analysis-data.mjs?v=20261001-speed3';
+import {reviewInsights, PHASE_LABELS} from './analysis-insights.mjs?v=20261001-speed3';
+import {REVIEW_STAGES, stageProgress, canRevealReport} from './analysis-progress.mjs?v=20261001-speed3';
+import {MOVE_CATEGORY_META,categorySvg} from './analysis-labels.mjs?v=20261001-speed3';
+import {tacticalSequence} from './analysis-tactics.mjs?v=20261001-speed3';
+import {acceptTrainingMove} from './analysis-learning.mjs?v=20261001-speed3';
+import {renderLearningUI,finishLearningAttempt,clearLearningAttempt} from './analysis-learning-ui.mjs?v=20261001-speed3';
+import {AnalysisTiming,calibratedProfile,calibrationKey} from './engine-profile.mjs?v=20261001-speed3';
+import {openingNameTR} from './chess-opening-names.mjs?v=20261001-speed3';
+import {ReviewCache,ReviewMetrics,ReviewReplay,evalKey,engineSignature,rememberIterations,sameReviewBackend} from './analysis-runtime.mjs?v=20261001-speed3';
+import {BackgroundReview} from './analysis-background.mjs?v=20261001-speed3';
+import {NativeReviewClient} from './native-review-client.mjs?v=20261001-speed3';
+import {backendPreference} from './native-engine-worker.mjs?v=20261001-speed3';
 const analysisTiming=new AnalysisTiming();
 const reviewCache=new ReviewCache(),reviewMetrics=new ReviewMetrics();
 let replayPlan=null;
 let reviewEvidenceSignature=null,reviewEvidenceKey=null;
+const nativeReviewClient=new NativeReviewClient();
+let nativeReviewController=null,nativeReportPerformance=null;
 window.addEventListener('pagehide',()=>reviewCache.flush());
 // modules/analysis-v2.js - Chess Game Analysis Engine (Chess.com-style review)
 
@@ -130,7 +134,7 @@ window.toggleReviewPause=async function() {
     if(!analysisHistory.length)return;
     const token=analysisReviewToken;
     setReviewGate('processing');
-    try {await initStockfish();if(token!==analysisReviewToken)return;await runDetailedGameReview(token,true);}
+    try {await initStockfish();if(token!==analysisReviewToken)return;await runPreferredGameReview(token,true);}
     catch(e){if(token===analysisReviewToken){reportStatus='Analiz tamamlanamadı';setReviewGate('error');document.getElementById('analysisLoadingMessage').textContent=e.message;}}
 };
 window.importReviewPgn=async function() {
@@ -378,7 +382,7 @@ async function initStockfish() {
     const started=performance.now();
     try { await reviewEngine.init();reviewMetrics.add('engineInit',performance.now()-started); sfWorker = reviewEngine.worker; isSfReady = true; setStockfishStatus('active');
         if(currentSharedAnalysisPayload)currentAnalysisReportCacheKey=buildReportCacheKey(currentSharedAnalysisPayload.pgn||'',currentSharedAnalysisPayload.fen||'');
-        const selector=document.getElementById('chessEngineBackend');if(selector)selector.value=localStorage.getItem('gm_chess_backend')||'browser';
+        const selector=document.getElementById('chessEngineBackend');if(selector)selector.value=backendPreference();
     }
     catch (error) { sfWorker = null; isSfReady = false; setStockfishStatus('fallback'); throw error; }
 }
@@ -445,6 +449,7 @@ async function rootEvaluation(index, depth, token, searchmoves, fresh=false) {
     return result;
 }
 window.cancelAnalysisReview = function() {
+    nativeReviewController?.abort();nativeReviewClient.cancel();
     window.stopReviewTactic?.();tacticPlayback=null;
     if(reviewBusy)saveReviewCheckpoint();
     analysisReviewToken++; liveEvalRequestId++; bestPreviewToken++; variationRequest++;
@@ -740,7 +745,7 @@ function setAnalysisPosition(index) {
 function showLoadingOverlay(show, totalMoves) {
     const overlay = document.getElementById('analysisLoadingOverlay');
     if (!overlay) return;
-    if(show){setReviewGate('processing');setReviewStage('prepare',0,1);}
+    if(show){setReviewGate('processing');setReviewStage('prepare',0,1);const engine=document.getElementById('analysisLoadingEngine');if(engine)engine.textContent='Stockfish 18 · hazırlık';}
     else if(getAnalysisViewElement().dataset.reviewState==='ready')overlay.style.display='none';
 }
 
@@ -1293,6 +1298,35 @@ async function runDetailedGameReview(token,resume=false) {
     }finally{if(token===analysisReviewToken){reviewBusy=false;if(getAnalysisViewElement().dataset.reviewState==='ready')renderAnalysisInsights();}}
 }
 
+async function runPreferredGameReview(token,resume=false){
+    if(reviewEngine.profile.backend!=='native'||!await nativeReviewClient.available())return runDetailedGameReview(token,resume);
+    if(token!==analysisReviewToken)return;
+    const controller=new AbortController();nativeReviewController=controller;reviewBusy=true;setReviewGate('processing');
+    try{
+        const result=await nativeReviewClient.run(currentSharedAnalysisPayload.pgn,{signal:controller.signal,onProgress:state=>{
+            if(token!==analysisReviewToken)return;
+            setReviewStage(state.stage,state.done,state.total,'Tam Stockfish motoru maçını inceliyor. Derinlik ve hamle karşılaştırmaları korunuyor.');
+            const info=document.getElementById('analysisLoadingEngine');if(info)info.textContent='Stockfish 18 Full · '+state.profile.lanes+' paralel konum · '+state.profile.lanes*state.profile.threads+' işlem parçacığı';
+        }});
+        if(token!==analysisReviewToken)return;
+        if(result.version!==REVIEW_VERSION||!validCachedReviewHistory(result)||!sameReviewBackend(result.reviews,'native')||result.reviews.some(r=>r&&(!Number.isFinite(r.loss)||r.loss<0||r.loss>1||!Number.isFinite(r.moveAccuracy)||r.moveAccuracy<0||r.moveAccuracy>100||r.fullRootDepth<16||r.comparisonDepth<16||r.playedLine?.uci!==r.playedUci||!r.bestLine?.uci||result.state==='ready'&&r.critical&&(!r.verified||r.depth<20))))throw Error('Yerel raporun sürümü veya motor kanıtları doğrulanamadı.');
+        nativeReportPerformance={...result.metrics,profile:result.profile,elapsedMs:result.elapsedMs,cacheHit:result.cacheHit,engineSignature:result.engineSignature};
+        if(result.state==='ready'){
+            if(!applyCachedGameReview({complete:true,reviews:result.reviews}))throw Error('Yerel raporun doğrulaması tamamlanmadı.');
+            reviewBusy=false;setReviewStage('finish',1,1);setReviewGate('ready');refreshReviewReport();bindBestMovePreviewButton();initChartEvents();drawEvaluationChart();
+            await writeCacheStore('reports',currentAnalysisReportCacheKey,{complete:true,reviews:analysisMoveReviews});
+        }else{
+            analysisMoveReviews=result.reviews;reviewEvidenceSignature=engineSignature(reviewEngine.profile);reviewEvidenceKey=currentAnalysisReportCacheKey;
+            reviewBusy=false;await saveReviewCheckpoint();reportStatus='Doğrulama henüz tamamlanmadı';setReviewGate('incomplete');
+        }
+    }catch(error){
+        if(token!==analysisReviewToken||controller.signal.aborted)return;
+        nativeReportPerformance=null;reviewBusy=false;
+        setReviewStage('prepare',0,1,'Yerel toplu hizmet kullanılamadı. Aynı kalite hedefleriyle standart motor akışına geçiliyor.');
+        await runDetailedGameReview(token,resume);
+    }finally{if(nativeReviewController===controller)nativeReviewController=null;if(token===analysisReviewToken)reviewBusy=false;}
+}
+
 function renderReviewDetails() {
     if(getAnalysisViewElement().dataset.reviewState!=='ready')return;
     const r=analysisMoveReviews[currentAnalysisIndex-1] || livePositionResult;
@@ -1438,8 +1472,10 @@ window.jumpToCriticalMove=function(direction) {
     window.jumpToMove(target);
 };
 window.getAnalysisReportSnapshot=function() {
+    const metrics=reviewMetrics.snapshot(reviewEngine.stats),engineTotals={...metrics.engine};
+    for(const key of ['requests','nodes','ms'])engineTotals[key]=(engineTotals[key]||0)+(nativeReportPerformance?.[key]||0);
     return JSON.parse(JSON.stringify({version:REVIEW_VERSION,status:reportStatus,selectedIndex:currentAnalysisIndex,
-        performance:{elapsedMs:(analysisTiming.completed||Date.now())-analysisTiming.started,backend:analysisMoveReviews.find(Boolean)?.source?.includes('Full')?'native':'browser',engineSignature:reviewEvidenceSignature,currentEngineBackend:reviewEngine.profile.backend,threads:reviewEngine.profile.threads,hash:reviewEngine.profile.hash,engineTotals:reviewMetrics.snapshot(reviewEngine.stats).engine,breakdown:reviewMetrics.snapshot(reviewEngine.stats)},
+        performance:{elapsedMs:(analysisTiming.completed||Date.now())-analysisTiming.started,backend:analysisMoveReviews.find(Boolean)?.source?.includes('Full')?'native':'browser',engineSignature:reviewEvidenceSignature,currentEngineBackend:reviewEngine.profile.backend,threads:reviewEngine.profile.threads,hash:reviewEngine.profile.hash,engineTotals,breakdown:metrics,nativeService:nativeReportPerformance},
         progress:{stage:loadingStage,done:loadingDone,total:loadingTotal,percent:loadingPercent,state:getAnalysisViewElement().dataset.reviewState},
         whiteAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='w')),
         blackAccuracy:calculateAccuracy(analysisMoveReviews.filter(r=>r?.moveColor==='b')),
@@ -1459,7 +1495,7 @@ async function ensureWholeReportSource(){
     try {
         await initStockfish();if(token!==analysisReviewToken)return false;
         if(reviewEvidenceSignature===engineSignature(reviewEngine.profile)&&sameReviewBackend(analysisMoveReviews,reviewEngine.profile.backend))return true;
-        if(!sourceRefresh)sourceRefresh=runDetailedGameReview(token,false).finally(()=>sourceRefresh=null);
+        if(!sourceRefresh)sourceRefresh=runPreferredGameReview(token,false).finally(()=>sourceRefresh=null);
         await sourceRefresh;
         return token===analysisReviewToken&&getAnalysisViewElement().dataset.reviewState==='ready';
     } catch(error) {
@@ -1545,10 +1581,12 @@ window.openAnalysis = async function(pgn, players=[], fallbackFen, metadata={}) 
     calibrationController?.abort();await calibrationFinished;
     await backgroundReview?.suspend();
     analysisTiming.reset();
+    nativeReportPerformance=null;
     reviewMetrics.reset(reviewEngine.stats);replayPlan=null;
     const headers=incoming.header();
     if(!Array.isArray(players) || !players.length)players=[{team:'white',name:headers.White||'Beyaz'},{team:'black',name:headers.Black||'Siyah'}];
     clearLearningAttempt();window.cancelAnalysisReview();
+    await nativeReviewClient.cancel();
     document.getElementById('reviewLearning').replaceChildren();
     showLoadingOverlay(true);
     window.switchView('view-2v2-analysis');
@@ -1718,7 +1756,7 @@ window.openAnalysis = async function(pgn, players=[], fallbackFen, metadata={}) 
     try {
         const resume= !cachedReport?.complete && validCachedReviewHistory(cachedReport) && sameReviewBackend(cachedReport.reviews,reviewEngine.profile.backend) && cachedReport.reviews.some(Boolean);
         if(resume){analysisMoveReviews=cachedReport.reviews;reviewEvidenceSignature=engineSignature(reviewEngine.profile);reviewEvidenceKey=currentAnalysisReportCacheKey;}
-        await runDetailedGameReview(thisReviewToken,!!resume);
+        await runPreferredGameReview(thisReviewToken,!!resume);
     } catch (error) {
         if (thisReviewToken === analysisReviewToken) { reportStatus='Analiz tamamlanamadı';setReviewGate('error');document.getElementById('analysisLoadingMessage').textContent=error.message; }
     } finally {
@@ -1975,15 +2013,16 @@ window.cancelChessAcademyEngine=()=>reviewEngine.cancel(t=>t.mode==='academy');
 window.setChessEngineBackend=async function(backend){
     if(performanceCalibrating){calibrationController?.abort();await calibrationFinished;}
     if(reviewBusy||reviewEngine.active){window.showToast('Motor seçimini hesaplama bittikten sonra değiştirebilirsin.','info');return;}
-    const value=backend==='native'?'native':'browser';localStorage.setItem('gm_chess_backend',value);
+    const value=['native','browser'].includes(backend)?backend:'auto';localStorage.setItem('gm_chess_backend',value);
     await backgroundReview.suspend();
     reviewEngine.worker?.terminate();reviewEngine.worker=null;reviewEngine.ready=false;reviewEngine.searchContext=null;reviewEngine.options.clear();
-    reviewEngine.profile={...calibratedProfile(reviewEngine.environment,value),backend:value};
-    completedEvalMemory.clear();try{await initStockfish();window.showToast(value==='native'&&reviewEngine.profile.backend==='native'?'Yerel Stockfish bağlandı.':'Tarayıcı motoru hazır.','success');}catch{window.showToast('Motor başlatılamadı.','error');}
+    const initial=value==='native'?'native':'browser';reviewEngine.nativeRetryAt=0;
+    reviewEngine.profile={...calibratedProfile(reviewEngine.environment,initial),backend:initial};
+    completedEvalMemory.clear();try{await initStockfish();window.showToast(reviewEngine.profile.backend==='native'?'Yerel Stockfish bağlandı.':'Tarayıcı motoru hazır.','success');}catch{window.showToast('Motor başlatılamadı.','error');}
 };
 window.calibrateChessEngine=async function(automatic=false){
  if(reviewBusy||reviewEngine.active||performanceCalibrating||!noActiveChessGame()||!['view-dashboard','view-settings'].includes(document.body.dataset.activeView))return;
- const backend=localStorage.getItem('gm_chess_backend')==='native'?'native':'browser';
+ await initStockfish();if(reviewBusy||reviewEngine.active||performanceCalibrating||!noActiveChessGame())return;const backend=reviewEngine.profile.backend;
  if(automatic){const saved=JSON.parse(localStorage.getItem(calibrationKey(reviewEngine.environment,backend))||'null');if(reviewEngine.environment.mobile||saved?.version==='sf18-speed2'&&saved.complete&&Date.now()-saved.at<30*86400000)return;}
     performanceCalibrating=true;const controller=new AbortController();
     calibrationController=controller;let finishCalibration;calibrationFinished=new Promise(resolve=>finishCalibration=resolve);
@@ -1991,13 +2030,13 @@ window.calibrateChessEngine=async function(automatic=false){
  const safe=()=>noActiveChessGame()&&!document.hidden&&['view-dashboard','view-settings'].includes(document.body.dataset.activeView)&&!reviewBusy;
  const watch=new MutationObserver(()=>{if(!safe())controller.abort();});watch.observe(document.body,{attributes:true,attributeFilter:['data-active-view']});
  const notify=text=>window.dispatchEvent(new CustomEvent('chess-performance-status',{detail:text}));
- try{const {calibrateDevice}=await import('./analysis-calibration.mjs?v=20261001-speed2');const result=await calibrateDevice({env:reviewEngine.environment,backend,isSafe:safe,signal:controller.signal,onProgress:p=>notify('Cihaz ölçülüyor · '+p.threads+' işlem parçacığı · '+p.hash+' MB')});
+ try{const {calibrateDevice}=await import('./analysis-calibration.mjs?v=20261001-speed3');const result=await calibrateDevice({env:reviewEngine.environment,backend,isSafe:safe,signal:controller.signal,onProgress:p=>notify('Cihaz ölçülüyor · '+p.threads+' işlem parçacığı · '+p.hash+' MB')});
   if(reviewEngine.active||!safe())return;reviewEngine.worker?.terminate();reviewEngine.ready=false;reviewEngine.worker=null;reviewEngine.options.clear();reviewEngine.searchContext=null;reviewEngine.profile={...calibratedProfile(reviewEngine.environment,backend),backend};
   await initStockfish();notify('Ölçüm tamamlandı · '+result.threads+' işlem parçacığı · '+result.hash+' MB');
  }catch(error){notify(error.message);}finally{watch.disconnect();performanceCalibrating=false;calibrationController=null;finishCalibration();backgroundReview.wake();}
 };
 window.pauseChessPreparation=()=>{calibrationController?.abort();backgroundReview.suspend();};
-window.getChessPerformanceState=()=>({reviewBusy,calibrating:performanceCalibrating,searching:!!reviewEngine.active,profile:{...reviewEngine.profile},background:window.chessBackgroundStatus||'',calibrationKey:calibrationKey(reviewEngine.environment,localStorage.getItem('gm_chess_backend')==='native'?'native':'browser')});
+window.getChessPerformanceState=()=>({reviewBusy,calibrating:performanceCalibrating,searching:!!reviewEngine.active,profile:{...reviewEngine.profile},background:window.chessBackgroundStatus||'',calibrationKey:calibrationKey(reviewEngine.environment,reviewEngine.profile.backend)});
 window.setChessBackgroundEnabled=async enabled=>{localStorage.setItem('gm_chess_background',enabled?'on':'off');if(enabled)backgroundReview.wake();else await backgroundReview.suspend();};
 window.addEventListener('focus',()=>{if(noActiveChessGame()&&!reviewBusy&&!performanceCalibrating&&['view-dashboard','view-settings'].includes(document.body.dataset.activeView))initStockfish().catch(()=>{});});
 window.queueStockfishEval = queueStockfishEval;

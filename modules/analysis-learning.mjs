@@ -1,5 +1,5 @@
-import {gameAccuracy,qualityScore} from './analysis-core.mjs?v=20261001-speed2';
-import {gamePhase} from './analysis-insights.mjs?v=20261001-speed2';
+import {gameAccuracy,qualityScore} from './analysis-core.mjs?v=20261001-speed3';
+import {gamePhase} from './analysis-insights.mjs?v=20261001-speed3';
 export const LEARNING_VERSION=1;
 const themes={fork:'Çatal',pin:'Açmaz',skewer:'Şiş',defender:'Savunucunun kaldırılması',mate:'Mat',capture:'Taş kaybı',promotion:'Terfi',check:'Şah güvenliği'};
 export function errorChains(reviews){

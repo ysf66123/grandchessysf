@@ -1,4 +1,4 @@
-import {gameAccuracy} from './analysis-core.mjs?v=20261001-speed2';
+import {gameAccuracy} from './analysis-core.mjs?v=20261001-speed3';
 
 const values={p:100,n:320,b:330,r:500,q:900,k:0};
 export const PHASE_LABELS={opening:'Açılış',middle:'Oyun ortası',end:'Oyun sonu'};
